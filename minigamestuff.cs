@@ -422,6 +422,10 @@ namespace GameEngineThing {
 		}
 		public void Update()
 		{
+			if (!Playing)
+			{
+				time = (timeAtPause - timeOffset) / (double)Stopwatch.Frequency;
+			}
 			for (int i = 0; i < KeyCount; i++)
 			{
 				ManiaKey[] laneData = chart.KeyData[i];
@@ -483,6 +487,10 @@ namespace GameEngineThing {
 		}
 		public void Render2(Shader shader, Game game, Vector3? _color = null)
 		{
+			if (!Playing)
+			{
+				time = (timeAtPause - timeOffset) / (double)Stopwatch.Frequency;
+			}
 			GlyphData noteGlyphData = FontCharFillerThing.FontCharDeeta.SChars["note"];
 			Vector3 color = _color ?? new(1);
 			shader.Use();
@@ -586,8 +594,7 @@ namespace GameEngineThing {
 		/// </summary>
 		/// <param name="key">the key that was pressed.</param>
 		/// <param name="time">yeah. this is just the timestamp of whatever time this is divided by frequency.</param>
-		public void KeyDown(Keys key, double time)
-		{
+		public void KeyDown(Keys key, double time) {
 			int laneNumberThing = keybinds[0] == key ? 0 : -1;
 			for (uint m = KeyCount; m-- > 1;) if (keybinds[m] == key) { laneNumberThing = (int)m; break; }
 			if (laneNumberThing == -1) { // do this only if it is the keybind.
@@ -596,7 +603,7 @@ namespace GameEngineThing {
 					case Keys.P: TogglePauseMap(); break;
 					case Keys.GraveAccent: RestartMap(); break;
 					default: break;}
-			} else {
+			} else if (Playing) {
 				Console.Write("lane: " + laneNumberThing + " ");
 				// key is one of the keybinds.
 				uint currentKey = currentKeys[laneNumberThing];
@@ -640,8 +647,7 @@ namespace GameEngineThing {
 					case > -.3 and < .3: noteHitAccAmts[(int)ManiaAccs.yikes]++; lingeringTxt = "Yikes. " + DiffMSStr; Console.Write("Yikes. (+-300ms);"); break;
 					default: Hit = false; break;}
 				Console.WriteLine(" TimeDiff: " + timeDiff);
-				if (Hit) currentKeys[laneNumberThing]++;
-			}
+				if (Hit) currentKeys[laneNumberThing]++; }
 		}
 		public bool TryLoadMapFromString(string chart)
 		{

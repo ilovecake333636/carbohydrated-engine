@@ -62,8 +62,9 @@ namespace GameEngineThing {
 		private VerticalOneKey _1kManiaPrototype;
 		private ManiaRG _maniaRGPrototype;
 		private VideoRecorder _videoRecorder;
-		private long previousFrameTime = 0;
-		private long[] profilerFrameTimes = new long[128];
+		private long previousFrameTimestamp = 0;
+		private long[] profilerFrameTimestamps = new long[128];
+		// private int profilerIndex;
 		private bool profilerOn = false;
 		public readonly long gameStartTimestamp = Stopwatch.GetTimestamp();
 		
@@ -157,6 +158,12 @@ namespace GameEngineThing {
 				}
 				dt = Stopwatch.GetElapsedTime(time).TotalMilliseconds;
 				Console.WriteLine("deconstructing vec3 loop3a: " + dt + "ms.");
+				time = Stopwatch.GetTimestamp();
+				for (int i = 0; i < 25000000; i++) {
+					(float x, float y, float z) = new Vector3(Random.Shared.NextSingle(), Random.Shared.NextSingle(), Random.Shared.NextSingle());
+				}
+				dt = Stopwatch.GetElapsedTime(time).TotalMilliseconds;
+				Console.WriteLine("deconstructing vec3 loop4: " + dt + "ms.");
 				time = Stopwatch.GetTimestamp();
 				for (int i = 0; i < 25000000; i++)
 				{
