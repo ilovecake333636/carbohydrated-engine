@@ -439,17 +439,18 @@ namespace GameEngineThing {
 			if (training == 1)
 			{
 				bool firstRefresh = true;
+				uint currentKey;
 				for (int i = 0; i < KeyCount; i++)
 				{
-					uint currentKey = currentKeys[i];
-					ManiaKey[] laneData = chart.KeyData[i];
-					if (currentKey > 64)
+					if ((currentKey = currentKeys[i]) > 64)
 					{
+						ManiaKey[] laneData = chart.KeyData[i];
 						if (firstRefresh)
 						{
 							firstRefresh = false;
 							Console.Write("refreshing lane " + i);
-						} else { Console.Write(", " + i); }
+						}
+						else { Console.Write(", " + i); }
 						// current key is greater than 64; at least 64 notes were hit or missed or smth
 						// so anyways generate more notes
 						ManiaKey[] newLaneData = new ManiaKey[4096];
@@ -458,7 +459,7 @@ namespace GameEngineThing {
 						uint startingIndex = 4096 - currentKey;
 						for (uint j = 0; j < currentKey;)
 						{
-							newLaneData[j + startingIndex] = new ManiaKey(lastNoteTime + 1.8 / Math.Sqrt(++j+80));
+							newLaneData[j + startingIndex] = new ManiaKey(lastNoteTime + 1.8 / Math.Sqrt(++j + 80));
 						}
 						chart.KeyData[i] = newLaneData;
 						currentKeys[i] = 0;

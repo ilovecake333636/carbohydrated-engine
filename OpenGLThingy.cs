@@ -63,8 +63,8 @@ namespace GameEngineThing {
 		private ManiaRG _maniaRGPrototype;
 		private VideoRecorder _videoRecorder;
 		private long previousFrameTimestamp = 0;
-		private long[] profilerFrameTimestamps = new long[128];
-		// private int profilerIndex;
+		private double[] profilerFrameTimes = new double[2048];
+		private int profilerIndex = 0;
 		private bool profilerOn = false;
 		public readonly long gameStartTimestamp = Stopwatch.GetTimestamp();
 		
@@ -72,37 +72,28 @@ namespace GameEngineThing {
 
 
 		public Game(int width, int height, string title) :
-		base(GameWindowSettings.Default, new NativeWindowSettings() { ClientSize = (width, height), Title = title })
-		{ _gameID = _gameCount++; }
+		base(GameWindowSettings.Default, new NativeWindowSettings() { ClientSize = (width, height), Title = title }) { _gameID = _gameCount++; }
 
 
-		static void Main()
-		{
+		static void Main() {
 			Console.WriteLine("Starting OpenGL application...");
 			bool Opening = true;
 			string OpenData = "";
-			while (Opening)
-			{
+			while (Opening) {
 				Opening = false;
-				using (Game game = new(800, 600, "GameEngineThingy :3"))
-				{
+				using (Game game = new(800, 600, "GameEngineThingy :3")) {
 					game.VSync = VSyncMode.On;
 					game.OpenData = OpenData;
 					game.Run();
 					Opening = game.WillReopen;
-					OpenData = game.ReopenData;
-				}
-			}
+					OpenData = game.ReopenData; } }
 			Console.WriteLine("game has closed.");
-
 #if false
 			int a = 1;
 			int b = 1;
 			int c = 1;
 			Console.WriteLine("a = 1; (a-- == 0) is " + (a-- == 0) + "; b = 1; (b-- == 1) is " + (b-- == 1) + "; c = 1; c-- is " + c--);
-
-			for (int j = 0; j < 4; j++) // debugging things
-			{
+			for (int j = 0; j < 4; j++) /* debugging things */ {
 				long time = Stopwatch.GetTimestamp();
 				double dt = Stopwatch.GetElapsedTime(time).TotalMilliseconds;
 				Console.WriteLine("random nothing time thing: " + dt + "ms.");
@@ -119,54 +110,44 @@ namespace GameEngineThing {
 				dt = Stopwatch.GetElapsedTime(time).TotalMilliseconds;
 				Console.WriteLine("deconstructing vec3 loop: " + dt + "ms.");
 				time = Stopwatch.GetTimestamp();
-				for (int i = 0; i < 25000000; i++)
-				{
+				for (int i = 0; i < 25000000; i++) {
 					// float x, y, z;
 					Vector3 vec = new(Random.Shared.NextSingle(), Random.Shared.NextSingle(), Random.Shared.NextSingle());
-					(float x, float y, float z) = (vec.X, vec.Y, vec.Z);
-				}
+					(float x, float y, float z) = (vec.X, vec.Y, vec.Z); }
 				dt = Stopwatch.GetElapsedTime(time).TotalMilliseconds;
 				Console.WriteLine("deconstructing vec3 loop2: " + dt + "ms.");
 				time = Stopwatch.GetTimestamp();
-				for (int i = 0; i < 25000000; i++)
-				{
+				for (int i = 0; i < 25000000; i++) {
 					// float x, y, z;
 					Vector3 vec = new(Random.Shared.NextSingle(), Random.Shared.NextSingle(), Random.Shared.NextSingle());
-					(float x, float y, float z) = (vec.X * 6, vec.Y * vec.Z, vec.Z);
-				}
+					(float x, float y, float z) = (vec.X * 6, vec.Y * vec.Z, vec.Z); }
 				dt = Stopwatch.GetElapsedTime(time).TotalMilliseconds;
 				Console.WriteLine("deconstructing vec3 loop2a: " + dt + "ms.");
 				time = Stopwatch.GetTimestamp();
-				for (int i = 0; i < 25000000; i++)
-				{
+				for (int i = 0; i < 25000000; i++) {
 					// float x, y, z;
 					Vector3 vec = new(Random.Shared.NextSingle(), Random.Shared.NextSingle(), Random.Shared.NextSingle());
 					float x = vec.X;
 					float y = vec.Y;
-					float z = vec.Z;
-				}
+					float z = vec.Z; }
 				dt = Stopwatch.GetElapsedTime(time).TotalMilliseconds;
 				Console.WriteLine("deconstructing vec3 loop3: " + dt + "ms.");
 				time = Stopwatch.GetTimestamp();
-				for (int i = 0; i < 25000000; i++)
-				{
+				for (int i = 0; i < 25000000; i++) {
 					// float x, y, z;
 					Vector3 vec = new(Random.Shared.NextSingle(), Random.Shared.NextSingle(), Random.Shared.NextSingle());
 					float x = vec.X * 6;
 					float y = vec.Y * vec.Z;
-					float z = vec.Z;
-				}
+					float z = vec.Z; }
 				dt = Stopwatch.GetElapsedTime(time).TotalMilliseconds;
 				Console.WriteLine("deconstructing vec3 loop3a: " + dt + "ms.");
 				time = Stopwatch.GetTimestamp();
 				for (int i = 0; i < 25000000; i++) {
-					(float x, float y, float z) = new Vector3(Random.Shared.NextSingle(), Random.Shared.NextSingle(), Random.Shared.NextSingle());
-				}
+					(float x, float y, float z) = new Vector3(Random.Shared.NextSingle(), Random.Shared.NextSingle(), Random.Shared.NextSingle()); }
 				dt = Stopwatch.GetElapsedTime(time).TotalMilliseconds;
 				Console.WriteLine("deconstructing vec3 loop4: " + dt + "ms.");
 				time = Stopwatch.GetTimestamp();
-				for (int i = 0; i < 25000000; i++)
-				{
+				for (int i = 0; i < 25000000; i++) {
 					// float x, y, z;
 					Vector3 vec = new(Random.Shared.NextSingle(), Random.Shared.NextSingle(), Random.Shared.NextSingle());
 					float hue = vec.X * 6;
@@ -174,13 +155,11 @@ namespace GameEngineThing {
 					float value = vec.Z;
 					float red = Math.Clamp(Math.Abs(hue - 3) - 1, 0, 1);
 					float green = Math.Clamp(2 - Math.Abs(hue - 2), 0, 1);
-					float blue = Math.Clamp(2 - Math.Abs(hue - 4), 0, 1);
-				}
+					float blue = Math.Clamp(2 - Math.Abs(hue - 4), 0, 1); }
 				dt = Stopwatch.GetElapsedTime(time).TotalMilliseconds;
 				Console.WriteLine("bruh: " + dt + "ms.");
 				time = Stopwatch.GetTimestamp();
-				for (int i = 0; i < 25000000; i++)
-				{
+				for (int i = 0; i < 25000000; i++) {
 					// float x, y, z;
 					Vector3 vec = new(Random.Shared.NextSingle(), Random.Shared.NextSingle(), Random.Shared.NextSingle());
 					float hue = vec.X * 6;
@@ -189,13 +168,11 @@ namespace GameEngineThing {
 					float red = Math.Clamp(Math.Abs(hue - 3) - 1, 0, 1);
 					float green = Math.Clamp(2 - Math.Abs(hue - 2), 0, 1);
 					float blue = Math.Clamp(2 - Math.Abs(hue - 4), 0, 1);
-					(red, green, blue) = (value + red * sxv, value + green * sxv, value + blue * sxv);
-				}
+					(red, green, blue) = (value + red * sxv, value + green * sxv, value + blue * sxv); }
 				dt = Stopwatch.GetElapsedTime(time).TotalMilliseconds;
 				Console.WriteLine("bruh2: " + dt + "ms.");
 				time = Stopwatch.GetTimestamp();
-				for (int i = 0; i < 25000000; i++)
-				{
+				for (int i = 0; i < 25000000; i++) {
 					// float x, y, z;
 					Vector3 vec = new(Random.Shared.NextSingle(), Random.Shared.NextSingle(), Random.Shared.NextSingle());
 					float hue = vec.X * 6;
@@ -205,13 +182,11 @@ namespace GameEngineThing {
 					float green = Math.Clamp(2 - Math.Abs(hue - 2), 0, 1);
 					float blue = Math.Clamp(2 - Math.Abs(hue - 4), 0, 1);
 					(red, green, blue) = (value + red * sxv, value + green * sxv, value + blue * sxv);
-					Vector3 outthing = new(red, green, blue);
-				}
+					Vector3 outthing = new(red, green, blue); }
 				dt = Stopwatch.GetElapsedTime(time).TotalMilliseconds;
 				Console.WriteLine("bruh3: " + dt + "ms.");
 				time = Stopwatch.GetTimestamp();
-				for (int i = 0; i < 25000000; i++)
-				{
+				for (int i = 0; i < 25000000; i++) {
 					// float x, y, z;
 					Vector3 vec = new(Random.Shared.NextSingle(), Random.Shared.NextSingle(), Random.Shared.NextSingle());
 					float hue = vec.X * 6;
@@ -220,13 +195,11 @@ namespace GameEngineThing {
 					float red = Math.Clamp(Math.Abs(hue - 3) - 1, 0, 1);
 					float green = Math.Clamp(2 - Math.Abs(hue - 2), 0, 1);
 					float blue = Math.Clamp(2 - Math.Abs(hue - 4), 0, 1);
-					Vector3 outthing = new(value + red * sxv, value + green * sxv, value + blue * sxv);
-				}
+					Vector3 outthing = new(value + red * sxv, value + green * sxv, value + blue * sxv); }
 				dt = Stopwatch.GetElapsedTime(time).TotalMilliseconds;
 				Console.WriteLine("bruh4: " + dt + "ms.");
 				time = Stopwatch.GetTimestamp();
-				for (int i = 0; i < 25000000; i++)
-				{
+				for (int i = 0; i < 25000000; i++) {
 					// float x, y, z;
 					Vector3 vec = new(Random.Shared.NextSingle(), Random.Shared.NextSingle(), Random.Shared.NextSingle());
 					float hue = vec.X * 6;
@@ -241,13 +214,11 @@ namespace GameEngineThing {
 					float blue = 2 - Math.Abs(hue - 4);
 					if (blue > 1) blue = 1;
 					if (blue < 0) blue = 0;
-					Vector3 outthing = new(value + red * sxv, value + green * sxv, value + blue * sxv);
-				}
+					Vector3 outthing = new(value + red * sxv, value + green * sxv, value + blue * sxv); }
 				dt = Stopwatch.GetElapsedTime(time).TotalMilliseconds;
 				Console.WriteLine("bruh5: " + dt + "ms.");
 				time = Stopwatch.GetTimestamp();
-				for (int i = 0; i < 25000000; i++)
-				{
+				for (int i = 0; i < 25000000; i++) {
 					// float x, y, z;
 					Vector3 vec = new(Random.Shared.NextSingle(), Random.Shared.NextSingle(), Random.Shared.NextSingle());
 					float hue = vec.X * 6;
@@ -262,13 +233,11 @@ namespace GameEngineThing {
 					float blue = 2 - Math.Abs(hue - 4);
 					if (blue > 1) blue = 1;
 					else if (blue < 0) blue = 0;
-					Vector3 outthing = new(value + red * sxv, value + green * sxv, value + blue * sxv);
-				}
+					Vector3 outthing = new(value + red * sxv, value + green * sxv, value + blue * sxv); }
 				dt = Stopwatch.GetElapsedTime(time).TotalMilliseconds;
 				Console.WriteLine("bruh6: " + dt + "ms.");
 				time = Stopwatch.GetTimestamp();
-				for (int i = 0; i < 25000000; i++)
-				{
+				for (int i = 0; i < 25000000; i++) {
 					// float x, y, z;
 					Vector3 vec = new(Random.Shared.NextSingle(), Random.Shared.NextSingle(), Random.Shared.NextSingle());
 					float hue = vec.X * 6;
@@ -283,13 +252,11 @@ namespace GameEngineThing {
 					float blue = 2 - Math.Abs(hue - 4);
 					if (blue > 1) blue = 1;
 					else if (blue < 0) blue = 0;
-					Vector3 outthing = new(MathF.FusedMultiplyAdd(red, sxv, value), MathF.FusedMultiplyAdd(green, sxv, value), MathF.FusedMultiplyAdd(blue, sxv, value));
-				}
+					Vector3 outthing = new(MathF.FusedMultiplyAdd(red, sxv, value), MathF.FusedMultiplyAdd(green, sxv, value), MathF.FusedMultiplyAdd(blue, sxv, value)); }
 				dt = Stopwatch.GetElapsedTime(time).TotalMilliseconds;
 				Console.WriteLine("bruh7: " + dt + "ms.");
 				time = Stopwatch.GetTimestamp();
-				for (int i = 0; i < 25000000; i++)
-				{
+				for (int i = 0; i < 25000000; i++) {
 					// float x, y, z;
 					Vector3 vec = new(Random.Shared.NextSingle(), Random.Shared.NextSingle(), Random.Shared.NextSingle());
 					float hue = vec.X * 6;
@@ -304,48 +271,36 @@ namespace GameEngineThing {
 					float blue = 2 - Math.Abs(hue - 4);
 					if (blue > 1) blue = 1;
 					else if (blue < 0) blue = 0;
-					Vector3 outthing = new((float)Math.FusedMultiplyAdd(red, sxv, value), (float)Math.FusedMultiplyAdd(green, sxv, value), (float)Math.FusedMultiplyAdd(blue, sxv, value));
-				}
+					Vector3 outthing = new((float)Math.FusedMultiplyAdd(red, sxv, value), (float)Math.FusedMultiplyAdd(green, sxv, value), (float)Math.FusedMultiplyAdd(blue, sxv, value)); }
 				dt = Stopwatch.GetElapsedTime(time).TotalMilliseconds;
 				Console.WriteLine("bruh8: " + dt + "ms.");
 				time = Stopwatch.GetTimestamp();
-				for (int i = 0; i < 25000000; i++)
-				{
-					DataStuff.HSVToRGBUnoptimized(new(Random.Shared.NextSingle(), Random.Shared.NextSingle(), Random.Shared.NextSingle()));
-				}
+				for (int i = 0; i < 25000000; i++) {
+					DataStuff.HSVToRGBUnoptimized(new(Random.Shared.NextSingle(), Random.Shared.NextSingle(), Random.Shared.NextSingle())); }
 				dt = Stopwatch.GetElapsedTime(time).TotalMilliseconds;
 				Console.WriteLine("somewhat 'unoptimized' code loop: " + dt + "ms.");
 				time = Stopwatch.GetTimestamp();
-				for (int i = 0; i < 25000000; i++)
-				{
-					DataStuff.HSVToRGB(new(Random.Shared.NextSingle(), Random.Shared.NextSingle(), Random.Shared.NextSingle()));
-				}
+				for (int i = 0; i < 25000000; i++) {
+					DataStuff.HSVToRGB(new(Random.Shared.NextSingle(), Random.Shared.NextSingle(), Random.Shared.NextSingle())); }
 				dt = Stopwatch.GetElapsedTime(time).TotalMilliseconds;
 				Console.WriteLine("somewhat 'optimized' code loop: " + dt + "ms.");
 				time = Stopwatch.GetTimestamp();
-				for (int i = 0; i < 25000000; i++)
-				{
-					DataStuff.HSVToRGB2(new(Random.Shared.NextSingle(), Random.Shared.NextSingle(), Random.Shared.NextSingle()));
-				}
+				for (int i = 0; i < 25000000; i++) {
+					DataStuff.HSVToRGB2(new(Random.Shared.NextSingle(), Random.Shared.NextSingle(), Random.Shared.NextSingle())); }
 				dt = Stopwatch.GetElapsedTime(time).TotalMilliseconds;
 				Console.WriteLine("something 2: (hopefully this might be a bit faster) " + dt + "ms.");
 				time = Stopwatch.GetTimestamp();
-				for (int i = 0; i < 25000000; i++)
-				{
-					DataStuff.HueToRGB(Random.Shared.NextSingle());
-				}
+				for (int i = 0; i < 25000000; i++) {
+					DataStuff.HueToRGB(Random.Shared.NextSingle()); }
 				dt = Stopwatch.GetElapsedTime(time).TotalMilliseconds;
 				Console.WriteLine("just hue, no sat or val code loop: " + dt + "ms.");
 				time = Stopwatch.GetTimestamp();
-				for (int i = 0; i < 25000000; i++)
-				{
-					DataStuff.HueToRGB(Random.Shared.NextSingle());
-				}
+				for (int i = 0; i < 25000000; i++) {
+					DataStuff.HueToRGB(Random.Shared.NextSingle()); }
 				dt = Stopwatch.GetElapsedTime(time).TotalMilliseconds;
-				Console.WriteLine("h2rgb2: " + dt + "ms.");
-			}
+				Console.WriteLine("h2rgb2: " + dt + "ms."); }
 #endif
-		}
+/**/}
 
 
 		protected override void OnLoad() {
@@ -483,6 +438,11 @@ namespace GameEngineThing {
 			_shader.SetTextureLocation("tx0", new Vector4(0f, 0f, 1f, 1f));
 			_player.Render(_shader);
 
+			if (profilerOn) {
+				_textRenderer.RenderProfilerIndexedLoopingGraph(this, new(1f, 1f), new(-1f, -1f/30f), new(0.8f,0.4f,0f), profilerFrameTimes, profilerIndex - 1, length: profilerFrameTimes.Length);
+				/* _textRenderer.RenderProfilerIndexedLoopingGraph(this, new((float)Math.Sin(_gameTime)-0.5f, 1f), new(1f, -1f/30f), new(1f,0.5f,0f), profilerFrameTimes, profilerIndex - 1);
+				_textRenderer.RenderProfilerIndexedLoopingGraph(this, new(0f, 0.5f), new(((float)Math.Sin(_gameTime)-0.5f)*2f, -1f/30f), new(1f,0f,0f), profilerFrameTimes, profilerIndex - 1);
+				_textRenderer.RenderProfilerIndexedLoopingGraph(this, new(0f, 0f), new(((float)Math.Sin(_gameTime)-0.5f)*2f, 1f/30f), new(0f,0f,1f), profilerFrameTimes, profilerIndex - 1);*/ }
 			switch (_gameMode) {
 				case "pong":
 					_pongGame.Render(_shader, _cube, _plane, true);
@@ -545,7 +505,10 @@ namespace GameEngineThing {
 				if (debugText) _textRenderer.RenderText(this, _textShader, chatTxt, posOffset, new(-1, -.8f), _chattingTextSize, new(.7f), _chattingTextLineHeight, _clientSize, FontCharFillerThing.FontCharDeeta, false);}
 			// _videoRecorder?.CaptureFrame(this.ClientSize, VSync == VSyncMode.On);
 			_videoRecorder?.CaptureFrame(this.ClientSize, false);
-
+			long timestampNow = Stopwatch.GetTimestamp();
+			profilerFrameTimes[profilerIndex] = (timestampNow - previousFrameTimestamp) / (double)Stopwatch.Frequency * 1000;
+			previousFrameTimestamp = timestampNow;
+			profilerIndex = (profilerIndex + 1) % profilerFrameTimes.Length;
 			SwapBuffers();}
 		protected override void OnUpdateFrame(FrameEventArgs e) {
 			base.OnUpdateFrame(e);
@@ -561,7 +524,7 @@ namespace GameEngineThing {
 			_cube.Update(0, Vector3.Zero, new Vector3(0f, (float)_gameTime, (float)Math.Sin(_gameTime) * 2f), Vector3.One);
 			_tetrahedron.Update(0, new Vector3(0f, 3f, 0f), new Vector3(0f, (float)_gameTime, (float)Math.Sin(_gameTime) * 2f), Vector3.One);
 			if (IsFocused) {
-				if (KeyboardState.IsKeyPressed(Keys.F11))
+				if (KeyboardState.IsKeyPressed(Keys.F11) || KeyboardState.IsKeyDown(Keys.GraveAccent) && KeyboardState.IsKeyDown(Keys.F11))
 					if (WindowState == WindowState.Fullscreen) WindowState = previousState;
 					else { previousState = WindowState; WindowState = WindowState.Fullscreen; VSync = VSyncMode.On; }
 				if (_isChatting) {
@@ -691,37 +654,49 @@ namespace GameEngineThing {
 										WillReopen = true;
 										if (lowercaseChatTxt.Length > 6 && lowercaseChatTxt[6] == ' ') {
 											ReopenData = lowercaseChatTxt[7..];
-											Console.WriteLine("ReopenData: \"" + ReopenData + "\""); }
-										Close();
-									} else if (lowercaseChatTxt.Length > 7) {
-										if (lowercaseChatTxt.StartsWith("record")) {
-											switch (lowercaseChatTxt[6]) {
-												case ' ':
-													StartRecording(lowercaseChatTxt[7..]); Console.WriteLine("Recording with file path " + lowercaseChatTxt[7..]);
-													break;
-												case '_':
-													int breakcharpos = lowercaseChatTxt.IndexOf(',', 7);
-													if (breakcharpos == -1) { Console.WriteLine("fps not found..."); return; }
-													int fps = Convert.ToInt32(lowercaseChatTxt[7..breakcharpos++]);
-													StartRecording(lowercaseChatTxt[breakcharpos..], fps: fps); Console.WriteLine("Recording at " + fps + " fps with file path " + lowercaseChatTxt[breakcharpos..]);
-													break;
-											}
-										}
-									} else if (lowercaseChatTxt.Length > 8 && lowercaseChatTxt.StartsWith("loadmap ")) {
-										if (_gameMode == "v1k") {
-											string path = lowercaseChatTxt[8..];
-											if (File.Exists(path)) {
-												string data = File.ReadAllText(path);
-												if (_1kManiaPrototype.TryLoadMapFromString(data)) {
-													Console.WriteLine("Loadmap success!"); } else {
-													Console.WriteLine("Failed to load map."); } }
-											else Console.WriteLine("Path does not exist!");
-										} else if (_gameMode == "mania") {
-											string path = lowercaseChatTxt[8..];
-											if (File.Exists(path)) {
-												string data = File.ReadAllText(path);
-												if (_maniaRGPrototype.TryLoadMapFromString(data)) { Console.WriteLine("Loadmap success!"); } else { Console.WriteLine("Failed to load map."); } }
-											else Console.WriteLine("Path does not exist!"); }}
+											Console.WriteLine("ReopenData: \"" + ReopenData + "\""); } Close(); }
+									else {
+										if (lowercaseChatTxt.Length > 7) {
+											if (lowercaseChatTxt.StartsWith("record")) {
+												switch (lowercaseChatTxt[6]) {
+													case ' ':
+														StartRecording(lowercaseChatTxt[7..]); Console.WriteLine("Recording with file path " + lowercaseChatTxt[7..]);
+														break;
+													case '_':
+														int breakcharpos = lowercaseChatTxt.IndexOf(',', 7);
+														if (breakcharpos == -1) { Console.WriteLine("fps not found..."); return; }
+														int fps = Convert.ToInt32(lowercaseChatTxt[7..breakcharpos++]);
+														StartRecording(lowercaseChatTxt[breakcharpos..], fps: fps); Console.WriteLine("Recording at " + fps + " fps with file path " + lowercaseChatTxt[breakcharpos..]);
+														break;
+													case 'f':
+														int breakcharpos1 = lowercaseChatTxt.IndexOf(',', 7);
+														if (breakcharpos1 == -1) { Console.WriteLine("fps not found..."); return; }
+														int bfps = Convert.ToInt32(lowercaseChatTxt[7..breakcharpos1++]);
+														StartRecording(lowercaseChatTxt[breakcharpos1..], fps: bfps); Console.WriteLine("Recording at " + bfps + " fps with file path " + lowercaseChatTxt[breakcharpos1..]);
+														break; }}
+											else if (lowercaseChatTxt.Length > 8) {
+												string firstEight = lowercaseChatTxt[..8];
+												switch (firstEight) {
+													case "loadmap ":
+														if (_gameMode == "v1k") {
+															string path = lowercaseChatTxt[8..];
+															if (File.Exists(path)) {
+																string data = File.ReadAllText(path);
+																if (_1kManiaPrototype.TryLoadMapFromString(data)) Console.WriteLine("Loadmap success!"); else Console.WriteLine("Failed to load map."); }
+															else Console.WriteLine("Path does not exist!");
+														} else if (_gameMode == "mania") {
+															string path = lowercaseChatTxt[8..];
+															if (File.Exists(path)) {
+																string data = File.ReadAllText(path);
+																if (_maniaRGPrototype.TryLoadMapFromString(data)) Console.WriteLine("Loadmap success!"); else Console.WriteLine("Failed to load map."); }
+															else Console.WriteLine("Path does not exist!"); }
+														break;
+													case "profamt " or "proflen ":
+														try { profilerFrameTimes = new double[Math.Min(Convert.ToUInt32(lowercaseChatTxt[8..]), 1048576)]; profilerIndex = 0; }
+														catch (FormatException ex) { Console.WriteLine("Incorrect formatting. " + ex.Message); }
+														catch (OverflowException ex) { Console.WriteLine("Overflow. ARE YOU TRYING TO CRASH YOUR COMPUTER OR SOMETHING??? (automatically capped at 1048576, but this error only appears above ~4.2B) " + ex.Message); }
+														break;
+												}}}}
 									break; }
 							_chattingText = "";
 							_chattingTextLines = 1;
@@ -742,17 +717,12 @@ namespace GameEngineThing {
 					case "v1k": _1kManiaPrototype.KeyDown(e.Key); break;
 					case "mania": _maniaRGPrototype.KeyDown(e.Key,Stopwatch.GetElapsedTime(_maniaRGPrototype.timeOffset).TotalSeconds); break;
 					default: break;}
-				switch (e.Key)
-				{
+				switch (e.Key) {
 					case Keys.F6:
-						if (e.Modifiers.HasFlag(KeyModifiers.Control))
-						{
-							profilerOn = !profilerOn;
-						}
+						if (e.Modifiers.HasFlag(KeyModifiers.Control)) {
+							profilerOn = !profilerOn; }
 						break;
-					default: break;
-				}
-				}}
+					default: break; } }}
 		protected override void OnKeyUp(KeyboardKeyEventArgs e) {
 			base.OnKeyUp(e);
 			switch (_gameMode) {
@@ -775,17 +745,12 @@ namespace GameEngineThing {
 			_shader?.Dispose();
 			_textShader?.Dispose();}
 
-		private void StartRecording(string output, int fps = 60)
-		{
-			_videoRecorder = new VideoRecorder(_clientSize.X, _clientSize.Y, fps, output, useNvenc: false, withAudio: false);
-		}
-		private void StopRecording()
-		{
+		private void StartRecording(string output, int fps = 60, float speed = 1) {
+			_videoRecorder = new VideoRecorder(_clientSize.X, _clientSize.Y, fps, output, speed, useNvenc: false, withAudio: false); }
+		private void StopRecording() {
 			_videoRecorder?.Stop();
 			_videoRecorder?.Dispose();
-			_videoRecorder = null;
-		}
-	}
+			_videoRecorder = null; } }
 	public class Shader {
 		public readonly int Handle;
 		public Shader(string vertexPath, string fragmentPath) {
@@ -1273,8 +1238,7 @@ namespace GameEngineThing {
 			GL.BindVertexArray(0);}
 #nullable enable
 		public void Render(int i, Game game, string text, Shader? shader = null, Vector2i? windowSize = null) {
-			Render(TextThingies[i], game, text, shader ?? game._textShader, windowSize ?? game._clientSize);
-		}
+			Render(TextThingies[i], game, text, shader ?? game._textShader, windowSize ?? game._clientSize); }
 		public void Render(TxtOptions o, Game game, string text, Shader? _shader = null, Vector2i? winSize = null) {
 #nullable disable
 			Shader shader = _shader ?? game._textShader;
@@ -1535,16 +1499,16 @@ namespace GameEngineThing {
 			GL.DrawElements(PrimitiveType.Triangles, data.Length * 3 / 8, DrawElementsType.UnsignedInt, 0);
 			GL.BindBuffer(BufferTarget.ArrayBuffer, 0);
 			GL.BindVertexArray(0);}
-		public void RenderBarGraph(Game game, Vector2 position, Vector2 size, Vector3 color, long[] data)
-		{
+		public void RenderBarGraph(Game game, Vector2 position, (float, float) size, Vector3 color, double[] data) {
 			(int windowSizeX, int windowSizeY) = (game._clientSize.X, game._clientSize.Y);
+			(float sizeX, float sizeY) = size;
 			Shader shader = game._textShader;
 			shader.Use();
 			shader.SetVector3("textColor", color);
 			GL.BindVertexArray(VAO);
 			GL.BindBuffer(BufferTarget.ArrayBuffer, VBO);
 
-			float absPosX = position.X * windowSizeX;
+			float absPosX = MathF.Floor(position.X * windowSizeX) + 0.5f;
 			float absPosY = position.Y * windowSizeY;
 
 			float[] vertices = new float[BulkDrawFloats];
@@ -1554,39 +1518,129 @@ namespace GameEngineThing {
 			// float tX = tRSX / (float)TextTexture.Width;
 			float tX = 0;
 			float tY = tRSY / (float)TextTexture.Height;
-			float startY = (0.5f + (int)absPosY) / windowSizeY;
+			float startY = (0.5f + MathF.Floor(absPosY)) / windowSizeY;
 
+			if (data.Length > BulkDrawFloats / 4) { // if it takes more than one array to store all of the data
+				vertices[1] = startY;
+				vertices[2] = vertices[6] = tX;
+				vertices[3] = vertices[7] = tY;
+				int i = 8;
+				for (; i < BulkDrawFloats/2+1; i *= 2) Array.Copy(vertices, 1, vertices, i + 1, i - 1);
+				if (i < BulkDrawFloats) Array.Copy(vertices, 1, vertices, i + 1, BulkDrawFloats - i - 1);
+				// please work
+				vertices.CopyTo(vertices, 0);
+				
+				for (i = 0; i < data.Length; i++) {
+					// float xPos = (0.5f + MathF.Floor(absPosX)) / windowSizeX;
+					// float endY = (float)((0.5 + Math.Floor(absPosY + data[i] / sizeY)) / windowSizeY);
+
+					// vertices[vI] = vertices[vI + 4] = xPos;
+					vertices[vI] = vertices[vI + 4] = absPosX / windowSizeX;
+					vertices[vI + 5] = (float)((0.5 + Math.Floor(absPosY + data[i] / sizeY)) / windowSizeY);
+					// vertices[vI + 5] = endY;
+					if (vI == BulkDrawFloats - 8)
+					{
+						vI = 0;
+						GL.BufferSubData(BufferTarget.ArrayBuffer, 0, sizeof(float) * BulkDrawFloats, vertices);
+						GL.DrawArrays(PrimitiveType.Lines, 0, BulkDrawFloats); /*it's still bulkdrawfloats because i have an array thing of some length and i'll use ALL of it.*/
+					}
+					else vI += 8;
+					// absPos += new Vector2i((int)(Chr.advance.X * o.textScaleX), (int)(Chr.advance.Y * o.textScaleY));
+					absPosX += sizeX * 2;
+				}
+			}
 			// vertices[1] = startY;
 			// vertices[2] = vertices[6] = tX;
 			// vertices[3] = vertices[7] = tY;
 
-			for (int i = 0; i < data.Length; i++) {
-                float xPos = (0.5f + MathF.Floor(absPosX)) / windowSizeX;
-				float endY = (0.5f + MathF.Floor(absPosY)) / windowSizeY;
+			else for (int i = 0; i < data.Length; i++) {
+				// float xPos = (0.5f + MathF.Floor(absPosX)) / windowSizeX;
+				// float endY = (float)((0.5 + Math.Floor(absPosY + data[i] / sizeY)) / windowSizeY);
 
-				vertices[vI] = vertices[vI + 4] = xPos;
+				// vertices[vI] = vertices[vI + 4] = xPos;
+				vertices[vI] = vertices[vI + 4] = absPosX / windowSizeX;
 				vertices[vI + 1] = startY;
 				vertices[vI + 2] = vertices[vI + 6] = tX;
 				vertices[vI + 3] = vertices[vI + 7] = tY;
-				vertices[vI + 5] = endY;
+				vertices[vI + 5] = (float)((0.5 + Math.Floor(absPosY + data[i] / sizeY)) / windowSizeY);
+				// vertices[vI + 5] = endY;
 				if (vI == BulkDrawFloats - 8) { vI = 0;
 					GL.BufferSubData(BufferTarget.ArrayBuffer, 0, sizeof(float) * BulkDrawFloats, vertices);
-					GL.DrawArrays(PrimitiveType.Lines, 0, BulkDrawFloats); /*it is still bulkdrawfloats because i have an array thing of some length and i'll use ALL of it.*/
-				}
+					GL.DrawArrays(PrimitiveType.Lines, 0, BulkDrawFloats); /*it's still bulkdrawfloats because i have an array thing of some length and i'll use ALL of it.*/ }
 				else vI += 8;
 				// absPos += new Vector2i((int)(Chr.advance.X * o.textScaleX), (int)(Chr.advance.Y * o.textScaleY));
-				absPosX += 1;
-				if (vI != 0) {
-					GL.BufferSubData(BufferTarget.ArrayBuffer, 0, sizeof(float) * vI, vertices);
-					GL.DrawElements(PrimitiveType.Triangles, vI * 3 / 8, DrawElementsType.UnsignedInt, 0);}}
-			
+				absPosX += sizeX * 2; }
+			if (vI != 0) {
+				GL.BufferSubData(BufferTarget.ArrayBuffer, 0, sizeof(float) * vI, vertices);
+				GL.DrawArrays(PrimitiveType.Lines, 0, vI); /*it's still bulkdrawfloats because i have an array thing of some length and i'll use ALL of it.*/ }
+			GL.BindBuffer(BufferTarget.ArrayBuffer, 0);
+			GL.BindVertexArray(0);}
+		public void RenderProfilerIndexedLoopingGraph(Game game, Vector2 position, Vector2 size, Vector3 color, double[] data, int startIndex, int length = -1) {
+			(int windowSizeX, int windowSizeY) = (game._clientSize.X, game._clientSize.Y);
+			(float sizeX, float sizeY) = (size.X * 2, size.Y * 2);
+			int dataLen = data.Length;
+			if (length < 0) length = dataLen;
+			Shader shader = game._textShader;
+			shader.Use();
+			shader.SetVector3("textColor", color);
+			GL.BindVertexArray(VAO);
+			GL.BindBuffer(BufferTarget.ArrayBuffer, VBO);
 
+			float absPosX = MathF.Floor(position.X * windowSizeX) + 0.5f;
+			float absPosY = MathF.Floor(position.Y * windowSizeY) + 0.5f;
+
+			float[] v = new float[BulkDrawFloats];
+			int vI = 0;
+			// int tRSX = 0;
+			int tRSY = 32;
+			// float tX = tRSX / (float)TextTexture.Width;
+			float tX = 0;
+			float tY = tRSY / (float)TextTexture.Height;
+			float startY = absPosY / windowSizeY;
+
+			v[1] = v[9] = startY;
+			v[2] = v[10] = v[6] = v[14] = tX;
+			v[3] = v[11] = v[7] = v[15] = tY;
+			// if (length > BulkDrawFloats / 8) { // if it takes a full array or more to store all of the data
+			int i = 16;
+			for (; i < BulkDrawFloats/2+1; i *= 2) Array.Copy(v, 1, v, i + 1, i - 1);
+			if (i < BulkDrawFloats) Array.Copy(v, 1, v, i + 1, BulkDrawFloats - i - 1);
+			// please work
+			// } else {
+			// 	int amount = (length+length%2) * 8; // for each length there is 8 floats. Rounds length up to the nearest 2 and then multiplies by 8 so it is always a multiple of 16.
+			// 	int i = 16;
+			// 	for (; i < amount/2+1; i *= 2) Array.Copy(v, 1, v, i + 1, i - 1);
+			// 	if (i < amount) Array.Copy(v, 1, v, i + 1, amount - i - 1);
+			// }
+			// weird and not so good for loop code
+			bool error = false;
+			int k = startIndex % dataLen;
+			int dlm1 = dataLen - 1;
+			for (int j = startIndex; j > startIndex - length - 1; j--) {
+				// float xPos = (0.5f + MathF.Floor(absPosX)) / windowSizeX;
+				// float endY = (float)((0.5 + Math.Floor(absPosY + data[i] / sizeY)) / windowSizeY);
+				k = (k + dlm1) % dataLen;
+				if (k < 0 || k > data.Length) {Console.WriteLine("K: " + k); error = true; continue; }
+
+				// vertices[vI] = vertices[vI + 4] = xPos;
+				v[vI] = v[vI + 4] = absPosX / windowSizeX;
+				v[vI + 5] = (float)((0.5 + Math.Floor(absPosY + data[k] / sizeY)) / windowSizeY);
+				// vertices[vI + 5] = endY;
+				if (vI == BulkDrawFloats - 8) { vI = 0;
+					GL.BufferSubData(BufferTarget.ArrayBuffer, 0, sizeof(float) * BulkDrawFloats, v);
+					GL.DrawArrays(PrimitiveType.Lines, 0, BulkDrawFloats/4); } /*it's still bulkdrawfloats because i have an array thing of some length and i'll use ALL of it.*/
+				else vI += 8;
+				absPosX += sizeX;
+			}
+			if (error) throw new Exception("bruh what the hell");
+			if (vI != 0) {
+				GL.BufferSubData(BufferTarget.ArrayBuffer, 0, sizeof(float) * vI, v);
+				GL.DrawArrays(PrimitiveType.Lines, 0, vI / 4); }
 			GL.BindBuffer(BufferTarget.ArrayBuffer, 0);
 			GL.BindVertexArray(0);}
 		public int NewTxtThing(TxtOptions O) {
 			TextThingies.Add(O);
 			return TextThingies.Count - 1;}
-
 		public void Dispose() {
 			GL.DeleteBuffer(VBO);
 			GL.DeleteBuffer(EBO);
@@ -1617,11 +1671,11 @@ namespace GameEngineThing {
 		debugText = 1,
 		debugLogging = 2,}
 	// the following is pretty much 99% ai code so uhhhh
-	public sealed class VideoRecorder : IDisposable
-	{
+	public sealed class VideoRecorder : IDisposable {
 		private readonly int _width;
 		private readonly int _height;
 		private readonly int _fps;
+		private readonly float _speed; // speed not done by ai
 		private readonly string _outputPath;
 		private readonly Process _ffmpeg;
 		private readonly Stream _stdin;
@@ -1634,53 +1688,42 @@ namespace GameEngineThing {
 		private readonly long _tickStepNs;
 		public bool IsRecording => _recording && !_ffmpeg.HasExited;
 
-		public VideoRecorder(int width, int height, int fps, string outputPath, bool useNvenc = true, bool withAudio = false)
-		{
+		public VideoRecorder(int width, int height, int fps, string outputPath, float speed = 1, bool useNvenc = true, bool withAudio = false) {
 			_width = width;
 			_height = height;
 			_fps = fps;
+			_speed = speed;
 			_outputPath = outputPath;
 
 			_frameBuffer = new byte[_width * _height * 4]; // BGRA
 			_tickStepNs = (long)(1_000_000_000.0 / fps);
 
-			_ffmpeg = new Process
-			{
-				StartInfo = new ProcessStartInfo
-				{
+			_ffmpeg = new Process {
+				StartInfo = new ProcessStartInfo {
 					FileName = "ffmpeg",
 					Arguments = BuildFfmpegArgs(useNvenc, withAudio, width, height, fps, outputPath),
 					RedirectStandardInput = true,
 					RedirectStandardOutput = true,  // Add this
 					RedirectStandardError = true,   // Add this
 					UseShellExecute = false,
-					CreateNoWindow = true
-				}
-			};
+					CreateNoWindow = true } };
 			_ffmpeg.Start();
 
 			Console.WriteLine("FFmpeg args: " + _ffmpeg.StartInfo.Arguments);
-			if (_ffmpeg.HasExited)
-			{
-				throw new InvalidOperationException($"FFmpeg failed to start. Exit code: {_ffmpeg.ExitCode}");
-			}
+			if (_ffmpeg.HasExited) {
+				throw new InvalidOperationException($"FFmpeg failed to start. Exit code: {_ffmpeg.ExitCode}"); }
 
 			_stdin = _ffmpeg.StandardInput.BaseStream;
 			_recording = true;
 
 			// Start reading error output in background to see what went wrong
 			_ffmpeg.BeginErrorReadLine();
-			_ffmpeg.ErrorDataReceived += (sender, e) =>
-			{
+			_ffmpeg.ErrorDataReceived += (sender, e) => {
 				if (!string.IsNullOrEmpty(e.Data))
-					Console.WriteLine("FFmpeg out: " + e.Data);
-			};
+					Console.WriteLine("FFmpeg out: " + e.Data); };
 
-			_nextTickNs = Stopwatch.GetTimestamp() * 1_000_000_000L / Stopwatch.Frequency;
-		}
-
-		private static string BuildFfmpegArgs(bool useNvenc, bool withAudio, int w, int h, int fps, string outPath)
-		{
+			_nextTickNs = Stopwatch.GetTimestamp() * 1_000_000_000L / Stopwatch.Frequency; }
+		private static string BuildFfmpegArgs(bool useNvenc, bool withAudio, int w, int h, int fps, string outPath) {
 			// Raw BGRA frames on stdin
 			// Video encoder: NVENC (if available) or libx264 fallback. yuv420p ensures wide compatibility.
 			// Optional Windows audio capture: WASAPI default device or DirectShow loopback device.
@@ -1708,43 +1751,29 @@ namespace GameEngineThing {
 				audioIn +
 				videoEnc + "-pix_fmt yuv420p \"" + outPath + "\"";
 			Console.WriteLine("ffmpeg args: " + strThing);
-			return strThing;
-		}
-
-		public void CaptureFrame(Vector2i clientSize, bool recordAllFrames)
-		{
+			return strThing; }
+		public void CaptureFrame(Vector2i clientSize, bool recordAllFrames) {
 			if (!_recording) return;
-			
+
 			// Check if FFmpeg process is still alive
-			if (_ffmpeg.HasExited)
-			{
+			if (_ffmpeg.HasExited) {
 				_recording = false;
 				Console.WriteLine("FFmpeg exited with code: " + _ffmpeg.ExitCode);
-				return;
-			}
+				return; }
 
 			// Optional: throttle to target fps when vsync is off
-			if (!recordAllFrames)
-			{
+			if (!recordAllFrames) {
 				long now = Stopwatch.GetTimestamp();
 				long freq = Stopwatch.Frequency;
 				long nowNs = now * 1_000_000_000L / freq;
-				// if (nowNs < _nextTickNs)
-				// { Console.Write(";RT`" + now + ";" + nowNs + ";" + freq + ";" + _nextTickNs + ";" + _tickStepNs + "`;"); return; }
-				// else Console.Write(";`NR`");
-				if (nowNs < _nextTickNs)
-				{ Console.Write("`RT"); return; }
-				else Console.Write("`NR");
-				_nextTickNs += _tickStepNs;
-			}
+				if (nowNs < _nextTickNs) return;
+				_nextTickNs += _tickStepNs; }
 
 			// Ensure we read exactly the configured size; if window resizes, you may want to recreate the recorder.
 			if (clientSize.X != _width || clientSize.Y != _height) return;
 
-			lock (_lock)
-			{
-				try
-				{
+			lock (_lock) {
+				try {
 					// Read back buffer (BGRA)
 					GL.ReadBuffer(ReadBufferMode.Back);
 					GL.PixelStore(PixelStoreParameter.PackAlignment, 1);
@@ -1755,52 +1784,32 @@ namespace GameEngineThing {
 
 					// Write to ffmpeg with error handling
 					_stdin.Write(_frameBuffer, 0, _frameBuffer.Length);
-					Console.WriteLine("wrote smth hopefully idk");
-				}
-				catch (IOException ex)
-				{
+					/* Console.WriteLine("wrote smth hopefully idk"); */}
+				catch (IOException ex) {
 					Console.WriteLine("Pipe error: " + ex.Message);
-					_recording = false;
-				}
-				catch (Exception ex)
-				{
+					_recording = false; }
+				catch (Exception ex) {
 					Console.WriteLine("Capture error: " + ex.Message);
-					_recording = false;
-				}
-			}
-		}
-
-		private static void FlipInPlaceBgra(byte[] data, int w, int h)
-		{
+					_recording = false; } } }
+		private static void FlipInPlaceBgra(byte[] data, int w, int h) {
 			int stride = w * 4;
 			int half = h / 2;
-			for (int y = 0; y < half; y++)
-			{
+			for (int y = 0; y < half; y++) {
 				int top = y * stride;
 				int bot = (h - 1 - y) * stride;
-				for (int x = 0; x < stride; x++)
-				{
+				for (int x = 0; x < stride; x++) {
                     (data[bot + x], data[top + x]) = (data[top + x], data[bot + x]);
                     (data[bot + ++x], data[top + x]) = (data[top + x], data[bot + x]);
                     (data[bot + ++x], data[top + x]) = (data[top + x], data[bot + x]);
                     (data[bot + ++x], data[top + x]) = (data[top + x], data[bot + x]);
                 } // partial unrolling of 4. idk if this makes a difference, if it makes the performance better slightly, or even worse slightly but i hope not...
-            }
-		}
-
-		public void Stop()
-		{
+            } }
+		public void Stop() {
 			if (!_recording) return;
 			_recording = false;
 			try { _stdin.Flush(); } catch {}
 			try { _stdin.Close(); } catch {}
-			try { if (!_ffmpeg.WaitForExit(5000)) _ffmpeg.Kill(true); } catch {}
-		}
-
-		public void Dispose()
-		{
+			try { if (!_ffmpeg.WaitForExit(5000)) _ffmpeg.Kill(true); } catch {} }
+		public void Dispose() {
 			Stop();
-			_ffmpeg?.Dispose();
-		}
-	}
-}
+			_ffmpeg?.Dispose(); } } }
