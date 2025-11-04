@@ -275,30 +275,33 @@ namespace GameEngineThing {
 				dt = Stopwatch.GetElapsedTime(time).TotalMilliseconds;
 				Console.WriteLine("bruh8: " + dt + "ms.");
 				time = Stopwatch.GetTimestamp();
-				for (int i = 0; i < 25000000; i++) {
-					DataStuff.HSVToRGBUnoptimized(new(Random.Shared.NextSingle(), Random.Shared.NextSingle(), Random.Shared.NextSingle())); }
+				for (int i = 0; i < 25000000; i++) DataStuff.HSVToRGBUnoptimized(new(Random.Shared.NextSingle(), Random.Shared.NextSingle(), Random.Shared.NextSingle()));
 				dt = Stopwatch.GetElapsedTime(time).TotalMilliseconds;
 				Console.WriteLine("somewhat 'unoptimized' code loop: " + dt + "ms.");
 				time = Stopwatch.GetTimestamp();
-				for (int i = 0; i < 25000000; i++) {
-					DataStuff.HSVToRGB(new(Random.Shared.NextSingle(), Random.Shared.NextSingle(), Random.Shared.NextSingle())); }
+				for (int i = 0; i < 25000000; i++) DataStuff.HSVToRGB(new(Random.Shared.NextSingle(), Random.Shared.NextSingle(), Random.Shared.NextSingle()));
 				dt = Stopwatch.GetElapsedTime(time).TotalMilliseconds;
 				Console.WriteLine("somewhat 'optimized' code loop: " + dt + "ms.");
 				time = Stopwatch.GetTimestamp();
-				for (int i = 0; i < 25000000; i++) {
-					DataStuff.HSVToRGB2(new(Random.Shared.NextSingle(), Random.Shared.NextSingle(), Random.Shared.NextSingle())); }
+				for (int i = 0; i < 25000000; i++) DataStuff.HSVToRGB2(new(Random.Shared.NextSingle(), Random.Shared.NextSingle(), Random.Shared.NextSingle()));
 				dt = Stopwatch.GetElapsedTime(time).TotalMilliseconds;
 				Console.WriteLine("something 2: (hopefully this might be a bit faster) " + dt + "ms.");
 				time = Stopwatch.GetTimestamp();
-				for (int i = 0; i < 25000000; i++) {
-					DataStuff.HueToRGB(Random.Shared.NextSingle()); }
+				for (int i = 0; i < 25000000; i++) DataStuff.HSVToRGB3(Random.Shared.NextSingle(), Random.Shared.NextSingle(), Random.Shared.NextSingle());
 				dt = Stopwatch.GetElapsedTime(time).TotalMilliseconds;
-				Console.WriteLine("just hue, no sat or val code loop: " + dt + "ms.");
+				Console.WriteLine("something 3: " + dt + "ms.");
 				time = Stopwatch.GetTimestamp();
-				for (int i = 0; i < 25000000; i++) {
-					DataStuff.HueToRGB(Random.Shared.NextSingle()); }
+				for (int i = 0; i < 25000000; i++) DataStuff.HSVToRGB4(Random.Shared.NextSingle(), Random.Shared.NextSingle(), Random.Shared.NextSingle());
 				dt = Stopwatch.GetElapsedTime(time).TotalMilliseconds;
-				Console.WriteLine("h2rgb2: " + dt + "ms."); }
+				Console.WriteLine("something 4: " + dt + "ms.");
+				time = Stopwatch.GetTimestamp();
+				for (int i = 0; i < 25000000; i++) DataStuff.HSVToRGB5(Random.Shared.NextSingle(), Random.Shared.NextSingle(), Random.Shared.NextSingle());
+				dt = Stopwatch.GetElapsedTime(time).TotalMilliseconds;
+				Console.WriteLine("something 5: " + dt + "ms.");
+				time = Stopwatch.GetTimestamp();
+				for (int i = 0; i < 25000000; i++) DataStuff.HueToRGB(Random.Shared.NextSingle());
+				dt = Stopwatch.GetElapsedTime(time).TotalMilliseconds;
+				Console.WriteLine("just hue, no sat or val code loop: " + dt + "ms."); }
 #endif
 /**/}
 
@@ -451,23 +454,7 @@ namespace GameEngineThing {
 					break;
 				case "mania":
 					_maniaRGPrototype.time = Stopwatch.GetElapsedTime(_maniaRGPrototype.timeOffset).TotalSeconds;
-					Vector3 color;
-					// switch (_frameCount / 512 % 6)
-					// {
-					// 	case 0: _maniaRGPrototype.Render(this, _frameCount % 512 == 0, DataStuff.HSVToRGB(new((_frameCount / 40.2f) % 1f, 0.7f, 0.7f))); break;
-
-					// 	case 2: _maniaRGPrototype.Render(this, _frameCount % 512 == 0, DataStuff.HSVToRGBUnoptimized(new(_frameCount / 150f % 1f, 1f, 1f))); break;
-					// 	case 3:
-					// 		color = new(_frameCount % 100 / 100.0f, _frameCount % 721 / 721.0f, _frameCount % 1923 / 1923.0f);
-					// 		_maniaRGPrototype.Render2(_textShader, this, DataStuff.HSVToRGB(color)); break;
-					// 	case 4:
-					// 		color = new(_frameCount % 100 / 100.0f, _frameCount % 721 / 721.0f, _frameCount % 1923 / 1923.0f);
-					// 		_maniaRGPrototype.Render(this, _frameCount % 512 == 0, DataStuff.HSVToRGB(color)); break;
-					// 	default: _maniaRGPrototype.Render(this, _frameCount % 512 == 0); break;
-					// }
-					// if (_frameCount % 128 == 0) Console.WriteLine(_frameCount / 512 % 6 + ", " + _frameCount / 512);
-					color = new((float)(Stopwatch.GetElapsedTime(gameStartTimestamp).TotalSeconds*0.36%1), (float)(Math.Sin(Stopwatch.GetElapsedTime(gameStartTimestamp).TotalSeconds*0.2)*0.125+0.875), (float)(Math.Cos(Stopwatch.GetElapsedTime(gameStartTimestamp).TotalSeconds*0.09)*0.125+0.875));
-					_maniaRGPrototype.Render2(_textShader, this, DataStuff.HSVToRGB(color)); break;
+					_maniaRGPrototype.Render2(_textShader, this, DataStuff.HSVToRGB((float)(Stopwatch.GetElapsedTime(gameStartTimestamp).TotalSeconds*0.36%1), (float)(Math.Sin(Stopwatch.GetElapsedTime(gameStartTimestamp).TotalSeconds*0.2)*0.125+0.875), (float)(Math.Cos(Stopwatch.GetElapsedTime(gameStartTimestamp).TotalSeconds*0.09)*0.125+0.875))); break;
 				case "v1k":
 					_1kManiaPrototype.time = _1kManiaPrototype.stopwatch.Elapsed.TotalSeconds + _1kManiaPrototype.timeOffset;
 					_1kManiaPrototype.Render(this);

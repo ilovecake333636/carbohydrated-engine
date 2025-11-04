@@ -437,93 +437,18 @@ namespace GameEngineThing
 			],
 
 		];
-		/// <summary>
-		/// hsv to rgb function. does not have checks to stop weird rgb values, if you want that use AllCasesHSVToRGB. this isn't truly unoptimized but i am gonna optimize this more.
-		/// </summary>
-		/// <param name="input"></param>
-		/// <returns></returns>
-		public static Vector3 HSVToRGBUnoptimized(Vector3 input)
+		public static (float, float, float) HSVToRGB(float h, float sv, float v)
 		{
-			input.Deconstruct(out float hue, out float saturation, out float value);
+			sv *= v;
 			// 0 is red, 1/3 is green, 2/3 is blue, in-betweens are a mix and values where 2/3<h<1 it is a mix of red and blue.
 			// 1/6 is yellow, 1/2 is cyan, 5/6 is magenta.
-			hue *= 6;
-			float red = Math.Abs(hue - 3)-1;
-			red = red > 1 ? 1 : red < 0 ? 0 : red;
-			float green = 2-Math.Abs(hue-2);
-			green = green < 0 ? 0 : green;
-			float blue = 2-Math.Abs(hue-4);
-			blue = blue < 0 ? 0 : blue;
-
-			// saturation processing
-			red = 1 - (1 - red) * saturation;
-			green = 1 - (1 - green) * saturation;
-			blue = 1 - (1 - blue) * saturation;
-			
-			// value processing
-			red *= value;
-			green *= value;
-			blue *= value;
-			
-			Vector3 color = new(red, green, blue);
-			
-			return color;
-		}
-		public static Vector3 HSVToRGB(Vector3 input)
-		{
-			(float hue, float sxv, float val) = (input.X * 6, input.Y * input.Z, input.Z);
-			// 0 is red, 1/3 is green, 2/3 is blue, in-betweens are a mix and values where 2/3<h<1 it is a mix of red and blue.
-			// 1/6 is yellow, 1/2 is cyan, 5/6 is magenta.
-			float rr = Math.Abs(hue - 3); // raw red; before processing.
-			float rg = Math.Abs(hue - 2); // raw green; before processing.
-			float rb = Math.Abs(hue - 4); // raw blue; before processing.
-
-			return new(
-				(rr < 2) ? ((rr > 1) ? (val + (rr - 2) * sxv) : (val - sxv)) : val,
-				(rg < 2) ? ((rg > 1) ? (val + (1 - rg) * sxv) : val) : (val - sxv),
-				(rb < 2) ? ((rb > 1) ? (val + (1 - rb) * sxv) : val) : (val - sxv)); // good luck trying to figure this out lol. also idk it this even is optimized..
-		}
-		public static Vector3 HSVToRGB(float hue, float s, float val)
-		{
-			(hue, float sxv) = (hue * 6, s * val);
-			// 0 is red, 1/3 is green, 2/3 is blue, in-betweens are a mix and values where 2/3<h<1 it is a mix of red and blue.
-			// 1/6 is yellow, 1/2 is cyan, 5/6 is magenta.
-			float rr = Math.Abs(hue - 3); // raw red; before processing.
-			float rg = Math.Abs(hue - 2); // raw green; before processing.
-			float rb = Math.Abs(hue - 4); // raw blue; before processing.
-
-			return new(
-				(rr < 2) ? ((rr > 1) ? (val + (rr - 2) * sxv) : (val - sxv)) : val,
-				(rg < 2) ? ((rg > 1) ? (val + (1 - rg) * sxv) : val) : (val - sxv),
-				(rb < 2) ? ((rb > 1) ? (val + (1 - rb) * sxv) : val) : (val - sxv)); // good luck trying to figure this out lol. also idk it this even is optimized..
-		}
-		public static (float, float, float) HSVToRGB2(Vector3 input)
-		{
-			(float h, float sv, float v) = (input.X * 6, input.Y * input.Z, input.Z);
-			// 0 is red, 1/3 is green, 2/3 is blue, in-betweens are a mix and values where 2/3<h<1 it is a mix of red and blue.
-			// 1/6 is yellow, 1/2 is cyan, 5/6 is magenta.
-			float r = Math.Abs(h - 3); // raw red; before processing.
+			float r = Math.Abs((h *= 6) - 3); // raw red; before processing.
 			float g = Math.Abs(h - 2); // raw green; before processing.
 			float b = Math.Abs(h - 4); // raw blue; before processing.
 
-			return (
-				(r < 2) ? ((r > 1) ? (v + (r - 2) * sv) : (v - sv)) : v,
-				(g < 2) ? ((g > 1) ? (v + (1 - g) * sv) : v) : (v - sv),
-				(b < 2) ? ((b > 1) ? (v + (1 - b) * sv) : v) : (v - sv)); // good luck trying to figure this out lol. also idk it this even is optimized..
-		}
-		public static (float, float, float) HSVToRGB2(float h, float s, float v)
-		{
-			(h, float sv) = (h * 6, s * v);
-			// 0 is red, 1/3 is green, 2/3 is blue, in-betweens are a mix and values where 2/3<h<1 it is a mix of red and blue.
-			// 1/6 is yellow, 1/2 is cyan, 5/6 is magenta.
-			float r = Math.Abs(h - 3); // raw red; before processing.
-			float g = Math.Abs(h - 2); // raw green; before processing.
-			float b = Math.Abs(h - 4); // raw blue; before processing.
-
-			return (
-				(r < 2) ? ((r > 1) ? (v + (r - 2) * sv) : (v - sv)) : v,
-				(g < 2) ? ((g > 1) ? (v + (1 - g) * sv) : v) : (v - sv),
-				(b < 2) ? ((b > 1) ? (v + (1 - b) * sv) : v) : (v - sv)); // good luck trying to figure this out lol. also idk it this even is optimized..
+			return (r switch { < 2 and > 1 => v + (r - 2) * sv, < 2 => v - sv, _ => v },
+			g switch { < 2 and > 1 => v + (1 - g) * sv, < 2 => v, _ => v - sv },
+			b switch { < 2 and > 1 => v + (1 - b) * sv, < 2 => v, _ => v - sv }); // good luck trying to figure this out lol. also idk it this even is optimized..
 		}
 		public static Vector3 HueToRGB(float hue)
 		{
@@ -536,17 +461,17 @@ namespace GameEngineThing
 				(rg < 2) ? ((rg > 1) ? (2 - rg) : 1) : 0,
 				(rb < 2) ? ((rb > 1) ? (2 - rb) : 1) : 0);
 		}
-		public static (float, float, float) HueToRGB2(float hue)
-		{
-			// 0 is red, 1/3 is green, 2/3 is blue, in-betweens are a mix and values where 2/3<h<1 it is a mix of red and blue.
-			// 1/6 is yellow, 1/2 is cyan, 5/6 is magenta.
-			hue *= 6;
-			(float rr, float rg, float rb) = (Math.Abs(hue-3),Math.Abs(hue-2),Math.Abs(hue-4)); // raw red, raw green, raw blue
-			return (
-				(rr < 2) ? ((rr > 1) ? (rr - 1) : 0) : 1,
-				(rg < 2) ? ((rg > 1) ? (2 - rg) : 1) : 0,
-				(rb < 2) ? ((rb > 1) ? (2 - rb) : 1) : 0);
-		}
+		// public static (float, float, float) HueToRGB2(float hue)
+		// {
+		// 	// 0 is red, 1/3 is green, 2/3 is blue, in-betweens are a mix and values where 2/3<h<1 it is a mix of red and blue.
+		// 	// 1/6 is yellow, 1/2 is cyan, 5/6 is magenta.
+		// 	hue *= 6;
+		// 	(float rr, float rg, float rb) = (Math.Abs(hue-3),Math.Abs(hue-2),Math.Abs(hue-4)); // raw red, raw green, raw blue
+		// 	return (
+		// 		(rr < 2) ? ((rr > 1) ? (rr - 1) : 0) : 1,
+		// 		(rg < 2) ? ((rg > 1) ? (2 - rg) : 1) : 0,
+		// 		(rb < 2) ? ((rb > 1) ? (2 - rb) : 1) : 0);
+		// }
 		static DataStuff()
 		{
 			BuiltInV1KCharts = new V1KChart[2];
