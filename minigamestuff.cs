@@ -245,7 +245,7 @@ namespace GameEngineThing {
 		public int combo = 0;
 		public float scrollSpeed = 1.0f; // what fraction of a second does it take for a note to go from the top to the bottom.
 		public static bool DisplayFullInfo = false;
-		public uint[] noteHitAccAmts = new uint[Enum.GetValues<ManiaAccs>().Length]; // an array containing how many times the player has hit each of the accuracies including misses.
+		public uint[] noteHitAccAmts = new uint[Enum.GetValues<ManiaAcc>().Length]; // an array containing how many times the player has hit each of the accuracies including misses.
 		private ManiaChart chart;
 		private float jBasePosX;
 		private float jBasePosY;
@@ -434,7 +434,7 @@ namespace GameEngineThing {
 				while (currentKey < laneData.Length && laneData[currentKey].time - time <= -0.3) { currentKey++; } // calculates miss amounts
 				currentKeys[i] = currentKey;
 				uint missAmount = currentKey - currentKeyNow;
-				if (missAmount != 0) { Console.WriteLine("Missed " + missAmount + " notes this frame."); noteHitAccAmts[(int)ManiaAccs.miss] += missAmount; }
+				if (missAmount != 0) { Console.WriteLine("Missed " + missAmount + " notes this frame."); noteHitAccAmts[(int)ManiaAcc.miss] += missAmount; }
 			}
 			if (training == 1)
 			{
@@ -482,7 +482,7 @@ namespace GameEngineThing {
 			if (DisplayFullInfo)
 			{
 				string FullInfoText = "Ratings:";
-				foreach (ManiaAccs s in Enum.GetValues<ManiaAccs>()) FullInfoText += "\n" + Enum.GetName(s) + ": " + noteHitAccAmts[(int)s];
+				foreach (ManiaAcc s in Enum.GetValues<ManiaAcc>()) FullInfoText += "\n" + Enum.GetName(s) + ": " + noteHitAccAmts[(int)s];
 				gameRenderer.RenderText(game, game._textShader, FullInfoText, new(0), new(0.5f, 0.3f), new(2), color ?? new(1, 0, 1), 10f, game._clientSize, FontCharFillerThing.FontCharDeeta, false);
 			}
 		}
@@ -581,7 +581,7 @@ namespace GameEngineThing {
 			if (DisplayFullInfo)
 			{
 				string FullInfoText = "Ratings:";
-				foreach (ManiaAccs s in Enum.GetValues<ManiaAccs>()) FullInfoText += "\n" + Enum.GetName(s) + ": " + noteHitAccAmts[(int)s];
+				foreach (ManiaAcc s in Enum.GetValues<ManiaAcc>()) FullInfoText += "\n" + Enum.GetName(s) + ": " + noteHitAccAmts[(int)s];
 				gameRenderer.RenderText(game, game._textShader, FullInfoText, new(0), new(0.5f, 0.3f), new(2), new(1, 0, 1), 10f, game._clientSize, FontCharFillerThing.FontCharDeeta, false);
 			}
 		}
@@ -612,7 +612,7 @@ namespace GameEngineThing {
 				uint currentKeyNow = currentKey;
 				while (currentKey < laneData.Length && laneData[currentKey].time - time <= -0.3) { currentKey++; }
 				uint missAmount = currentKey - currentKeyNow;
-				if (missAmount != 0) { Console.WriteLine("missed " + missAmount + " notes this frame."); noteHitAccAmts[(int)ManiaAccs.miss] += missAmount; }
+				if (missAmount != 0) { Console.WriteLine("missed " + missAmount + " notes this frame."); noteHitAccAmts[(int)ManiaAcc.miss] += missAmount; }
 				if (currentKey >= laneData.Length) { Console.WriteLine("There are no more notes on lane " + laneNumberThing); return; }
 				ManiaKey CurrentKey = laneData[currentKey];
 				double keyTime = CurrentKey.time;
@@ -620,32 +620,32 @@ namespace GameEngineThing {
 				string DiffMSStr = timeDiff*1000+"MS"; // the amount of time before the note would be perfectly at the place.
 				bool Hit = true;
 				switch (timeDiff) { // big beautiful wall of text
-					case > 0.5: Hit = false; noteHitAccAmts[(int)ManiaAccs.noNotePressed]++;/* lingeringText="No note was hit. " + timeDiff * 1000 + "MS";*/ Console.Write("No note was hit."); break;
-					case > 0.3: noteHitAccAmts[(int)ManiaAccs.tooEarly]++; lingeringTxt = "TOO early... " + DiffMSStr; Console.Write("Too early."); break;
-					case 0: noteHitAccAmts[(int)ManiaAccs.PERFECT]++; lingeringTxt = "PERFECT " + DiffMSStr; Console.Write("PERFECT TIMING?? :O;"); break;
-					case > -.0000005 and < .0000005: noteHitAccAmts[(int)ManiaAccs.perfecthmcs]++; lingeringTxt = "HALF MICROSECOND PERFECT " + DiffMSStr; Console.Write("+-0.5μs TIMING??????;"); break;
-					case > -.000001 and < .000001: noteHitAccAmts[(int)ManiaAccs.perfect1mcs]++; lingeringTxt = "MICROSECOND PERFECT " + DiffMSStr; Console.Write("+-1μs TIMING??????;"); break;
-					case > -.000002 and < .000002: noteHitAccAmts[(int)ManiaAccs.perfect2mcs]++; lingeringTxt = "2MCS PERFECT " + DiffMSStr; Console.Write("+-2μs???;"); break;
-					case > -.000003 and < .000003: noteHitAccAmts[(int)ManiaAccs.perfect3mcs]++; lingeringTxt = "3MCS PERFECT " + DiffMSStr; Console.Write("+-3μs???;"); break;
-					case > -.000005 and < .000005: noteHitAccAmts[(int)ManiaAccs.perfect5mcs]++; lingeringTxt = "5MCS PERFECT " + DiffMSStr; Console.Write("+-5μs???;"); break;
-					case > -.00001 and < .00001: noteHitAccAmts[(int)ManiaAccs.perfect10mcs]++; lingeringTxt = "10MCS PERFECT " + DiffMSStr; Console.Write("+-10μs???;"); break;
-					case > -.000025 and < .000025: noteHitAccAmts[(int)ManiaAccs.perfect25mcs]++; lingeringTxt = "25MCS PERFECT " + DiffMSStr; Console.Write("+-25μs???;"); break;
-					case > -.00005 and < .00005: noteHitAccAmts[(int)ManiaAccs.perfect50mcs]++; lingeringTxt = ".05MS Perfect! " + DiffMSStr; Console.Write("+-50μs???;"); break;
-					case > -.0001 and < .0001: noteHitAccAmts[(int)ManiaAccs.perfect100mcs]++; lingeringTxt = ".1MS Perfect! " + DiffMSStr; Console.Write("+-100μs!!;"); break;
-					case > -.00025 and < .00025: noteHitAccAmts[(int)ManiaAccs.qmsPerfect]++; lingeringTxt = ".25ms perfect! " + DiffMSStr; Console.Write("Hit within +-0.25ms!!;"); break;
-					case > -.0005 and < .0005: noteHitAccAmts[(int)ManiaAccs.hmsPerfect]++; lingeringTxt = ".5ms perfect! " + DiffMSStr; Console.Write("Hit within +-0.5ms!!;"); break;
-					case > -.001 and < .001: noteHitAccAmts[(int)ManiaAccs.msPerfect]++; lingeringTxt = "Millisecond perfect! " + DiffMSStr; Console.Write("Hit within +-1ms!!;"); break;
-					case > -1d / 480d and < 1d / 480d: noteHitAccAmts[(int)ManiaAccs.fp240]++; lingeringTxt = "Frame perfect at 240fps! " + DiffMSStr; Console.Write("Frame perfect at 240fps!;"); break;
-					case > -1d / 240d and < 1d / 240d: noteHitAccAmts[(int)ManiaAccs.fp120]++; lingeringTxt = "Frame perfect at 120fps! " + DiffMSStr; Console.Write("Frame perfect at 120fps!;"); break;
-					case > -1d / 120d and < 1d / 120d: noteHitAccAmts[(int)ManiaAccs.fp60]++; lingeringTxt = "Frame perfect at 60fps! " + DiffMSStr; Console.Write("Frame perfect at 60fps!;"); break;
-					case > -.01 and < .01: noteHitAccAmts[(int)ManiaAccs.excellent]++; lingeringTxt = "Excellent! " + DiffMSStr; Console.Write("Excellent +-10ms!;"); break;
-					case > -1d / 60d and < 1d / 60d: noteHitAccAmts[(int)ManiaAccs.fp30]++; lingeringTxt = "Frame perfect at 30fps! " + DiffMSStr; Console.Write("Frame perfect at 30fps! (+-1/60);"); break;
-					case > -.03 and < .03: noteHitAccAmts[(int)ManiaAccs.sick]++; lingeringTxt = "Sick! " + DiffMSStr; Console.Write("Sick! (+-30ms);"); break;
-					case > -.05 and < .05: noteHitAccAmts[(int)ManiaAccs.great]++; lingeringTxt = "Great! " + DiffMSStr; Console.Write("Great (+-50ms);"); break;
-					case > -.08 and < .08: noteHitAccAmts[(int)ManiaAccs.good]++; lingeringTxt = "Good. " + DiffMSStr; Console.Write("Good. (+-80ms);"); break;
-					case > -.11 and < .11: noteHitAccAmts[(int)ManiaAccs.okay]++; lingeringTxt = "Okay. " + DiffMSStr; Console.Write("Okay. (+-110ms);"); break;
-					case > -.15 and < .15: noteHitAccAmts[(int)ManiaAccs.bad]++; lingeringTxt = "Bad. " + DiffMSStr; Console.Write("Bad. (+-150ms);"); break;
-					case > -.3 and < .3: noteHitAccAmts[(int)ManiaAccs.yikes]++; lingeringTxt = "Yikes. " + DiffMSStr; Console.Write("Yikes. (+-300ms);"); break;
+					case > 0.5: Hit = false; noteHitAccAmts[(int)ManiaAcc.nothing]++;/* lingeringText="No note was hit. " + timeDiff * 1000 + "MS";*/ Console.Write("No note was hit."); break;
+					case > 0.3: noteHitAccAmts[(int)ManiaAcc.early]++; lingeringTxt = "TOO early... " + DiffMSStr; Console.Write("Too early."); break;
+					case 0: noteHitAccAmts[(int)ManiaAcc.PERFECT]++; lingeringTxt = "PERFECT " + DiffMSStr; Console.Write("PERFECT TIMING?? :O;"); break;
+					case > -.0000005 and < .0000005: noteHitAccAmts[(int)ManiaAcc.pHMCS]++; lingeringTxt = "HALF MICROSECOND PERFECT " + DiffMSStr; Console.Write("+-0.5μs TIMING??????;"); break;
+					case > -.000001 and < .000001: noteHitAccAmts[(int)ManiaAcc.pMCS]++; lingeringTxt = "MICROSECOND PERFECT " + DiffMSStr; Console.Write("+-1μs TIMING??????;"); break;
+					case > -.000002 and < .000002: noteHitAccAmts[(int)ManiaAcc.p2mcs]++; lingeringTxt = "2MCS PERFECT " + DiffMSStr; Console.Write("+-2μs???;"); break;
+					case > -.000003 and < .000003: noteHitAccAmts[(int)ManiaAcc.p3mcs]++; lingeringTxt = "3MCS PERFECT " + DiffMSStr; Console.Write("+-3μs???;"); break;
+					case > -.000005 and < .000005: noteHitAccAmts[(int)ManiaAcc.p5mcs]++; lingeringTxt = "5MCS PERFECT " + DiffMSStr; Console.Write("+-5μs???;"); break;
+					case > -.00001 and < .00001: noteHitAccAmts[(int)ManiaAcc.p10mcs]++; lingeringTxt = "10MCS PERFECT " + DiffMSStr; Console.Write("+-10μs???;"); break;
+					case > -.000025 and < .000025: noteHitAccAmts[(int)ManiaAcc.p25mcs]++; lingeringTxt = "25MCS PERFECT " + DiffMSStr; Console.Write("+-25μs???;"); break;
+					case > -.00005 and < .00005: noteHitAccAmts[(int)ManiaAcc.p50mcs]++; lingeringTxt = ".05MS Perfect! " + DiffMSStr; Console.Write("+-50μs???;"); break;
+					case > -.0001 and < .0001: noteHitAccAmts[(int)ManiaAcc.p100mcs]++; lingeringTxt = ".1MS Perfect! " + DiffMSStr; Console.Write("+-100μs!!;"); break;
+					case > -.00025 and < .00025: noteHitAccAmts[(int)ManiaAcc.qmsPerfect]++; lingeringTxt = ".25ms perfect! " + DiffMSStr; Console.Write("Hit within +-0.25ms!!;"); break;
+					case > -.0005 and < .0005: noteHitAccAmts[(int)ManiaAcc.hmsPerfect]++; lingeringTxt = ".5ms perfect! " + DiffMSStr; Console.Write("Hit within +-0.5ms!!;"); break;
+					case > -.001 and < .001: noteHitAccAmts[(int)ManiaAcc.msPerfect]++; lingeringTxt = "Millisecond perfect! " + DiffMSStr; Console.Write("Hit within +-1ms!!;"); break;
+					case > -1d / 480d and < 1d / 480d: noteHitAccAmts[(int)ManiaAcc.fp240]++; lingeringTxt = "Frame perfect at 240fps! " + DiffMSStr; Console.Write("Frame perfect at 240fps!;"); break;
+					case > -1d / 240d and < 1d / 240d: noteHitAccAmts[(int)ManiaAcc.fp120]++; lingeringTxt = "Frame perfect at 120fps! " + DiffMSStr; Console.Write("Frame perfect at 120fps!;"); break;
+					case > -1d / 120d and < 1d / 120d: noteHitAccAmts[(int)ManiaAcc.fp60]++; lingeringTxt = "Frame perfect at 60fps! " + DiffMSStr; Console.Write("Frame perfect at 60fps!;"); break;
+					case > -.01 and < .01: noteHitAccAmts[(int)ManiaAcc.excellent]++; lingeringTxt = "Excellent! " + DiffMSStr; Console.Write("Excellent +-10ms!;"); break;
+					case > -1d / 60d and < 1d / 60d: noteHitAccAmts[(int)ManiaAcc.fp30]++; lingeringTxt = "Frame perfect at 30fps! " + DiffMSStr; Console.Write("Frame perfect at 30fps! (+-1/60);"); break;
+					case > -.03 and < .03: noteHitAccAmts[(int)ManiaAcc.sick]++; lingeringTxt = "Sick! " + DiffMSStr; Console.Write("Sick! (+-30ms);"); break;
+					case > -.05 and < .05: noteHitAccAmts[(int)ManiaAcc.great]++; lingeringTxt = "Great! " + DiffMSStr; Console.Write("Great (+-50ms);"); break;
+					case > -.08 and < .08: noteHitAccAmts[(int)ManiaAcc.good]++; lingeringTxt = "Good. " + DiffMSStr; Console.Write("Good. (+-80ms);"); break;
+					case > -.11 and < .11: noteHitAccAmts[(int)ManiaAcc.okay]++; lingeringTxt = "Okay. " + DiffMSStr; Console.Write("Okay. (+-110ms);"); break;
+					case > -.15 and < .15: noteHitAccAmts[(int)ManiaAcc.bad]++; lingeringTxt = "Bad. " + DiffMSStr; Console.Write("Bad. (+-150ms);"); break;
+					case > -.3 and < .3: noteHitAccAmts[(int)ManiaAcc.yikes]++; lingeringTxt = "Yikes. " + DiffMSStr; Console.Write("Yikes. (+-300ms);"); break;
 					default: Hit = false; break;}
 				Console.WriteLine(" TimeDiff: " + timeDiff);
 				if (Hit) currentKeys[laneNumberThing]++; }
@@ -752,34 +752,12 @@ namespace GameEngineThing {
 		public int[] ModChartInts;
 		public long[] ModChartLongs;
 		public Vector2i[] ModChartV2is;}
-	public enum ManiaAccs {
-		miss,
-		noNotePressed,
-		tooEarly, // 300 to 500ms early
-		yikes, // +-300ms
-		bad, // +-150ms
-		okay, // +-110ms
-		good, // +-80ms
-		great, // +-50ms
-		sick, // +-30ms
-		fp30, // +-1/60fps; the fp here stands for frame perfect.
-		excellent, // 10ms
-		fp60, // 8ms
-		fp120, // 4ms
-		fp240, // 2ms
-		msPerfect, // 1ms
-		hmsPerfect, // .5ms
-		qmsPerfect, // .25ms
-		perfect100mcs,
-		perfect50mcs,
-		perfect25mcs,
-		perfect10mcs,
-		perfect5mcs,
-		perfect3mcs,
-		perfect2mcs,
-		perfect1mcs,
-		perfecthmcs,
-		PERFECT
+	public enum ManiaAcc {
+		miss,nothing,/*nonotepressed*/early,/*300-500msearly;formerly tooEarly*/
+		yikes,/*+-300ms*/bad,/*+-150ms*/okay,/*+-110ms*/good,/*+-80ms*/great,/*+-50ms*/sick,
+		/*+-30ms*/
+		fp30,/*+-1/60s;"fp"isframeperfect.*/excellent,/*10ms*/fp60,/*1/120,~8ms*/fp120,/*1/240,~4ms*/fp240,/*1/480,~2ms*/msPerfect,/*1ms*/hmsPerfect,/*.5ms*/qmsPerfect,/*.25ms*/
+		p100mcs,p50mcs,p25mcs,p10mcs,p5mcs,p3mcs,p2mcs,pMCS,pHMCS,PERFECT
  }
 	public class VerticalOneKey {
 		public Keys keybind = Keys.E;
@@ -794,7 +772,7 @@ namespace GameEngineThing {
 		// public double dt = 0;
 		public float scrollSpeed = 1.0f; // what fraction of a second does it take for a note to go from the top to the bottom.
 		public static bool DisplayFullInfo = false;
-		public uint[] noteHitAccAmounts = new uint[Enum.GetValues<ManiaAccs>().Length]; // an array containing how many times the player has hit each of the accuracies including misses.
+		public uint[] AccAmts = new uint[Enum.GetValues<ManiaAcc>().Length]; // an array containing how many times the player has hit each of the accuracies including misses.
 		private V1KChart chart;
 		public void LoadMap(V1KChart chart) {
 			currentKey = 0;
@@ -815,8 +793,8 @@ namespace GameEngineThing {
 		public float[][] CalcVertices(Vector2i posOffset, Vector2 posScale, Vector2 noteScale, GlyphData noteGlyphData, Vector2i windowSize) {
 			float ftexW = gameRenderer.TextTexture.Width;
 			float ftexH = gameRenderer.TextTexture.Height;
-			float halfOfCeilTrueSizeX = MathF.Ceiling(noteGlyphData.size.X * noteScale.X) * 0.5f;
-			float halfOfCeilTrueSizeY = MathF.Ceiling(noteGlyphData.size.Y * noteScale.Y) * 0.5f;
+			float halfCeilTrueSzX = MathF.Ceiling(noteGlyphData.size.X * noteScale.X) * 0.5f; // the x value for half of the ceiling of the true size
+			float halfCeilTrueSzY = MathF.Ceiling(noteGlyphData.size.Y * noteScale.Y) * 0.5f; // the y value for half of the ceiling of the true size
 			int WinSX = windowSize.X; int WinSY = windowSize.Y;
 			float oX = posOffset.X + posScale.X * WinSX; // offset x
 			float oY = posOffset.Y + posScale.Y * WinSY; // offset y
@@ -827,10 +805,10 @@ namespace GameEngineThing {
 			float tSY = texStart.Y / ftexH; // texture start y
 			float tNX = (texStart.X + noteGlyphData.textureSize.X) / ftexW; // texture end x
 			float tNY = (texStart.Y + noteGlyphData.textureSize.Y) / ftexH; // texture end y
-			float baseSX = (MathF.Floor(oX - halfOfCeilTrueSizeX) + .5f) / WinSX; // the base value for the start X
-			float baseSY = (MathF.Floor(oY - halfOfCeilTrueSizeY) + .5f) / WinSY; // the base value for the start Y
-			float baseNX = (MathF.Floor(oX + halfOfCeilTrueSizeX) + .5f) / WinSX; // the base value for the end X
-			float baseNY = (MathF.Floor(oY + halfOfCeilTrueSizeY) + .5f) / WinSY; // the base value for the end Y
+			float baseSX = (MathF.Floor(oX - halfCeilTrueSzX) + .5f) / WinSX; // the base value for the start X
+			float baseSY = (MathF.Floor(oY - halfCeilTrueSzY) + .5f) / WinSY; // the base value for the start Y
+			float baseNX = (MathF.Floor(oX + halfCeilTrueSzX) + .5f) / WinSX; // the base value for the end X
+			float baseNY = (MathF.Floor(oY + halfCeilTrueSzY) + .5f) / WinSY; // the base value for the end Y
 			// float baseMY = (MathF.Floor(oY) + .5f) / WinSY; // the base value for the middle value of Y. commented bc not used rn.
 			
 			// when the time is exactly the note's time, it should be exactly at the judgement offset.
@@ -847,12 +825,12 @@ namespace GameEngineThing {
 					vertices.Add(v);
 					v = new float[Text.BulkDrawFloats]; // this step is VERY important! i think adding to the list just adds a pointer, and it doesn't actually clone it, so you need to create it again or else it will be filled with the same table over and over again.
 					I = 0;} else I += 16;}
-			float halfOfCeilTrueJudgementSizeX = MathF.Ceiling(noteGlyphData.size.X * noteScale.X) * 0.625f;
-			float halfOfCeilTrueJudgementSizeY = MathF.Ceiling(noteGlyphData.size.Y * noteScale.Y) * 0.5f;
-			float SX = (MathF.Floor(oX - halfOfCeilTrueJudgementSizeX) + .5f) / WinSX;
-			float SY = (MathF.Floor(oY - halfOfCeilTrueJudgementSizeY) + .5f) / WinSY;
-			float NX = (MathF.Floor(oX + halfOfCeilTrueJudgementSizeX) + .5f) / WinSX;
-			float NY = (MathF.Floor(oY + halfOfCeilTrueJudgementSizeY) + .5f) / WinSY;
+			float halfCeilTrueJudgementSzX = MathF.Ceiling(noteGlyphData.size.X * noteScale.X) * 0.625f;
+			float halfCeilTrueJudgementSzY = MathF.Ceiling(noteGlyphData.size.Y * noteScale.Y) * 0.5f;
+			float SX = (MathF.Floor(oX - halfCeilTrueJudgementSzX) + .5f) / WinSX;
+			float SY = (MathF.Floor(oY - halfCeilTrueJudgementSzY) + .5f) / WinSY;
+			float NX = (MathF.Floor(oX + halfCeilTrueJudgementSzX) + .5f) / WinSX;
+			float NY = (MathF.Floor(oY + halfCeilTrueJudgementSzY) + .5f) / WinSY;
 			for (uint i = 0; i < 2; i++) {
 				v[I]=SX;v[I+1]=SY;v[I+2]=tSX;v[I+3]=tSY;v[I+4]=SX;v[I+5]=NY;v[I+6]=tSX;v[I+7]=tNY;v[I+8]=NX;v[I+9]=NY;v[I+10]=tNX;v[I+11]=tNY;v[I+12]=NX;v[I+13]=SY;v[I+14]=tNX;v[I+15]=tSY;
 				if (I == Text.BulkDrawFloats-16) {
@@ -870,7 +848,7 @@ namespace GameEngineThing {
             uint currentKeyNow = currentKey;
             while (currentKey < chart.KeyData.Length && chart.KeyData[currentKey].time - time <= -0.3) { currentKey++; } // calculates miss amounts
             uint missAmount = currentKey - currentKeyNow;
-            if (missAmount != 0) { Console.WriteLine("Missed " + missAmount + " notes this frame."); noteHitAccAmounts[(int)ManiaAccs.miss] += missAmount; }
+            if (missAmount != 0) { Console.WriteLine("Missed " + missAmount + " notes this frame."); AccAmts[(int)ManiaAcc.miss] += missAmount; }
         }
 		public void Render(Game game) {
 			GlyphData noteGlyphData = FontCharFillerThing.FontCharDeeta.SChars["note"];
@@ -879,7 +857,7 @@ namespace GameEngineThing {
 			gameRenderer.RenderText(game, game._textShader, "Map time: " + time + "\n" + lingeringText, new(0), new(-.5f,0.3f), new(8), new(1,0,1), 10f, game._clientSize, FontCharFillerThing.FontCharDeeta, false);
 			if (DisplayFullInfo) {
 				string FullInfoText = "Ratings:";
-				foreach (ManiaAccs s in Enum.GetValues<ManiaAccs>()) FullInfoText += "\n" + Enum.GetName(s) + ": " + noteHitAccAmounts[(int)s];
+				foreach (ManiaAcc s in Enum.GetValues<ManiaAcc>()) FullInfoText += "\n" + Enum.GetName(s) + ": " + AccAmts[(int)s];
 				gameRenderer.RenderText(game, game._textShader, FullInfoText, new(0), new(0.5f,0.3f), new(2), new(1,0,1), 10f, game._clientSize, FontCharFillerThing.FontCharDeeta, false); }}
 		public void KeyDown(Keys key) {
 			if (key == keybind) { // do this only if it is the keybind.
@@ -887,126 +865,128 @@ namespace GameEngineThing {
 				uint currentKeyNow = currentKey;
 				while (currentKey < chart.KeyData.Length && chart.KeyData[currentKey].time - time <= -0.3) { currentKey++; }
 				uint missAmount = currentKey - currentKeyNow;
-				if (missAmount != 0) { Console.WriteLine("Missed " + missAmount + " notes this frame."); noteHitAccAmounts[(int)ManiaAccs.miss] += missAmount; }
+				if (missAmount != 0) { Console.WriteLine("Missed " + missAmount + " notes this frame."); AccAmts[(int)ManiaAcc.miss] += missAmount; }
 				if (currentKey >= chart.KeyData.Length) { Console.WriteLine("There are no more notes; the chart has ended ig"); return; }
 				V1KKey CurrentKey = chart.KeyData[currentKey];
 				double keyTime = CurrentKey.time;
 				double timeDiff = keyTime - time; // the amount of time before the note would be perfectly at the place.
+				double timeDiffMS = timeDiff * 1000;
+				string timeDiffMSStr = timeDiffMS + "MS";
 				bool Hit = true;
 				switch (timeDiff) {
 					case > 0.5:
 						Hit = false;
-						noteHitAccAmounts[(int)ManiaAccs.noNotePressed]++;
-						// lingeringText = "No note was hit. " + timeDiff * 1000 + "MS";
+						AccAmts[(int)ManiaAcc.nothing]++;
+						// lingeringText = "No note was hit. " + timeDiffMS + "MS";
 						Console.Write("No note was hit.");
 						break;
 					case > 0.3:
-						noteHitAccAmounts[(int)ManiaAccs.tooEarly]++;
-						lingeringText = "TOO early... " + timeDiff * 1000 + "MS";
+						AccAmts[(int)ManiaAcc.early]++;
+						lingeringText = "TOO early... " + timeDiffMSStr;
 						Console.Write("Too early.");
 						break;
-					// case > -.0000000000001 and < .0000000000001: Console.WriteLine("+-100femptoseconds??????"); break;
-					// case > -.000000000001 and < .000000000001: Console.WriteLine("+-1ps??????"); break;
-					// case > -.00000000001 and < .00000000001: Console.WriteLine("+-10ps??????"); break;
-					// case > -.0000000001 and < .0000000001: Console.WriteLine("+-100ps TIMING??????"); break;
-					// case > -.000000001 and < .000000001: Console.WriteLine("+-1ns TIMING??????"); break;
-					// case > -.00000001 and < .00000001: Console.WriteLine("+-10ns TIMING??????"); break;
-					// case > -.0000001 and < .0000001: Console.WriteLine("+-100ns TIMING??????"); break;
+					/* case > -.0000000000001 and < .0000000000001: Console.WriteLine("+-100femptoseconds??????"); break;
+					case > -.000000000001 and < .000000000001: Console.WriteLine("+-1ps??????"); break;
+					case > -.00000000001 and < .00000000001: Console.WriteLine("+-10ps??????"); break;
+					case > -.0000000001 and < .0000000001: Console.WriteLine("+-100ps TIMING??????"); break;
+					case > -.000000001 and < .000000001: Console.WriteLine("+-1ns TIMING??????"); break;
+					case > -.00000001 and < .00000001: Console.WriteLine("+-10ns TIMING??????"); break;
+					case > -.0000001 and < .0000001: Console.WriteLine("+-100ns TIMING??????"); break; */
 					case 0:
-						noteHitAccAmounts[(int)ManiaAccs.PERFECT]++;
-						lingeringText = "PERFECT " + timeDiff * 1000 + "MS";
+						AccAmts[(int)ManiaAcc.PERFECT]++;
+						lingeringText = "PERFECT " + timeDiffMSStr;
 						Console.Write("PERFECT TIMING?? :O;"); break;
 					case > -.0000005 and < .0000005:
-						noteHitAccAmounts[(int)ManiaAccs.perfecthmcs]++;
-						lingeringText = "HALF MICROSECOND PERFECT " + timeDiff * 1000 + "MS";
+						AccAmts[(int)ManiaAcc.pHMCS]++;
+						lingeringText = "HALF MICROSECOND PERFECT " + timeDiffMSStr;
 						Console.Write("+-0.5μs TIMING??????;"); break;
 					case > -.000001 and < .000001:
-						noteHitAccAmounts[(int)ManiaAccs.perfect1mcs]++;
-						lingeringText = "MICROSECOND PERFECT " + timeDiff * 1000 + "MS";
+						AccAmts[(int)ManiaAcc.pMCS]++;
+						lingeringText = "MICROSECOND PERFECT " + timeDiffMSStr;
 						Console.Write("+-1μs TIMING??????;"); break;
 					case > -.000002 and < .000002:
-						noteHitAccAmounts[(int)ManiaAccs.perfect2mcs]++;
-						lingeringText = "2MCS PERFECT " + timeDiff * 1000 + "MS";
+						AccAmts[(int)ManiaAcc.p2mcs]++;
+						lingeringText = "2MCS PERFECT " + timeDiffMSStr;
 						Console.Write("+-2μs???;"); break;
 					case > -.000003 and < .000003:
-						noteHitAccAmounts[(int)ManiaAccs.perfect3mcs]++;
-						lingeringText = "3MCS PERFECT " + timeDiff * 1000 + "MS";
+						AccAmts[(int)ManiaAcc.p3mcs]++;
+						lingeringText = "3MCS PERFECT " + timeDiffMSStr;
 						Console.Write("+-3μs???;"); break;
 					case > -.000005 and < .000005:
-						noteHitAccAmounts[(int)ManiaAccs.perfect5mcs]++;
-						lingeringText = "5MCS PERFECT " + timeDiff * 1000 + "MS";
+						AccAmts[(int)ManiaAcc.p5mcs]++;
+						lingeringText = "5MCS PERFECT " + timeDiffMSStr;
 						Console.Write("+-5μs???;"); break;
 					case > -.00001 and < .00001:
-						noteHitAccAmounts[(int)ManiaAccs.perfect10mcs]++;
-						lingeringText = "10MCS PERFECT " + timeDiff * 1000 + "MS";
+						AccAmts[(int)ManiaAcc.p10mcs]++;
+						lingeringText = "10MCS PERFECT " + timeDiffMSStr;
 						Console.Write("+-10μs???;"); break;
 					case > -.000025 and < .000025:
-						noteHitAccAmounts[(int)ManiaAccs.perfect25mcs]++;
-						lingeringText = "25MCS PERFECT " + timeDiff * 1000 + "MS";
+						AccAmts[(int)ManiaAcc.p25mcs]++;
+						lingeringText = "25MCS PERFECT " + timeDiffMSStr;
 						Console.Write("+-25μs???;"); break;
 					case > -.00005 and < .00005:
-						noteHitAccAmounts[(int)ManiaAccs.perfect50mcs]++;
-						lingeringText = ".05MS Perfect! " + timeDiff * 1000 + "MS";
+						AccAmts[(int)ManiaAcc.p50mcs]++;
+						lingeringText = ".05MS Perfect! " + timeDiffMSStr;
 						Console.Write("+-50μs???;"); break;
 					case > -.0001 and < .0001:
-						noteHitAccAmounts[(int)ManiaAccs.perfect100mcs]++;
-						lingeringText = ".1MS Perfect! " + timeDiff * 1000 + "MS";
+						AccAmts[(int)ManiaAcc.p100mcs]++;
+						lingeringText = ".1MS Perfect! " + timeDiffMSStr;
 						Console.Write("+-100μs!!;"); break;
 					case > -.00025 and < .00025:
-						noteHitAccAmounts[(int)ManiaAccs.qmsPerfect]++;
-						lingeringText = ".25ms perfect! " + timeDiff * 1000 + "MS";
+						AccAmts[(int)ManiaAcc.qmsPerfect]++;
+						lingeringText = ".25ms perfect! " + timeDiffMSStr;
 						Console.Write("Hit within +-0.25ms!!;"); break;
 					case > -.0005 and < .0005:
-						noteHitAccAmounts[(int)ManiaAccs.hmsPerfect]++;
-						lingeringText = ".5ms perfect! " + timeDiff * 1000 + "MS";
+						AccAmts[(int)ManiaAcc.hmsPerfect]++;
+						lingeringText = ".5ms perfect! " + timeDiffMSStr;
 						Console.Write("Hit within +-0.5ms!!;"); break;
 					case > -.001 and < .001:
-						noteHitAccAmounts[(int)ManiaAccs.msPerfect]++;
-						lingeringText = "Millisecond perfect! " + timeDiff * 1000 + "MS";
+						AccAmts[(int)ManiaAcc.msPerfect]++;
+						lingeringText = "Millisecond perfect! " + timeDiffMSStr;
 						Console.Write("Hit within +-1ms!!;"); break;
 					case > -1d / 480d and < 1d / 480d:
-						noteHitAccAmounts[(int)ManiaAccs.fp240]++;
-						lingeringText = "Frame perfect at 240fps! " + timeDiff * 1000 + "MS";
+						AccAmts[(int)ManiaAcc.fp240]++;
+						lingeringText = "Frame perfect at 240fps! " + timeDiffMSStr;
 						Console.Write("Frame perfect at 240fps!;"); break;
 					case > -1d / 240d and < 1d / 240d:
-						noteHitAccAmounts[(int)ManiaAccs.fp120]++;
-						lingeringText = "Frame perfect at 120fps! " + timeDiff * 1000 + "MS";
+						AccAmts[(int)ManiaAcc.fp120]++;
+						lingeringText = "Frame perfect at 120fps! " + timeDiffMSStr;
 						Console.Write("Frame perfect at 120fps!;"); break;
 					case > -1d / 120d and < 1d / 120d:
-						noteHitAccAmounts[(int)ManiaAccs.fp60]++;
-						lingeringText = "Frame perfect at 60fps! " + timeDiff * 1000 + "MS";
+						AccAmts[(int)ManiaAcc.fp60]++;
+						lingeringText = "Frame perfect at 60fps! " + timeDiffMSStr;
 						Console.Write("Frame perfect at 60fps!;"); break;
 					case > -.01 and < .01:
-						noteHitAccAmounts[(int)ManiaAccs.excellent]++;
-						lingeringText = "Excellent! " + timeDiff * 1000 + "MS";
+						AccAmts[(int)ManiaAcc.excellent]++;
+						lingeringText = "Excellent! " + timeDiffMSStr;
 						Console.Write("Excellent +-10ms!;"); break;
 					case > -1d / 60d and < 1d / 60d:
-						noteHitAccAmounts[(int)ManiaAccs.fp30]++;
-						lingeringText = "Frame perfect at 30fps! " + timeDiff * 1000 + "MS";
+						AccAmts[(int)ManiaAcc.fp30]++;
+						lingeringText = "Frame perfect at 30fps! " + timeDiffMSStr;
 						Console.Write("Frame perfect at 30fps! (+-1/60);"); break;
 					case > -.03 and < .03:
-						noteHitAccAmounts[(int)ManiaAccs.sick]++;
-						lingeringText = "Sick! " + timeDiff * 1000 + "MS";
+						AccAmts[(int)ManiaAcc.sick]++;
+						lingeringText = "Sick! " + timeDiffMSStr;
 						Console.Write("Sick! (+-30ms);"); break;
 					case > -.05 and < .05:
-						noteHitAccAmounts[(int)ManiaAccs.great]++;
-						lingeringText = "Great! " + timeDiff * 1000 + "MS";
+						AccAmts[(int)ManiaAcc.great]++;
+						lingeringText = "Great! " + timeDiffMSStr;
 						Console.Write("Great (+-50ms);"); break;
 					case > -.08 and < .08:
-						noteHitAccAmounts[(int)ManiaAccs.good]++;
-						lingeringText = "Good. " + timeDiff * 1000 + "MS";
+						AccAmts[(int)ManiaAcc.good]++;
+						lingeringText = "Good. " + timeDiffMSStr;
 						Console.Write("Good. (+-80ms);"); break;
 					case > -.11 and < .11:
-						noteHitAccAmounts[(int)ManiaAccs.okay]++;
-						lingeringText = "Okay. " + timeDiff * 1000 + "MS";
+						AccAmts[(int)ManiaAcc.okay]++;
+						lingeringText = "Okay. " + timeDiffMSStr;
 						Console.Write("Okay. (+-110ms);"); break;
 					case > -.15 and < .15:
-						noteHitAccAmounts[(int)ManiaAccs.bad]++;
-						lingeringText = "Bad. " + timeDiff * 1000 + "MS";
+						AccAmts[(int)ManiaAcc.bad]++;
+						lingeringText = "Bad. " + timeDiffMSStr;
 						Console.Write("Bad. (+-150ms);"); break;
 					case > -.3 and < .3:
-						noteHitAccAmounts[(int)ManiaAccs.yikes]++;
-						lingeringText = "Yikes. " + timeDiff * 1000 + "MS";
+						AccAmts[(int)ManiaAcc.yikes]++;
+						lingeringText = "Yikes. " + timeDiffMSStr;
 						Console.Write("Yikes. (+-300ms);"); break;
 					default: Hit = false; break; }
 				Console.WriteLine(" TimeDiff: " + timeDiff);
@@ -1029,10 +1009,8 @@ namespace GameEngineThing {
                 string[] stringThingy = processedS2[i].Split(' ');
                 switch (stringThingy.Length)
                 {
-                    case 1: // not a hold note
-                        keyData1[i] = new V1KKey(Convert.ToDouble(stringThingy[0])); break;
-                    case 2: // hold note
-                        keyData1[i] = new V1KKey(Convert.ToDouble(stringThingy[0]), Convert.ToSingle(stringThingy[1])); break;
+                    case 1: keyData1[i] = new V1KKey(Convert.ToDouble(stringThingy[0])); break; // not a hold note
+                    case 2: keyData1[i] = new V1KKey(Convert.ToDouble(stringThingy[0]), Convert.ToSingle(stringThingy[1])); break; // hold note
                     default: return false;
                 }
             }
