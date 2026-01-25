@@ -18,24 +18,24 @@ namespace GameEngineThing {
 		public Vector2i _clientSize;
 		public static int _gameCount = 0;
 		public int _gameID;
-		private double _gameTime = .0;
+		public double _gameTime = .0;
 		private double _semiRealTime = .0;
 		private double _dT = .0;
-		private Shader _shader;
+		public Shader _shader;
 		public Shader _textShader { get; private set; }
 		private Texture _textureSheet;
-		private Text _textRenderer;
-		private Camera _camera = new(new Vector3(0f, 0f, 3f), Vector3.Zero, Vector3.UnitY);
-		private ObjectMesh _cube;
-		private ObjectMesh _tetrahedron;
-		private ObjectMesh _plane;
+		public Text _textRenderer;
+		public Camera _camera = new(new Vector3(0f, 0f, 3f), Vector3.Zero, Vector3.UnitY);
+		public ObjectMesh _cube;
+		public ObjectMesh _tetrahedron;
+		public ObjectMesh _plane;
 		private double _DTOverTime = 0;
 		public long _frameCount = 0;
 		// private Random _random = new();
 		private Stopwatch _stopwatch = new();
 		// private bool _gameUpdating = true;
-		private long _gameTick = 0;
-		private float _gameTickSpeed = 60f;
+		public long _gameTick { get; private set; } = 0;
+		public float _gameTickSpeed { get; private set; } = 60f;
 		private float _gameTickLagCompensationAmount = 2f;
 		// private int _seconds = 0;
 		public static float _groundHeight = 0f;
@@ -47,28 +47,30 @@ namespace GameEngineThing {
 		private ObjectMesh _playerLegMesh;
 		private bool _isChatting = false;
 		private byte _chattingBlinker = 0;
-		private string _chattingText = "";
+		public string _chattingText { get; private set; } = "";
 		private int _chattingTextLines = 1;
 		private Vector2 _chattingTextSize = new(2);
 		private float _chattingTextLineHeight = 10f;
 		public bool WillReopen = false;
 		public string ReopenData = "";
 		public string OpenData;
-		public string _gameMode;
+		public List<string> _gameModes;
 		public DebugFlags _debugFlags = DebugFlags.none;
 
 		private WindowState previousState;
-		private Pong _pongGame;
-		private VerticalOneKey _1kManiaPrototype;
-		private ManiaRG _maniaRGPrototype;
+		// private Pong _pongGame;
+		// private VerticalOneKey _1kManiaPrototype;
+		// private ManiaRG _maniaRGPrototype;
+		public List<IMinigame> _currentMinigames { get; private set; }
+		public int _minigameCount { get; private set; }
 		private VideoRecorder _videoRecorder;
 		private long previousFrameTimestamp = 0;
-		private double[] profilerFrameTimes = new double[2048];
-		private int profilerIndex = 0;
+		public double[] profilerFrameTimes = new double[2048];
+		public int profilerIndex = 0;
 		private bool profilerOn = false;
 		public readonly long gameStartTimestamp = Stopwatch.GetTimestamp();
-		
 
+		public List<Announcement> _announcementsThing;
 
 
 		public Game(int width, int height, string title) :
@@ -140,7 +142,8 @@ namespace GameEngineThing {
 			_textRenderer.TextTexture.Use(TextureUnit.Texture1);
 
 
-			_camera.Projection = Matrix4.CreatePerspectiveFieldOfView(MathHelper.DegreesToRadians(45f), 800f / 600f, .1f, 100f);
+			// _camera.Projection = Matrix4.CreatePerspectiveFieldOfView(MathHelper.DegreesToRadians(45f), 800f / 600f, .1f, 100f);
+			_camera.UpdateVectors();
 
 			_camera.Direction = Vector3.Normalize(_camera.Position - _camera.Target);
 			_camera.Right = Vector3.Normalize(Vector3.Cross(_camera.Up, _camera.Direction));
@@ -152,6 +155,8 @@ namespace GameEngineThing {
 
 			Console.WriteLine("FontCharacterData info: FontCharDeeta has " + FontCharFillerThing.FontCharDeeta.Chars.Count + " normal characters, and " + FontCharFillerThing.FontCharDeeta.SChars.Count + " special characters.");
 			float _lineHeight = 10f;
+
+			_announcementsThing = [new("testing testing", Stopwatch.GetTimestamp() + Stopwatch.Frequency*12, (.8f, .2f, .8f), (.1f, .1f, .1f), .8f, fot:4),new("tst test2 dsfsdfsdds", Stopwatch.GetTimestamp() + Stopwatch.Frequency*30,(.3f,.5f,.3f),(.5f,.5f,.5f),.5f, fot:0)];
 
 			// _textRenderer.NewTxtThing(new TxtOptions(posOffset, posScale, textScale, color, lineHeight, windowSize, fontCharData, useSpecialChar));
 			_textRenderer.TextThingies.Add(new TxtOptions(Vector2i.Zero, new(-.9f, .9f), new(5), Vector3.One, _lineHeight, FontCharFillerThing.FontCharDeeta, true));
@@ -165,30 +170,34 @@ namespace GameEngineThing {
 			_textRenderer.TextThingies.Add(new TxtOptions(Vector2i.Zero, new(-.96f + (float)Math.Sin(_gameTime) * .05f, -.5f), Vector2.Zero, new(Random.Shared.Next(0, 100) / 100f), _lineHeight, FontCharFillerThing.FontCharDeeta, true));
 			switch (OpenData.ToLower()) {
 				case "pong":
-					_pongGame = new Pong(new Vector3(10f, 0f, 10f), new Vector3(1f), new Vector3(270f, 0f, 0f));
-					_gameMode = "pong";
+					_currentMinigames = [new Pong(new Vector3(10f, 0f, 10f), new Vector3(1f), new Vector3(270f, 0f, 0f))];
+					_gameModes = ["pong"];
 					break;
 				case "fnf": // do something else but rn the something else doesn't exist
 				case "mania": // also do something else but the something else also doesn't exist
-					_maniaRGPrototype = new ManiaRG(_textRenderer);
-					_maniaRGPrototype.StartTraining();
-					_maniaRGPrototype.RestartMap();
-					_gameMode = "mania";
+					_currentMinigames = [new ManiaRG(_textRenderer)];
+					_gameModes = ["mania"];
 					break;
 				case "1k fnf" or "1kfnf" or "fnf 1k" or "fnf1k" or
 					"v1k" or "verticalonekey" or "vertical one key":
-					_1kManiaPrototype = new VerticalOneKey(_textRenderer);
-					_1kManiaPrototype.LoadMap(DataStuff.BuiltInV1KCharts[0]);
-					_1kManiaPrototype.RestartMap();
-					_gameMode = "v1k";
+					_currentMinigames = [new VerticalOneKey(_textRenderer, DataStuff.BuiltInV1KCharts[0])];
+					_gameModes = ["v1k"];
 					break;
 				case "v1k2":
-					_1kManiaPrototype = new VerticalOneKey(_textRenderer);
-					_1kManiaPrototype.LoadMap(DataStuff.BuiltInV1KCharts[1]);
-					_1kManiaPrototype.RestartMap();
-					_gameMode = "v1k";
+					_currentMinigames = [new VerticalOneKey(_textRenderer, DataStuff.BuiltInV1KCharts[1])];
+					_gameModes = ["v1k"];
 					break;
-				default: break;}
+				case "miner": // also do something else but the something else also doesn't exist
+					_currentMinigames = [new MiningGame()];
+					_gameModes = ["miner"];
+					break;
+				default:
+					_currentMinigames = [new DefaultGameBehavior()];
+					_gameModes = ["DEFAULT_BEHAVIOR"];
+					break;
+			}
+			foreach (IMinigame minigame in _currentMinigames)
+			minigame.OnLoad(this);
 
 			_stopwatch.Start();}
 		protected override void OnRenderFrame(FrameEventArgs e) {
@@ -201,51 +210,29 @@ namespace GameEngineThing {
 
 			_shader.Use();
 			_shader.SetMatrix4("view", _camera.View);
-			_shader.SetMatrix4("projection", _camera.Projection);
+			// _shader.SetMatrix4("projection", _camera.Projection);
 
-			_tetrahedron.Draw(_shader, true);
-
-			_cube.Draw(_shader, true);
-
-			Matrix4 Scale = Matrix4.CreateScale(new Vector3((float)Math.Sin(_gameTime) + 1f, (float)Math.Sin(_gameTime) + 1f, (float)Math.Sin(_gameTime) + 1f));
-			Matrix4[] models = [
-				Scale * Matrix4.CreateTranslation(new Vector3(-10f, 0f, 0f)),
-				Scale * Matrix4.CreateTranslation(new Vector3(10f, 0f, 0f)),
-				Scale * Matrix4.CreateTranslation(new Vector3(0f, 10f, 0f)),
-				Scale * Matrix4.CreateTranslation(new Vector3(0f, -10f, 0f)),
-				Scale * Matrix4.CreateTranslation(new Vector3(0f, 0f, 10f)),
-				Scale * Matrix4.CreateTranslation(new Vector3(0f, 0f, -10f)),
-			];
-
-			// // Draw multiple cubes with different texture layers
-			// for (int i = 0; i < models.Length; i++) _cube.DrawWithModel(_shader, models[i], false);
-			_cube.DrawWithModels(_shader, models, false);
 
 			_shader.SetTextureLocation("tx0", new Vector4(0f, 0f, 1f, 1f));
 			_player.Render(_shader);
 
-			if (profilerOn) {
-				_textRenderer.RenderProfilerIndexedLoopingGraph(this, new(1f, 1f), new(-1f, -1f/30f), new(0.8f,0.4f,0f), profilerFrameTimes, profilerIndex - 1, length: profilerFrameTimes.Length);
-				/* _textRenderer.RenderProfilerIndexedLoopingGraph(this, new((float)Math.Sin(_gameTime)-0.5f, 1f), new(1f, -1f/30f), new(1f,0.5f,0f), profilerFrameTimes, profilerIndex - 1);
-				_textRenderer.RenderProfilerIndexedLoopingGraph(this, new(0f, 0.5f), new(((float)Math.Sin(_gameTime)-0.5f)*2f, -1f/30f), new(1f,0f,0f), profilerFrameTimes, profilerIndex - 1);
-				_textRenderer.RenderProfilerIndexedLoopingGraph(this, new(0f, 0f), new(((float)Math.Sin(_gameTime)-0.5f)*2f, 1f/30f), new(0f,0f,1f), profilerFrameTimes, profilerIndex - 1);*/ }
-			switch (_gameMode) {
-				case "pong":
-					_pongGame.Render(_shader, _cube, _plane, true);
-					// _textRenderer.RenderText(this, _textShader, _pongGame.ScoreText, Vector2i.Zero, new(0f, .45f), new(6f), new(0f, 1f, 0f), 10f, _clientSize, FontCharFillerThing.FontCharDeeta, false);
-					_textRenderer.Render(new TxtOptions(Vector2i.Zero, new(0f, .45f), new(4f), new(0f, 1f, 0f), 10f, FontCharFillerThing.FontCharDeeta, false), this, _pongGame.ScoreText);
-					break;
-				case "mania":
-					_maniaRGPrototype.time = Stopwatch.GetElapsedTime(_maniaRGPrototype.timeOffset).TotalSeconds;
-					_maniaRGPrototype.Render2(_textShader, this, DataStuff.HSVToRGB((float)(Stopwatch.GetElapsedTime(gameStartTimestamp).TotalSeconds*0.36%1), (float)(Math.Sin(Stopwatch.GetElapsedTime(gameStartTimestamp).TotalSeconds*0.2)*0.125+0.875), (float)(Math.Cos(Stopwatch.GetElapsedTime(gameStartTimestamp).TotalSeconds*0.09)*0.125+0.875))); break;
-				case "v1k":
-					_1kManiaPrototype.time = _1kManiaPrototype.stopwatch.Elapsed.TotalSeconds + _1kManiaPrototype.timeOffset;
-					_1kManiaPrototype.Render(this);
-					break;
-				default: break;}
+			foreach(IMinigame minigame in _currentMinigames)
+			minigame.OnRenderFrame(this, e.Time);
 
 			// UI time!! :3
-			// the text kind of breaks a lot of things, but for some reason doesn't throw any errors, and if anything else that isn't text tries to render after this, it just won't.
+			// remember that this renderer is pretty weird or smth and if you render in the wrong order the game may not render properly.
+			if (profilerOn) {
+				_textRenderer.RenderProfilerIndexedLoopingGraph(this, new(1f, 1f), new(-1f, -1f / 30f), new(0.8f, 0.4f, 0f), profilerFrameTimes, profilerIndex, length: profilerFrameTimes.Length);
+				int pl = profilerFrameTimes.Length;
+				int pi = profilerIndex + pl - 1;
+				double a = profilerFrameTimes[pi%pl];
+				string txt = "FPS1: " + (1000d / a);
+				int i;
+				for(i=pi-1;i>pi-10;i--){a+=profilerFrameTimes[i%pl];}txt+="\nFPS10: "+(10000d/a);
+				for(i=pi-10;i>pi-30;i--){a+=profilerFrameTimes[i%pl];}txt+="\nFPS30: "+(30000d/a);
+				for(i=pi-30;i>pi-50;i--){a+=profilerFrameTimes[i%pl];}txt+="\nFPS50: "+(50000d/a);
+				for(i=pi-50;i>pi-100;i--){a+=profilerFrameTimes[i%pl];}txt+="\nFPS100: "+(100000d/a);
+				_textRenderer.RenderText(this,_textShader,txt,new(0,-40),new(-1,1f),new(4),new Vector3(1,1,0),10f,_clientSize,FontCharFillerThing.FontCharDeeta,true);}
 			bool debugText = _debugFlags.HasFlag(DebugFlags.debugText);
 			if (debugText) {
 				_textRenderer.Render(0, this, $"FPS: {1 / _dT:N4}");
@@ -273,6 +260,7 @@ namespace GameEngineThing {
 				Vector2i posOffset = new(0, (int)(_chattingTextLines * _chattingTextLineHeight * _chattingTextSize.Y));
 				_textRenderer.RenderText(this, _textShader, chatTxt, posOffset, new(-1), _chattingTextSize, new(1), _chattingTextLineHeight, _clientSize, FontCharFillerThing.FontCharDeeta, true);
 				if (debugText) _textRenderer.RenderText(this, _textShader, chatTxt, posOffset, new(-1, -.8f), _chattingTextSize, new(.7f), _chattingTextLineHeight, _clientSize, FontCharFillerThing.FontCharDeeta, false);}
+			_textRenderer.AnnouncementsRender(_announcementsThing, this, _textShader, 10f, _clientSize);
 			// _videoRecorder?.CaptureFrame(this.ClientSize, VSync == VSyncMode.On);
 			_videoRecorder?.CaptureFrame(this.ClientSize, false);
 			long timestampNow = Stopwatch.GetTimestamp();
@@ -301,22 +289,20 @@ namespace GameEngineThing {
 					if (KeyboardState.IsKeyPressed(Keys.Escape)) { _isChatting = false; }}
 				else {
 					float TickSpeedInv = 1f / _gameTickSpeed;
-					if (KeyboardState.IsKeyDown(Keys.I)) _camera.CameraDistFromTarget = Math.Max(_camera.MinDist, _camera.CameraDistFromTarget - 2f * TickSpeedInv);
-					if (KeyboardState.IsKeyDown(Keys.O)) _camera.CameraDistFromTarget = Math.Min(_camera.MaxDist, _camera.CameraDistFromTarget + 2f * TickSpeedInv);
-					if (MouseState.ScrollDelta.Y != 0) {
-						_camera.CamSpeed = Math.Max(.1f, Math.Min(50f, _camera.CamSpeed + MouseState.ScrollDelta.Y * .1f));
+					if (MouseState.ScrollDelta.Y != 0) { // (3f * TickSpeedInv + 1)
+						_camera.CamSpeed = Math.Max(.1f, Math.Min(1024f, _camera.CamSpeed * (MouseState.ScrollDelta.Y * 0.1f + 1)));
 						if (_debugFlags.HasFlag(DebugFlags.debugLogging)) Console.WriteLine("scroll speed changed; new speed: " + _camera.CamSpeed);}
-					float deltaX = MouseState.X - MouseState.PreviousX;
-					float deltaY = MouseState.Y - MouseState.PreviousY;
-					if (deltaX != 0 || deltaY != 0) {
-						_camera.Yaw = (_camera.Yaw + deltaX * _camera.MouseSensitivity) % (float)(2.0 * Math.PI);
-						_camera.Pitch = Math.Max(MathHelper.DegreesToRadians(-89f), Math.Min(MathHelper.DegreesToRadians(89f), _camera.Pitch - deltaY * _camera.MouseSensitivity));
+					if (MouseState.IsButtonDown(MouseButton.Right)){
+						float deltaX = MouseState.X - MouseState.PreviousX;
+						float deltaY = MouseState.Y - MouseState.PreviousY;
+						if (deltaX != 0 || deltaY != 0) {
+							_camera.Yaw = (_camera.Yaw + deltaX * _camera.MouseSensitivity) % (float)(2.0 * Math.PI);
+							_camera.Pitch = Math.Max(MathHelper.DegreesToRadians(-89f), Math.Min(MathHelper.DegreesToRadians(89f), _camera.Pitch - deltaY * _camera.MouseSensitivity));
 
-						_camera.CameraToTargetOffset = -Vector3.Normalize(new Vector3(
-							(float)Math.Cos(_camera.Pitch) * (float)Math.Cos(_camera.Yaw),
-							(float)Math.Sin(_camera.Pitch),
-							(float)Math.Cos(_camera.Pitch) * (float)Math.Sin(_camera.Yaw)
-						));}
+							_camera.CameraToTargetOffset = -Vector3.Normalize(new Vector3(
+								(float)Math.Cos(_camera.Pitch) * (float)Math.Cos(_camera.Yaw),
+								(float)Math.Sin(_camera.Pitch),
+								(float)Math.Cos(_camera.Pitch) * (float)Math.Sin(_camera.Yaw)));}}
 					if (_semiRealTime < TickSpeedInv) { // if this frame is too early to go to the next game tick
 					  // update camera vectors so the camera movement is smooth
 						_camera.UpdateVectors();
@@ -328,44 +314,58 @@ namespace GameEngineThing {
 					_semiRealTime -= TickSpeedInv;
 					if (_semiRealTime > _gameTickLagCompensationAmount * TickSpeedInv) _semiRealTime = _gameTickLagCompensationAmount * TickSpeedInv;
 					// ^ prevents the semi real time from getting too big; If this wasn't here, then for example, if a big lag spike happens, the semi real time will get really big and the game will run as fast as possible for a while, and that would feel really weird, and people might rage or something idk :p
-
+					foreach (IMinigame minigame in _currentMinigames)
+					minigame.OnEngineTick(this, TickSpeedInv);
+					// camera zoom n stuff
+					if (KeyboardState.IsKeyDown(Keys.I)) _camera.CameraDistFromTarget = Math.Max(_camera.MinDist, _camera.CameraDistFromTarget * (_gameTickSpeed / (_gameTickSpeed + 3f)));
+					if (KeyboardState.IsKeyDown(Keys.O)) _camera.CameraDistFromTarget = Math.Min(_camera.MaxDist, _camera.CameraDistFromTarget * (3f * TickSpeedInv + 1));
 					if (_debugFlags.HasFlag(DebugFlags.debugLogging) && _gameTick % (long)(_gameTickSpeed * 2) == 0) Console.WriteLine("Time: " + _stopwatch.Elapsed.TotalSeconds); // print time every 2 seconds
 
 					// movement
+					float moveAmount = _camera.CamSpeed * TickSpeedInv;
 					if (_camera.IsFlying) {
-						if (KeyboardState.IsKeyDown(Keys.W)) _camera.Target -= _camera.Direction * _camera.CamSpeed * TickSpeedInv;
-						if (KeyboardState.IsKeyDown(Keys.S)) _camera.Target += _camera.Direction * _camera.CamSpeed * TickSpeedInv;
-						if (KeyboardState.IsKeyDown(Keys.A)) _camera.Target -= _camera.Right * _camera.CamSpeed * TickSpeedInv;
-						if (KeyboardState.IsKeyDown(Keys.D)) _camera.Target += _camera.Right * _camera.CamSpeed * TickSpeedInv;
-						if (KeyboardState.IsKeyDown(Keys.Space) || KeyboardState.IsKeyDown(Keys.E)) _camera.Target += _camera.Up * _camera.CamSpeed * TickSpeedInv;
-						if (KeyboardState.IsKeyDown(Keys.LeftShift) || KeyboardState.IsKeyDown(Keys.Q)) _camera.Target -= _camera.Up * _camera.CamSpeed * TickSpeedInv;}
-					else {
-						if (KeyboardState.IsKeyDown(Keys.W)) _player.RootPosition -= Vector3.Normalize(new Vector3(_camera.Direction.X, 0f, _camera.Direction.Z)) * _camera.CamSpeed * TickSpeedInv;
-						if (KeyboardState.IsKeyDown(Keys.S)) _player.RootPosition += Vector3.Normalize(new Vector3(_camera.Direction.X, 0f, _camera.Direction.Z)) * _camera.CamSpeed * TickSpeedInv;
-						if (KeyboardState.IsKeyDown(Keys.A)) _player.RootPosition -= Vector3.Normalize(new Vector3(_camera.Right.X, 0f, _camera.Right.Z)) * _camera.CamSpeed * TickSpeedInv;
-						if (KeyboardState.IsKeyDown(Keys.D)) _player.RootPosition += Vector3.Normalize(new Vector3(_camera.Right.X, 0f, _camera.Right.Z)) * _camera.CamSpeed * TickSpeedInv;
+						// if (KeyboardState.IsKeyDown(Keys.W)) _camera.Target -= _camera.Direction * moveAmount;
+						// if (KeyboardState.IsKeyDown(Keys.S)) _camera.Target += _camera.Direction * moveAmount;
+						// if (KeyboardState.IsKeyDown(Keys.A)) _camera.Target -= _camera.Right * moveAmount;
+						// if (KeyboardState.IsKeyDown(Keys.D)) _camera.Target += _camera.Right * moveAmount;
+						// if (KeyboardState.IsKeyDown(Keys.Space) || KeyboardState.IsKeyDown(Keys.E)) _camera.Target += _camera.Up * moveAmount;
+						// if (KeyboardState.IsKeyDown(Keys.LeftShift) || KeyboardState.IsKeyDown(Keys.Q)) _camera.Target -= _camera.Up * moveAmount;
+						float movement = (KeyboardState.IsKeyDown(Keys.W) ? -moveAmount : 0) + (KeyboardState.IsKeyDown(Keys.S) ? moveAmount : 0);
+						Vector3 plrMovement = Vector3.Zero;
+						plrMovement += _camera.Direction * movement;
+						movement = (KeyboardState.IsKeyDown(Keys.A) ? -moveAmount : 0) + (KeyboardState.IsKeyDown(Keys.D) ? moveAmount : 0);
+						plrMovement += _camera.Right * movement;
+						movement = ((KeyboardState.IsKeyDown(Keys.Space) || KeyboardState.IsKeyDown(Keys.E)) ? moveAmount : 0) + ((KeyboardState.IsKeyDown(Keys.LeftShift) || KeyboardState.IsKeyDown(Keys.Q)) ? -moveAmount : 0);
+						plrMovement += _camera.Up * movement;
+						_player.RootPosition += plrMovement;
+						_player.RootModel = Matrix4.CreateRotationX(_player.RootRotation.X) * Matrix4.CreateRotationY(_player.RootRotation.Y) * Matrix4.CreateRotationZ(_player.RootRotation.Z) * Matrix4.CreateScale(_player.RootScale) * Matrix4.CreateTranslation(_player.RootPosition);
+						_player.UpdateLimbs();
+					} else {
+						// if (KeyboardState.IsKeyDown(Keys.W)) _player.RootPosition -= Vector3.Normalize(new Vector3(_camera.Direction.X, 0f, _camera.Direction.Z)) * moveAmount;
+						// if (KeyboardState.IsKeyDown(Keys.S)) _player.RootPosition += Vector3.Normalize(new Vector3(_camera.Direction.X, 0f, _camera.Direction.Z)) * moveAmount;
+						// if (KeyboardState.IsKeyDown(Keys.A)) _player.RootPosition -= Vector3.Normalize(new Vector3(_camera.Right.X, 0f, _camera.Right.Z)) * moveAmount;
+						// if (KeyboardState.IsKeyDown(Keys.D)) _player.RootPosition += Vector3.Normalize(new Vector3(_camera.Right.X, 0f, _camera.Right.Z)) * moveAmount;
+						float movement = (KeyboardState.IsKeyDown(Keys.W) ? -moveAmount : 0) + (KeyboardState.IsKeyDown(Keys.S) ? moveAmount : 0);
+						Vector3 plrMovement = Vector3.Zero;
+						if (movement != 0) {
+							(float x, float z) = (_camera.Direction.X, _camera.Direction.Z);
+							float s = movement / MathF.Sqrt(x * x + z * z);
+							plrMovement = new Vector3(x*s, 0, z*s);
+						}
+						movement = (KeyboardState.IsKeyDown(Keys.A) ? -moveAmount : 0) + (KeyboardState.IsKeyDown(Keys.D) ? moveAmount : 0);
+						if (movement != 0) {
+							(float x, float z) = (_camera.Right.X, _camera.Right.Z);
+							float s = movement / MathF.Sqrt(x * x + z * z);
+							plrMovement += new Vector3(x*s, 0, z*s);
+						}
+						_player.RootPosition += plrMovement;
 						if (KeyboardState.IsKeyDown(Keys.Space) && _player.IsGrounded) _player.Jump();
 						_player.StepPhysics(TickSpeedInv);}
 					_camera.Target = _player.RootPosition;
 					_camera.UpdateVectors(); // update cam
 
-					switch (_gameMode) {
-						case "pong":
-							_pongGame.UpdateRot(new Vector3(270f, (float)_gameTime * 15f, 0f));
-							_pongGame.Update(TickSpeedInv);
-							break;
-						case "mania":
-							// Console.WriteLine(_dT);
-							_maniaRGPrototype.time = Stopwatch.GetElapsedTime(_maniaRGPrototype.timeOffset).TotalSeconds;
-							_maniaRGPrototype.Update();
-							break;
-						case "v1k":
-							// Console.WriteLine(_dT);
-							_1kManiaPrototype.time = _1kManiaPrototype.stopwatch.Elapsed.TotalSeconds + _1kManiaPrototype.timeOffset;
-							_1kManiaPrototype.Update();
-							break;
-						default:
-							break;}
+					foreach (IMinigame minigame in _currentMinigames)
+					minigame.OnUpdateFrame(this, e.Time);
 
 					if (_isChatting) _chattingBlinker += 3;}}
 			else {/* window is not focused */}}
@@ -373,7 +373,7 @@ namespace GameEngineThing {
 			base.OnResize(e);
 			_clientSize = ClientSize;
 			GL.Viewport(0, 0, _clientSize.X, _clientSize.Y);
-			_camera.Projection = Matrix4.CreatePerspectiveFieldOfView(MathHelper.DegreesToRadians(45f), _clientSize.X / (float)_clientSize.Y, .1f, 100f);}
+			_camera.Projection = Matrix4.CreatePerspectiveFieldOfView(MathHelper.DegreesToRadians(45f), _clientSize.X / (float)_clientSize.Y, .1f, 10000f);}
 		protected override void OnTextInput(TextInputEventArgs e) {
 			base.OnTextInput(e);
 			string s = e.AsString;
@@ -396,78 +396,28 @@ namespace GameEngineThing {
 							_chattingTextLines++;}
 						else {
 							string lowercaseChatTxt = _chattingText.ToLower();
-							switch (lowercaseChatTxt) {
-								case "exit" or "quit" or "cabbage": // cabbage :3
-									WillReopen = false;
-									Close(); break;
-								case "pong" or "snake" or "fnf":
-									ReopenData = _chattingText;
-									WillReopen = true;
-									Close(); break;
-								case "v1kshowalldata" or "v1k show all data" or "v1kshowall" or "v1k show all" or "v1kshowallinfo" or "v1k show all info": VerticalOneKey.DisplayFullInfo = !VerticalOneKey.DisplayFullInfo; break;
-								case "maniashowalldata": ManiaRG.DisplayFullInfo = !ManiaRG.DisplayFullInfo; break;
-								case "debugtxt" or "debugtext" or "debug text" or "debug txt" or "dbtxt": Console.WriteLine("debug txt entered debugging thing idk\nPrevious thing: " + _debugFlags.HasFlag(DebugFlags.debugText));
-									if (_debugFlags.HasFlag(DebugFlags.debugText))
-										_debugFlags &= (DebugFlags)0b1111111111111111111111111111110; else _debugFlags |= DebugFlags.debugText;
-									Console.WriteLine("Now: " + _debugFlags.HasFlag(DebugFlags.debugText)); break;
-								case "debuglog": Console.WriteLine("debug logging entered debugging thing idk\nPrevious: " + _debugFlags.HasFlag(DebugFlags.debugLogging));
-									if (_debugFlags.HasFlag(DebugFlags.debugLogging))
-										_debugFlags &= (DebugFlags)0b1111111111111111111111111111101; else _debugFlags |= DebugFlags.debugLogging;
-									Console.WriteLine("Now: " + _debugFlags.HasFlag(DebugFlags.debugText)); break;
-								case "showvsync": Console.WriteLine("Vsync mode right now: " + VSync); break;
-								case "vsyncon": VSync = VSyncMode.On; break;
-								case "vsyncoff": VSync = VSyncMode.Off; break;
-								case "vsyncadapt": VSync = VSyncMode.Adaptive; break;
-								case "stoprecording": Console.WriteLine("Stopping recording hopefully."); StopRecording(); Console.WriteLine("Stopped recording hopefully..."); break;
-								default:
-									if (lowercaseChatTxt.StartsWith("reopen")) {
-										WillReopen = true;
-										if (lowercaseChatTxt.Length > 6 && lowercaseChatTxt[6] == ' ') {
-											ReopenData = lowercaseChatTxt[7..];
-											Console.WriteLine("ReopenData: \"" + ReopenData + "\""); } Close(); }
-									else {
-										if (lowercaseChatTxt.Length > 7) {
-											if (lowercaseChatTxt.StartsWith("record")) {
-												switch (lowercaseChatTxt[6]) {
-													case ' ':
-														StartRecording(lowercaseChatTxt[7..]); Console.WriteLine("Recording with file path " + lowercaseChatTxt[7..]);
-														break;
-													case '_':
-														int breakcharpos = lowercaseChatTxt.IndexOf(',', 7);
-														if (breakcharpos == -1) { Console.WriteLine("fps not found..."); return; }
-														int fps = Convert.ToInt32(lowercaseChatTxt[7..breakcharpos++]);
-														StartRecording(lowercaseChatTxt[breakcharpos..], fps: fps); Console.WriteLine("Recording at " + fps + " fps with file path " + lowercaseChatTxt[breakcharpos..]);
-														break;
-													case 'f':
-														int breakcharpos1 = lowercaseChatTxt.IndexOf(',', 7);
-														if (breakcharpos1 == -1) { Console.WriteLine("fps not found..."); return; }
-														int bfps = Convert.ToInt32(lowercaseChatTxt[7..breakcharpos1++]);
-														StartRecording(lowercaseChatTxt[breakcharpos1..], fps: bfps); Console.WriteLine("Recording at " + bfps + " fps with file path " + lowercaseChatTxt[breakcharpos1..]);
-														break; }}
-											else if (lowercaseChatTxt.Length > 8) {
-												string firstEight = lowercaseChatTxt[..8];
-												switch (firstEight) {
-													case "loadmap ":
-														if (_gameMode == "v1k") {
-															string path = lowercaseChatTxt[8..];
-															if (File.Exists(path)) {
-																string data = File.ReadAllText(path);
-																if (_1kManiaPrototype.TryLoadMapFromString(data)) Console.WriteLine("Loadmap success!"); else Console.WriteLine("Failed to load map."); }
-															else Console.WriteLine("Path does not exist!");
-														} else if (_gameMode == "mania") {
-															string path = lowercaseChatTxt[8..];
-															if (File.Exists(path)) {
-																string data = File.ReadAllText(path);
-																if (_maniaRGPrototype.TryLoadMapFromString(data)) Console.WriteLine("Loadmap success!"); else Console.WriteLine("Failed to load map."); }
-															else Console.WriteLine("Path does not exist!"); }
-														break;
-													case "profamt " or "proflen ":
-														try { profilerFrameTimes = new double[Math.Min(Convert.ToUInt32(lowercaseChatTxt[8..]), 1048576)]; profilerIndex = 0; }
-														catch (FormatException ex) { Console.WriteLine("Incorrect formatting. " + ex.Message); }
-														catch (OverflowException ex) { Console.WriteLine("Overflow. ARE YOU TRYING TO CRASH YOUR COMPUTER OR SOMETHING??? (automatically capped at 1048576, but this error only appears above ~4.2B) " + ex.Message); }
-														break;
-												}}}}
-									break; }
+							bool debug = _debugFlags.HasFlag(DebugFlags.debugLogging);
+							if (debug) Console.WriteLine("chattxt: " + _chattingText + "; lower: " + lowercaseChatTxt);
+							bool continueAfter = true;
+							if (DataStuff.noInputChatCommands.TryGetValue(lowercaseChatTxt, out (Action<Game> action, bool breakOut) noInputCmd)) {
+								if (debug) Console.WriteLine("Found a no-input command for " + lowercaseChatTxt + "; breakOut: " + noInputCmd.breakOut);
+								noInputCmd.action(this); continueAfter = !noInputCmd.breakOut; }
+							else if (debug) Console.WriteLine("Did not find a no-input command for " + lowercaseChatTxt + ".");
+							if (continueAfter) {
+								if (debug) Console.WriteLine("Searching for input commands...");
+								if (DataStuff.chatCommands.TryGetValue(lowercaseChatTxt, out (Action<Game, string> action, bool breakOut) inputCmd))
+								{
+									if (debug) Console.WriteLine("Found command " + lowercaseChatTxt + ". breakOut: " + inputCmd.breakOut);
+									inputCmd.action(this, "");
+									if (inputCmd.breakOut) break;
+								} else if (debug) Console.WriteLine(lowercaseChatTxt + " is not a valid input command...");
+								for (int i = lowercaseChatTxt.Length-1; i > 0; i--) {
+									string s = lowercaseChatTxt[..i];
+									if (DataStuff.chatCommands.TryGetValue(s, out inputCmd)) {
+										if (debug) Console.WriteLine("Found command " + s + ". breakOut: " + inputCmd.breakOut);
+										inputCmd.action(this, lowercaseChatTxt[i..]);
+										if (inputCmd.breakOut) break; } else if (debug) Console.WriteLine(s + " is not a valid input command..."); } }
+							if (debug) Console.WriteLine("finalizing or smth idk");
 							_chattingText = "";
 							_chattingTextLines = 1;
 							_isChatting = false;}
@@ -482,42 +432,69 @@ namespace GameEngineThing {
 					case Keys.C: if (e.Modifiers.HasFlag(KeyModifiers.Control)) ClipboardString = _chattingText; break;
 					default: break; }}
 			else {
-				switch (_gameMode) {
-					case "pong": _pongGame.KeyInputQueue.Add(new GameKeyState1(e.Key, true)); break;
-					case "v1k": _1kManiaPrototype.KeyDown(e.Key); break;
-					case "mania": _maniaRGPrototype.KeyDown(e.Key,Stopwatch.GetElapsedTime(_maniaRGPrototype.timeOffset).TotalSeconds); break;
-					default: break;}
+				foreach (IMinigame minigame in _currentMinigames) minigame.OnKeyDown(e);
 				switch (e.Key) {
-					case Keys.F6:
-						if (e.Modifiers.HasFlag(KeyModifiers.Control)) {
-							profilerOn = !profilerOn; }
-						break;
+					case Keys.F6: if (e.Modifiers.HasFlag(KeyModifiers.Control)) { profilerOn = !profilerOn; } break;
 					default: break; } }}
 		protected override void OnKeyUp(KeyboardKeyEventArgs e) {
 			base.OnKeyUp(e);
-			switch (_gameMode) {
-				case "pong": _pongGame.KeyInputQueue.Add(new GameKeyState1(e.Key, false)); break;
-				default: break;}}
-		// protected override void OnMouseDown(MouseButtonEventArgs e){base.OnMouseDown(e);if(e.Action.HasFlag(InputAction.Repeat))Console.WriteLine("repmd("+e.Button+","+e.Modifiers+")");else Console.WriteLine("Mouse down:"+e.Button+","+ e.Modifiers);}
-		// protected override void OnMouseUp(MouseButtonEventArgs e){base.OnMouseUp(e);Console.WriteLine("Mouse up: "+e.Button+", "+e.Modifiers);}
+			foreach (IMinigame minigame in _currentMinigames) minigame.OnKeyUp(e);
+		}
+		protected override void OnMouseDown(MouseButtonEventArgs e)
+		{
+			base.OnMouseDown(e);
+			foreach (IMinigame minigame in _currentMinigames) minigame.OnMouseDown(e);
+			// if (e.Action.HasFlag(InputAction.Repeat))
+			// 	Console.WriteLine("repmd(" + e.Button + "," + e.Modifiers + ")");
+			// else Console.WriteLine("Mouse down:" + e.Button + "," + e.Modifiers);
+		}
+		protected override void OnMouseUp(MouseButtonEventArgs e)
+		{
+			base.OnMouseUp(e);
+			foreach (IMinigame minigame in _currentMinigames) minigame.OnMouseUp(e);
+			// Console.WriteLine("Mouse up: " + e.Button + ", " + e.Modifiers);
+		}
 		protected override void OnClosing(CancelEventArgs e) {
+			long ts0 = Stopwatch.GetTimestamp();
 			base.OnClosing(e);
 			// Clean up OpenGL resources
-			_textRenderer?.Dispose();
-			_cube?.Dispose();
-			_tetrahedron?.Dispose();
-			_plane?.Dispose();
-			_playerTorsoMesh?.Dispose();
-			_playerHeadMesh?.Dispose();
-			_playerArmMesh?.Dispose();
-			_playerLegMesh?.Dispose();
-			_textureSheet?.Dispose();
-			_shader?.Dispose();
-			_textShader?.Dispose();}
+			if (_debugFlags.HasFlag(DebugFlags.debugLogging)) {
+				long ts1 = Stopwatch.GetTimestamp();
+				foreach (IMinigame minigame in _currentMinigames) minigame.OnClosing(e);
+				double t0 = Stopwatch.GetElapsedTime(ts1).TotalMilliseconds;
+				long ts2 = Stopwatch.GetTimestamp();
+				_textRenderer?.Dispose();
+				_cube?.Dispose();
+				_tetrahedron?.Dispose();
+				_plane?.Dispose();
+				_playerTorsoMesh?.Dispose();
+				_playerHeadMesh?.Dispose();
+				_playerArmMesh?.Dispose();
+				_playerLegMesh?.Dispose();
+				_textureSheet?.Dispose();
+				_shader?.Dispose();
+				_textShader?.Dispose();
+				double t1 = Stopwatch.GetElapsedTime(ts0).TotalMilliseconds;
+				double t2 = Stopwatch.GetElapsedTime(ts1).TotalMilliseconds;
+				double t3 = Stopwatch.GetElapsedTime(ts2).TotalMilliseconds;
+				Console.WriteLine("Closing time: "+t1+"ms; game: "+t2+"ms; minigame took "+t0+"ms, or "+t0/t1*100+"% time. Disposing took "+t3+"ms.");
+			} else {
+				foreach (IMinigame minigame in _currentMinigames) minigame.OnClosing(e);
+				_textRenderer?.Dispose();
+				_cube?.Dispose();
+				_tetrahedron?.Dispose();
+				_plane?.Dispose();
+				_playerTorsoMesh?.Dispose();
+				_playerHeadMesh?.Dispose();
+				_playerArmMesh?.Dispose();
+				_playerLegMesh?.Dispose();
+				_textureSheet?.Dispose();
+				_shader?.Dispose();
+				_textShader?.Dispose();}}
 
-		private void StartRecording(string output, int fps = 60, float speed = 1) {
+		public void StartRecording(string output, int fps = 60, float speed = 1) {
 			_videoRecorder = new VideoRecorder(_clientSize.X, _clientSize.Y, fps, output, speed, useNvenc: false, withAudio: false); }
-		private void StopRecording() {
+		public void StopRecording() {
 			_videoRecorder?.Stop();
 			_videoRecorder?.Dispose();
 			_videoRecorder = null; } }
@@ -621,7 +598,6 @@ namespace GameEngineThing {
 
 			if (Mipmap) GL.GenerateMipmap(GenerateMipmapTarget.Texture2D);
 
-
 			return new Texture(handle, width, height);}
 
 		public Texture(int glHandle, int w, int h) {
@@ -637,45 +613,48 @@ namespace GameEngineThing {
 			GL.DeleteTexture(Handle);}}
 	public class Camera {
 		public float CamSpeed { get; set; } = 3f;
-		public Vector3 CameraToTargetOffset { get; set; } = new Vector3(0f, 0f, 1f);
+		public Vector3 CameraToTargetOffset { get; set; } = new Vector3(0f, 0f, -1f);
 		public float CameraDistFromTarget { get; set; } = 3f;
-		public Vector3 CameraFront { get; set; } = new Vector3(0f, 0f, -1f);
-		public float MinDist { get; } = .05f;
-		public float MaxDist { get; } = 128f;
+		// public Vector3 CameraFront { get; set; } = new Vector3(0f, 0f, -1f);
+		public float MinDist = .05f;
+		public float MaxDist = 128f;
 		public Vector3 Target { get; set; } = Vector3.Zero;
 		public Vector3 Position { get; set; } = new Vector3(0f, 0f, 3f);
 		public Vector3 Up { get; } = Vector3.UnitY;
 		public Vector3 Direction { get; set; }
 		public Vector3 Right { get; set; }
+		/// <summary>
+		/// The matrix to project objects to the screen. It is the view but also multiplied by the projection matrix. idk if it helps but yeah.
+		/// </summary>
 		public Matrix4 View { get; set; }
 
 		public float Pitch { get; set; }
 		public float Yaw { get; set; }
 		public float MouseSensitivity { get; set; } = .005f;
 
-		public float PlayerSpeed { get; set; } = 5f;
+		// public float PlayerSpeed { get; set; } = 5f;
 		public bool IsFlying { get; set; } = false;
-		public float JumpPower { get; set; } = 5f;
-		public Vector3 Gravity { get; set; } = new Vector3(0f, -9.81f, 0f);
-		public Vector3 PlayerVelocity { get; set; } = Vector3.Zero;
-		public bool IsFalling { get; set; } = false;
-		public bool IsGrounded { get; set; } = true;
+		// public float JumpPower { get; set; } = 5f;
+		// public Vector3 Gravity { get; set; } = new Vector3(0f, -9.81f, 0f);
+		// public Vector3 PlayerVelocity { get; set; } = Vector3.Zero;
+		// public bool IsFalling { get; set; } = false;
+		// public bool IsGrounded { get; set; } = true;
 		public Matrix4 Projection { get; set; }
 
 		public Camera(Vector3 position, Vector3 target, Vector3 up) {
 			Direction = Vector3.Normalize(position - target);
 			Right = Vector3.Normalize(Vector3.Cross(up, Direction));
-			View = Matrix4.LookAt(position, target, up);
+			Projection = Matrix4.CreatePerspectiveFieldOfView(MathHelper.DegreesToRadians(45f), 800f / 600f, .1f, 10000f);
+			View = Matrix4.LookAt(position, target, up) * Projection;
 
 			Position = position;
 			Target = target;
-			Up = up;
-			Projection = Matrix4.CreatePerspectiveFieldOfView(MathHelper.DegreesToRadians(45f), 800f / 600f, .1f, 100f);}
+			Up = up; }
 		public void UpdateVectors() {
 			Position = Target + CameraToTargetOffset * CameraDistFromTarget;
 			Direction = Vector3.Normalize(Position - Target);
 			Right = Vector3.Normalize(Vector3.Cross(Up, Direction));
-			View = Matrix4.LookAt(Position, Target, Up);}}
+			View = Matrix4.LookAt(Position, Target, Up) * Projection;}}
 	public class ObjectMesh {
 		public static int MeshCount = 0;
 		public static List<ObjectMesh> Meshes = [];
@@ -858,565 +837,6 @@ namespace GameEngineThing {
 		public FontCharacterData(Dictionary<string, GlyphData> SChars) { this.SChars = SChars; }
 		public FontCharacterData(Dictionary<char, GlyphData> Chars, Dictionary<string, GlyphData> SChars) { this.Chars = Chars; this.SChars = SChars; }}
 
-	public class Text {
-		public Texture TextTexture { get; set; }
-		public static readonly char[] CharSearchThingy = ['|', '\\', '\n'];
-		public const int BulkDrawConst = 4096;
-		public const int MTILen = BulkDrawConst * 6;
-		// the reason this is like this is because there are 4 floats in each vertex and 4 vertices for each character.
-		public const int BulkDrawFloats = BulkDrawConst * 16;
-		private static readonly uint[] MTI = new uint[MTILen]; // ManyTextIndices. This should only be initialized one time, because it is always the same.
-		private static bool IsInitialized = false;
-		public int VAO;
-		public int VBO;
-		public static int EBO { get; private set; }
-		public List<TxtOptions> TextThingies = [];
-		public Text(Texture textTexture) {
-			TextTexture = textTexture;
-			VAO = GL.GenVertexArray();
-			VBO = GL.GenBuffer();
-			GL.BindVertexArray(VAO);
-			GL.BindBuffer(BufferTarget.ArrayBuffer, VBO);
-			GL.BufferData(BufferTarget.ArrayBuffer, sizeof(float) * BulkDrawFloats, 0, BufferUsageHint.DynamicDraw);
-
-			GL.BindBuffer(BufferTarget.ElementArrayBuffer, EBO);
-			GL.EnableVertexAttribArray(0);
-			GL.VertexAttribPointer(0, 4, VertexAttribPointerType.Float, false, 4 * sizeof(float), 0);
-			GL.BindBuffer(BufferTarget.ArrayBuffer, 0);
-			GL.BindVertexArray(0);
-			GL.BindBuffer(BufferTarget.ElementArrayBuffer, 0);}
-		static Text() {
-			for (uint i = 0, j = 0; i < MTILen; i += 6, j += 4) {
-				MTI[i] = j; MTI[i + 1] = j + 1; MTI[i + 2] = j + 2; MTI[i + 3] = j; MTI[i + 4] = j + 2; MTI[i + 5] = j + 3;}}
-		public static void Initialize() {
-			if (!IsInitialized) {
-				RealInitialize();
-				IsInitialized = true;}}
-		public static void RealInitialize() {
-			// Ensure no mesh VAO is currently bound so binding the EBO doesn't attach to a mesh VAO
-			GL.BindVertexArray(0);
-			EBO = GL.GenBuffer();
-			GL.BindBuffer(BufferTarget.ElementArrayBuffer, EBO);
-			GL.BufferData(BufferTarget.ElementArrayBuffer, MTILen * sizeof(uint), MTI, BufferUsageHint.DynamicDraw);}
-		/// <summary> Renders text. </summary>
-		/// <param name="shader">The shader.</param>
-		/// <param name="text">The text to be rendered.</param>
-		/// <param name="posOffset">Position; takes inspiration from Roblox's UDim2; offset.</param>
-		/// <param name="posScale">Position; takes inspiration from Roblox's UDim2; scale. Visible range is -.5 to .5.</param>
-		/// <param name="textScale">The text size. FOR BEST RESULTS USE A MULTIPLE OF 2 BECAUSE FOR SOME REASON A PIXEL IS ACTUALLY 2??</param>
-		/// <param name="color">The color of the text so your text can be colorful.</param>
-		/// <param name="windowSize">The size of the window. there is probably a better way to do this,,</param>
-		public void RenderText(Game game, Shader shader, string text, Vector2i posOffset, Vector2 posScale, Vector2 textScale, Vector3 color, float lineHeight, Vector2i windowSize, FontCharacterData fontCharData, bool useSpecialChar = false) {
-			shader.Use();
-			shader.SetVector3("textColor", color);
-			GL.BindVertexArray(VAO);
-
-
-			Vector2 absPos = new(posOffset.X + posScale.X * windowSize.X, posOffset.Y + posScale.Y * windowSize.Y);
-			float spaceSize = textScale.X * 3;
-			float tabSize = spaceSize * 4;
-
-			float[] vertices = new float[BulkDrawFloats];
-			int vI = 0;
-
-			GL.BindBuffer(BufferTarget.ArrayBuffer, VBO);
-			if (useSpecialChar) {
-				int incorrectSpecialChar = 0;
-				for (int i = 0; i < text.Length; i++) {
-					char c = text[i];
-					GlyphData Chr;
-					if (incorrectSpecialChar > 0 && --incorrectSpecialChar == 0 && c == '|') continue;
-					switch (c) {
-						case ' ': absPos = new(absPos.X + spaceSize, absPos.Y); continue;
-						case '	': absPos = new(absPos.X + tabSize, absPos.Y); continue;
-						case '\n': absPos = new(posOffset.X + posScale.X * windowSize.X, absPos.Y - textScale.Y * lineHeight); continue;
-						case '\\':
-							int ip1 = i + 1;
-							if (ip1 >= text.Length || text[ip1] == '\\') { Chr = fontCharData.Chars['\\']; break; } // if this is the last char or the next char is another '\\' then show a '\\' char.
-							char nextChar = text[ip1];
-							if (nextChar == '|') { Chr = fontCharData.Chars['\\']; i++; break; } // if the next char is a | char (my format is \| for '\\' chars) then show a '\\', then increment i so the '|' isn't shown.
-							if (nextChar == '\n') { i++; goto case '\n'; } // if the line goes to a new line then increment i and do the next line stuff.
-							byte IsStacking = 0;
-							int j = text.IndexOfAny(CharSearchThingy, ip1);
-							if (j == -1) j = text.Length; else if (text[j] != '|') IsStacking = 1;
-							int len = j - ip1;
-							string s;
-							if (len == -1) s = text[ip1..];
-							else s = text.Substring(ip1, len);
-							if (fontCharData.SChars.TryGetValue(s, out Chr)) { i = j - IsStacking; } // if it can find the special character then jump to the index of the last chr in the special character, and the next char will be a new one.
-							else { // if it cant find the special character then color the characters red, if there is at least one character.
-								shader.SetVector3("textColor", new(.5f, 0, 1f));
-								incorrectSpecialChar = len + 1;
-								Chr = fontCharData.Chars['\\'];}
-							break;
-						default: if (!fontCharData.Chars.TryGetValue(c, out Chr)) Chr = fontCharData.Chars['?']; break;}
-					float startX = (MathF.Floor(absPos.X + Chr.bearing.X * textScale.X) + .5f) / windowSize.X;
-					float startY = (MathF.Floor(absPos.Y + Chr.bearing.Y * textScale.Y) + .5f) / windowSize.Y;
-					float endX = (MathF.Floor(absPos.X + Chr.bearing.X * textScale.X + MathF.Ceiling(Chr.size.X * textScale.X)) + .5f) / windowSize.X;
-					float endY = (MathF.Floor(absPos.Y + Chr.bearing.Y * textScale.Y + MathF.Ceiling(Chr.size.Y * textScale.Y)) + .5f) / windowSize.Y;
-
-					float tStartX = Chr.textureStart.X / (float)TextTexture.Width;
-					float tStartY = Chr.textureStart.Y / (float)TextTexture.Height;
-					float tEndX = (Chr.textureStart.X + Chr.textureSize.X) / (float)TextTexture.Width;
-					float tEndY = (Chr.textureStart.Y + Chr.textureSize.Y) / (float)TextTexture.Height;
-					vertices[vI] = startX; vertices[vI + 1] = startY; vertices[vI + 2] = tStartX; vertices[vI + 3] = tStartY;
-					vertices[vI + 4] = startX; vertices[vI + 5] = endY; vertices[vI + 6] = tStartX; vertices[vI + 7] = tEndY;
-					vertices[vI + 8] = endX; vertices[vI + 9] = endY; vertices[vI + 10] = tEndX; vertices[vI + 11] = tEndY;
-					vertices[vI + 12] = endX; vertices[vI + 13] = startY; vertices[vI + 14] = tEndX; vertices[vI + 15] = tStartY;
-					if (vI == BulkDrawFloats - 16) {
-						GL.BufferSubData(BufferTarget.ArrayBuffer, 0, sizeof(float) * BulkDrawFloats, vertices);
-
-						GL.DrawElements(PrimitiveType.Triangles, MTILen, DrawElementsType.UnsignedInt, 0);
-						vI = 0;} else vI += 16;
-					absPos += new Vector2i((int)(Chr.advance.X * textScale.X), (int)(Chr.advance.Y * textScale.Y));}
-				if (vI != 0) {
-					GL.BufferSubData(BufferTarget.ArrayBuffer, 0, sizeof(float) * vI, vertices);
-					GL.DrawElements(PrimitiveType.Triangles, vI * 3 / 8, DrawElementsType.UnsignedInt, 0);}}
-			else {
-				for (int i = 0; i < text.Length; i++) {
-					char c = text[i];
-					GlyphData Chr;
-					switch (c) {
-						case ' ': absPos = new(absPos.X + spaceSize, absPos.Y); continue;
-						case '	': absPos = new(absPos.X + tabSize, absPos.Y); continue;
-						case '\n': absPos = new(posOffset.X + posScale.X * windowSize.X, absPos.Y - textScale.Y * lineHeight); continue;
-						default: if (!fontCharData.Chars.TryGetValue(c, out Chr)) Chr = fontCharData.Chars['?']; break;}
-					float startX = (MathF.Floor(absPos.X + Chr.bearing.X * textScale.X) + .5f) / windowSize.X;
-					float startY = (MathF.Floor(absPos.Y + Chr.bearing.Y * textScale.Y) + .5f) / windowSize.Y;
-					float endX = (MathF.Floor(absPos.X + Chr.bearing.X * textScale.X + MathF.Ceiling(Chr.size.X * textScale.X)) + .5f) / windowSize.X;
-					float endY = (MathF.Floor(absPos.Y + Chr.bearing.Y * textScale.Y + MathF.Ceiling(Chr.size.Y * textScale.Y)) + .5f) / windowSize.Y;
-
-					float tStartX = Chr.textureStart.X / (float)TextTexture.Width;
-					float tStartY = Chr.textureStart.Y / (float)TextTexture.Height;
-					float tEndX = (Chr.textureStart.X + Chr.textureSize.X) / (float)TextTexture.Width;
-					float tEndY = (Chr.textureStart.Y + Chr.textureSize.Y) / (float)TextTexture.Height;
-
-					vertices[vI] = startX; vertices[vI + 1] = startY; vertices[vI + 2] = tStartX; vertices[vI + 3] = tStartY;
-					vertices[vI + 4] = startX; vertices[vI + 5] = endY; vertices[vI + 6] = tStartX; vertices[vI + 7] = tEndY;
-					vertices[vI + 8] = endX; vertices[vI + 9] = endY; vertices[vI + 10] = tEndX; vertices[vI + 11] = tEndY;
-					vertices[vI + 12] = endX; vertices[vI + 13] = startY; vertices[vI + 14] = tEndX; vertices[vI + 15] = tStartY;
-					if (vI == BulkDrawFloats - 16) {
-						GL.BufferSubData(BufferTarget.ArrayBuffer, 0, sizeof(float) * BulkDrawFloats, vertices);
-
-						GL.DrawElements(PrimitiveType.Triangles, MTILen, DrawElementsType.UnsignedInt, 0);
-						vI = 0;} else vI += 16;
-					absPos += new Vector2i((int)(Chr.advance.X * textScale.X), (int)(Chr.advance.Y * textScale.Y));}
-				if (vI != 0) {
-					GL.BufferSubData(BufferTarget.ArrayBuffer, 0, sizeof(float) * vI, vertices);
-					GL.DrawElements(PrimitiveType.Triangles, vI * 3 / 8, DrawElementsType.UnsignedInt, 0);}}
-			GL.BindBuffer(BufferTarget.ArrayBuffer, 0);
-			GL.BindVertexArray(0);}
-#nullable enable
-		public void Render(int i, Game game, string text, Shader? shader = null, Vector2i? windowSize = null) {
-			Render(TextThingies[i], game, text, shader ?? game._textShader, windowSize ?? game._clientSize); }
-		public void Render(TxtOptions o, Game game, string text, Shader? _shader = null, Vector2i? winSize = null) {
-#nullable disable
-			Shader shader = _shader ?? game._textShader;
-			Vector2i windowSize = winSize ?? game._clientSize;
-			shader.Use();
-			shader.SetVector3("textColor", o.color);
-			GL.BindVertexArray(VAO);
-
-
-			float absStartPosX = o.posOffsetX + o.posScaleX * windowSize.X;
-			float absStartPosY = o.posOffsetY + o.posScaleY * windowSize.Y;
-			float absPosX = absStartPosX;
-			float absPosY = absStartPosY;
-			float spaceSize = o.textScaleX * 3;
-			float tabSize = spaceSize * 4;
-			float newLineAmount = o.textScaleY * o.lineHeight;
-
-			float[] vertices = new float[BulkDrawFloats];
-			int vI = 0;
-
-			GL.BindBuffer(BufferTarget.ArrayBuffer, VBO);
-			if (o.useSpecialChar) {
-				for (int i = 0; i < text.Length; i++) {
-					char c = text[i];
-					GlyphData Chr;
-					switch (c) {
-						case ' ': absPosX += spaceSize; continue;
-						case '	': absPosX += tabSize; continue;
-						case '\n': absPosX = absStartPosX; absPosY -= newLineAmount; continue;
-						case '\\':
-							int ip1 = i + 1;
-							if (ip1 >= text.Length || text[ip1] == '\\') { Chr = o.fontCharData.Chars['\\']; break; } // if this is the last char or the next char is another '\\' then show a '\\' char.
-							char nextChar = text[ip1];
-							if (nextChar == '|') { Chr = o.fontCharData.Chars['\\']; i++; break; } // if the next char is a | char (my format is \| for '\\' chars) then show a '\\', then increment i so the '|' isn't shown.
-							if (nextChar == '\n') { i++; goto case '\n'; } // if the line goes to a new line then increment i and do the next line stuff.
-							byte IsStacking = 0;
-							int j = text.IndexOfAny(CharSearchThingy, ip1);
-							if (j == -1) j = text.Length; else if (text[j] != '|') IsStacking = 1;
-							int len = j - ip1;
-							string s;
-							if (len == -1) s = text[ip1..];
-							else s = text.Substring(ip1, len);
-							// if (o.fontCharData.SChars.TryGetValue(s, out Chr)) { i = j - IsStacking; } // if it can find the special character then jump to the index of the last chr in the special character, and the next char will be a new one.
-							// else
-							// {
-							// 	Chr = o.fontCharData.SChars["unknown"];
-							// }
-							i = j - IsStacking;
-							if (!o.fontCharData.SChars.TryGetValue(s, out Chr)) Chr = o.fontCharData.SChars["unknown"];
-							break;
-						default: if (!o.fontCharData.Chars.TryGetValue(c, out Chr)) Chr = o.fontCharData.Chars['?']; break;}
-					float startX = (MathF.Floor((int)absPosX + Chr.bearing.X * o.textScaleX) + .5f) / windowSize.X;
-					float startY = (MathF.Floor((int)absPosY + Chr.bearing.Y * o.textScaleY) + .5f) / windowSize.Y;
-					float endX = (MathF.Floor((int)absPosX + Chr.bearing.X * o.textScaleX + MathF.Ceiling(Chr.size.X * o.textScaleX)) + .5f) / windowSize.X;
-					float endY = (MathF.Floor((int)absPosY + Chr.bearing.Y * o.textScaleY + MathF.Ceiling(Chr.size.Y * o.textScaleY)) + .5f) / windowSize.Y;
-
-					float tStartX = Chr.textureStart.X / (float)TextTexture.Width;
-					float tStartY = Chr.textureStart.Y / (float)TextTexture.Height;
-					float tEndX = (Chr.textureStart.X + Chr.textureSize.X) / (float)TextTexture.Width;
-					float tEndY = (Chr.textureStart.Y + Chr.textureSize.Y) / (float)TextTexture.Height;
-					vertices[vI] = startX; vertices[vI + 1] = startY; vertices[vI + 2] = tStartX; vertices[vI + 3] = tStartY; vertices[vI + 4] = startX; vertices[vI + 5] = endY; vertices[vI + 6] = tStartX; vertices[vI + 7] = tEndY; vertices[vI + 8] = endX; vertices[vI + 9] = endY; vertices[vI + 10] = tEndX; vertices[vI + 11] = tEndY; vertices[vI + 12] = endX; vertices[vI + 13] = startY; vertices[vI + 14] = tEndX; vertices[vI + 15] = tStartY;
-					if (vI == BulkDrawFloats - 16) {
-						vI = 0;
-						GL.BufferSubData(BufferTarget.ArrayBuffer, 0, sizeof(float) * BulkDrawFloats, vertices);
-						GL.DrawElements(PrimitiveType.Triangles, MTILen, DrawElementsType.UnsignedInt, 0);} else vI += 16;
-					absPosX += Chr.advance.X * o.textScaleX;
-					absPosY += Chr.advance.Y * o.textScaleY;}
-				if (vI != 0) {
-					GL.BufferSubData(BufferTarget.ArrayBuffer, 0, sizeof(float) * vI, vertices);
-					GL.DrawElements(PrimitiveType.Triangles, vI * 3 / 8, DrawElementsType.UnsignedInt, 0);}}
-			else {
-				for (int i = 0; i < text.Length; i++) {
-					char c = text[i];
-					GlyphData Chr;
-					switch (c) {
-						case ' ': absPosX += spaceSize; continue;
-						case '	': absPosX += tabSize; continue;
-						case '\n': absPosX = absStartPosX; absPosY -= newLineAmount; continue;
-						default: if (!o.fontCharData.Chars.TryGetValue(c, out Chr)) Chr = o.fontCharData.Chars['?']; break;}
-					float startX = (MathF.Floor((int)absPosX + Chr.bearing.X * o.textScaleX) + .5f) / windowSize.X;
-					float startY = (MathF.Floor((int)absPosY + Chr.bearing.Y * o.textScaleY) + .5f) / windowSize.Y;
-					float endX = (MathF.Floor((int)absPosX + Chr.bearing.X * o.textScaleX + MathF.Ceiling(Chr.size.X * o.textScaleX)) + .5f) / windowSize.X;
-					float endY = (MathF.Floor((int)absPosY + Chr.bearing.Y * o.textScaleY + MathF.Ceiling(Chr.size.Y * o.textScaleY)) + .5f) / windowSize.Y;
-
-					float tStartX = Chr.textureStart.X / (float)TextTexture.Width;
-					float tStartY = Chr.textureStart.Y / (float)TextTexture.Height;
-					float tEndX = (Chr.textureStart.X + Chr.textureSize.X) / (float)TextTexture.Width;
-					float tEndY = (Chr.textureStart.Y + Chr.textureSize.Y) / (float)TextTexture.Height;
-
-					vertices[vI] = startX; vertices[vI + 1] = startY; vertices[vI + 2] = tStartX; vertices[vI + 3] = tStartY;
-					vertices[vI + 4] = startX; vertices[vI + 5] = endY; vertices[vI + 6] = tStartX; vertices[vI + 7] = tEndY;
-					vertices[vI + 8] = endX; vertices[vI + 9] = endY; vertices[vI + 10] = tEndX; vertices[vI + 11] = tEndY;
-					vertices[vI + 12] = endX; vertices[vI + 13] = startY; vertices[vI + 14] = tEndX; vertices[vI + 15] = tStartY;
-					if (vI == BulkDrawFloats - 16) {
-						vI = 0;
-						GL.BufferSubData(BufferTarget.ArrayBuffer, 0, sizeof(float) * BulkDrawFloats, vertices);
-						GL.DrawElements(PrimitiveType.Triangles, MTILen, DrawElementsType.UnsignedInt, 0);} else vI += 16;
-					// absPos += new Vector2i((int)(Chr.advance.X * o.textScaleX), (int)(Chr.advance.Y * o.textScaleY));
-					absPosX += Chr.advance.X * o.textScaleX;
-					absPosY += Chr.advance.Y * o.textScaleY;}
-				if (vI != 0) {
-					GL.BufferSubData(BufferTarget.ArrayBuffer, 0, sizeof(float) * vI, vertices);
-					GL.DrawElements(PrimitiveType.Triangles, vI * 3 / 8, DrawElementsType.UnsignedInt, 0);}}
-			GL.BindBuffer(BufferTarget.ArrayBuffer, 0);
-			GL.BindVertexArray(0);}
-		public float[][] PreCalculateVertices(string text, Vector2i posOffset, Vector2 posScale, Vector2 textScale, float lineHeight, Vector2i windowSize, FontCharacterData fontCharData, bool useSpecialChar) {
-			Vector2 absPos = new(posOffset.X + posScale.X * windowSize.X, posOffset.Y + posScale.Y * windowSize.Y);
-			float spaceSize = textScale.X * 3;
-			float tabSize = spaceSize * 4;
-			List<float[]> v = [];
-			float[] vertices = new float[BulkDrawFloats];
-			int vI = 0;
-
-			if (useSpecialChar) {
-				for (int i = 0; i < text.Length; i++) {
-					char c = text[i];
-					GlyphData Chr;
-					switch (c) {
-						case ' ': absPos = new(absPos.X + spaceSize, absPos.Y); continue;
-						case '	': absPos = new(absPos.X + tabSize, absPos.Y); continue;
-						case '\n': absPos = new(posOffset.X + posScale.X * windowSize.X, absPos.Y - textScale.Y * lineHeight); continue;
-						case '\\':
-							int ip1 = i + 1;
-							if (ip1 >= text.Length || text[ip1] == '\\') { Chr = fontCharData.Chars['\\']; break; } // if this is the last char or the next char is another '\\' then show a '\\' char.
-							char nextChar = text[ip1];
-							if (nextChar == '|') { Chr = fontCharData.Chars['\\']; i++; break; } // if the next char is a | char (my format is \| for '\\' chars) then show a '\\', then increment i so the '|' isn't shown.
-							if (nextChar == '\n') { i++; goto case '\n'; } // if the line goes to a new line then increment i and do the next line stuff.
-							int IsStacking = 0;
-							int j = text.IndexOfAny(CharSearchThingy, ip1);
-							if (j == -1) j = text.Length; else if (text[j] != '|') IsStacking = 1;
-							int len = j - ip1;
-							string s;
-							if (len == -1) s = text[ip1..];
-							else s = text.Substring(ip1, len);
-							if (fontCharData.SChars.TryGetValue(s, out Chr)) { i = j - IsStacking; } // if it can find the special character then jump to the index of the last chr in the special character, and the next char will be a new one.
-							else Chr = fontCharData.Chars['\\'];
-
-							break;
-						default: if (!fontCharData.Chars.TryGetValue(c, out Chr)) Chr = fontCharData.Chars['?']; break;}
-					float startX = (MathF.Floor(absPos.X + Chr.bearing.X * textScale.X) + .5f) / windowSize.X;
-					float startY = (MathF.Floor(absPos.Y + Chr.bearing.Y * textScale.Y) + .5f) / windowSize.Y;
-					float endX = (MathF.Floor(absPos.X + Chr.bearing.X * textScale.X + MathF.Ceiling(Chr.size.X * textScale.X)) + .5f) / windowSize.X;
-					float endY = (MathF.Floor(absPos.Y + Chr.bearing.Y * textScale.Y + MathF.Ceiling(Chr.size.Y * textScale.Y)) + .5f) / windowSize.Y;
-
-					float tStartX = Chr.textureStart.X / (float)TextTexture.Width;
-					float tStartY = Chr.textureStart.Y / (float)TextTexture.Height;
-					float tEndX = (Chr.textureStart.X + Chr.textureSize.X) / (float)TextTexture.Width;
-					float tEndY = (Chr.textureStart.Y + Chr.textureSize.Y) / (float)TextTexture.Height;
-					vertices[vI] = startX; vertices[vI + 1] = startY; vertices[vI + 2] = tStartX; vertices[vI + 3] = tStartY;
-					vertices[vI + 4] = startX; vertices[vI + 5] = endY; vertices[vI + 6] = tStartX; vertices[vI + 7] = tEndY;
-					vertices[vI + 8] = endX; vertices[vI + 9] = endY; vertices[vI + 10] = tEndX; vertices[vI + 11] = tEndY;
-					vertices[vI + 12] = endX; vertices[vI + 13] = startY; vertices[vI + 14] = tEndX; vertices[vI + 15] = tStartY;
-					if (vI == BulkDrawFloats - 16) {
-						v.Add(vertices);
-						vertices = new float[BulkDrawFloats]; // this step is VERY important! i think adding to the list just adds a pointer, and it doesn't actually clone it, so you need to create it again or else it will be filled with the same table over and over again.
-						vI = 0;} else vI += 16;
-					absPos += new Vector2i((int)(Chr.advance.X * textScale.X), (int)(Chr.advance.Y * textScale.Y));}
-				if (vI != 0) {
-					float[] verts = new float[vI];
-					Array.Copy(vertices, verts, vI); // yo this is WAY faster than my attempt lol
-					// for (int i = 0; i < vI; i += 16) {
-					// 	verts[i] = vertices[i]; verts[i + 1] = vertices[i + 1]; verts[i + 2] = vertices[i + 2]; verts[i + 3] = vertices[i + 3];
-					// 	verts[i + 4] = vertices[i + 4]; verts[i + 5] = vertices[i + 5]; verts[i + 6] = vertices[i + 6]; verts[i + 7] = vertices[i + 7];
-					// 	verts[i + 8] = vertices[i + 8]; verts[i + 9] = vertices[i + 9]; verts[i + 10] = vertices[i + 10]; verts[i + 11] = vertices[i + 11];
-					// 	verts[i + 12] = vertices[i + 12]; verts[i + 13] = vertices[i + 13]; verts[i + 14] = vertices[i + 14]; verts[i + 15] = vertices[i + 15];}
-					v.Add(verts);}}
-			else {
-				for (int i = 0; i < text.Length; i++) {
-					char c = text[i];
-					GlyphData Chr;
-					switch (c) {
-						case ' ': absPos = new(absPos.X + spaceSize, absPos.Y); continue;
-						case '	': absPos = new(absPos.X + tabSize, absPos.Y); continue;
-						case '\n': absPos = new(posOffset.X + posScale.X * windowSize.X, absPos.Y - textScale.Y * lineHeight); continue;
-						default: if (!fontCharData.Chars.TryGetValue(c, out Chr)) Chr = fontCharData.Chars['?']; break;}
-					float startX = (MathF.Floor(absPos.X + Chr.bearing.X * textScale.X) + .5f) / windowSize.X;
-					float startY = (MathF.Floor(absPos.Y + Chr.bearing.Y * textScale.Y) + .5f) / windowSize.Y;
-					float endX = (MathF.Floor(absPos.X + Chr.bearing.X * textScale.X + MathF.Ceiling(Chr.size.X * textScale.X)) + .5f) / windowSize.X;
-					float endY = (MathF.Floor(absPos.Y + Chr.bearing.Y * textScale.Y + MathF.Ceiling(Chr.size.Y * textScale.Y)) + .5f) / windowSize.Y;
-
-					float tStartX = Chr.textureStart.X / (float)TextTexture.Width;
-					float tStartY = Chr.textureStart.Y / (float)TextTexture.Height;
-					float tEndX = (Chr.textureStart.X + Chr.textureSize.X) / (float)TextTexture.Width;
-					float tEndY = (Chr.textureStart.Y + Chr.textureSize.Y) / (float)TextTexture.Height;
-
-					vertices[vI] = startX; vertices[vI + 1] = startY; vertices[vI + 2] = tStartX; vertices[vI + 3] = tStartY;
-					vertices[vI + 4] = startX; vertices[vI + 5] = endY; vertices[vI + 6] = tStartX; vertices[vI + 7] = tEndY;
-					vertices[vI + 8] = endX; vertices[vI + 9] = endY; vertices[vI + 10] = tEndX; vertices[vI + 11] = tEndY;
-					vertices[vI + 12] = endX; vertices[vI + 13] = startY; vertices[vI + 14] = tEndX; vertices[vI + 15] = tStartY;
-					vI += 16;
-					if (vI == BulkDrawFloats) {
-						v.Add(vertices);
-						vI = 0;}
-					absPos += new Vector2i((int)(Chr.advance.X * textScale.X), (int)(Chr.advance.Y * textScale.Y));}
-				if (vI != 0) {
-					float[] verts = new float[vI];
-					Array.Copy(vertices, verts, vI);
-					// for (int i = 0; i < vI; i += 16) {
-					// 	verts[i] = vertices[i]; verts[i + 1] = vertices[i + 1]; verts[i + 2] = vertices[i + 2]; verts[i + 3] = vertices[i + 3];
-					// 	verts[i + 4] = vertices[i + 4]; verts[i + 5] = vertices[i + 5]; verts[i + 6] = vertices[i + 6]; verts[i + 7] = vertices[i + 7];
-					// 	verts[i + 8] = vertices[i + 8]; verts[i + 9] = vertices[i + 9]; verts[i + 10] = vertices[i + 10]; verts[i + 11] = vertices[i + 11];
-					// 	verts[i + 12] = vertices[i + 12]; verts[i + 13] = vertices[i + 13]; verts[i + 14] = vertices[i + 14]; verts[i + 15] = vertices[i + 15];}
-					v.Add(verts);}}
-			// return v.ToArray();
-
-			float[][] V = new float[v.Count][];
-			for (int i = 0; i < v.Count; i++) { V[i] = v[i]; }
-			Console.WriteLine("v is V: " + (v.ToArray() == V));
-			return V;}
-		/// <summary>
-		/// renders vertices using data from PreCalculateVertices. will error if you dont pass any data btw.
-		/// </summary>
-		/// <param name="data">data. Each float[] except for the last has to be BulkDrawFloats long.</param>
-		/// <param name="shader">shader</param>
-		/// <param name="color">color</param>
-		public void RenderWithPrecalculatedVertices(float[][] data, Shader shader, Vector3 color) {
-			shader.Use();
-			shader.SetVector3("textColor", color);
-			GL.BindVertexArray(VAO);
-			GL.BindBuffer(BufferTarget.ArrayBuffer, VBO);
-			for (int i = 0; i < data.Length; i++) {
-				GL.BufferSubData(BufferTarget.ArrayBuffer, 0, sizeof(float) * data[i].Length, data[i]);
-				GL.DrawElements(PrimitiveType.Triangles, data[i].Length * 3 / 8, DrawElementsType.UnsignedInt, 0);}
-			// int length = data.Length;
-			// for (int i = 0; i < length-1; i++) {
-			// 	GL.BufferSubData(BufferTarget.ArrayBuffer, 0, sizeof(float) * MTILen, data[i]);
-			// 	GL.DrawElements(PrimitiveType.Triangles, MTILen, DrawElementsType.UnsignedInt, 0);}
-			// float[] deeta = data[length - 1];
-			// int deetaLen = deeta.Length;
-			// GL.BufferSubData(BufferTarget.ArrayBuffer, 0, sizeof(float) * deetaLen, deeta);
-			// GL.DrawElements(PrimitiveType.Triangles, deetaLen * 3 / 8, DrawElementsType.UnsignedInt, 0);
-			GL.BindBuffer(BufferTarget.ArrayBuffer, 0);
-			GL.BindVertexArray(0);}
-		public void RenderWithPrecalculatedLines(float[][] data, Shader shader, Vector3 color) {
-			shader.Use();
-			shader.SetVector3("textColor", color);
-			GL.BindVertexArray(VAO);
-			GL.BindBuffer(BufferTarget.ArrayBuffer, VBO);
-			// for (int i = 0; i < data.Length; i++) {
-			// 	GL.BufferSubData(BufferTarget.ArrayBuffer, 0, sizeof(float) * data[i].Length, data[i]);
-			// 	GL.DrawArrays(PrimitiveType.Lines, 0, data[i].Length);}
-			int length = data.Length;
-			for (int i = 0; i < length-1; i++) {
-				GL.BufferSubData(BufferTarget.ArrayBuffer, 0, sizeof(float) * BulkDrawFloats, data[i]);
-				GL.DrawArrays(PrimitiveType.Lines, 0, BulkDrawConst);}
-			float[] deeta = data[length - 1];
-			int deetaLen = deeta.Length;
-			GL.BufferSubData(BufferTarget.ArrayBuffer, 0, sizeof(float) * deetaLen, deeta);
-			GL.DrawElements(PrimitiveType.Triangles, deetaLen * 3 / 8, DrawElementsType.UnsignedInt, 0);
-			GL.BindBuffer(BufferTarget.ArrayBuffer, 0);
-			GL.BindVertexArray(0);}
-		public void R(float[] data, Shader shader, Vector3 color) {
-			shader.Use();
-			shader.SetVector3("textColor", color);
-			GL.BindVertexArray(VAO);
-			GL.BindBuffer(BufferTarget.ArrayBuffer, VBO);
-			GL.BufferSubData(BufferTarget.ArrayBuffer, 0, sizeof(float) * data.Length, data);
-			GL.DrawElements(PrimitiveType.Triangles, data.Length * 3 / 8, DrawElementsType.UnsignedInt, 0);
-			GL.BindBuffer(BufferTarget.ArrayBuffer, 0);
-			GL.BindVertexArray(0);}
-		public void RenderBarGraph(Game game, Vector2 position, (float, float) size, Vector3 color, double[] data) {
-			(int windowSizeX, int windowSizeY) = (game._clientSize.X, game._clientSize.Y);
-			(float sizeX, float sizeY) = size;
-			Shader shader = game._textShader;
-			shader.Use();
-			shader.SetVector3("textColor", color);
-			GL.BindVertexArray(VAO);
-			GL.BindBuffer(BufferTarget.ArrayBuffer, VBO);
-
-			float absPosX = MathF.Floor(position.X * windowSizeX) + 0.5f;
-			float absPosY = position.Y * windowSizeY;
-
-			float[] vertices = new float[BulkDrawFloats];
-			int vI = 0;
-			// int tRSX = 0;
-			int tRSY = 32;
-			// float tX = tRSX / (float)TextTexture.Width;
-			float tX = 0;
-			float tY = tRSY / (float)TextTexture.Height;
-			float startY = (0.5f + MathF.Floor(absPosY)) / windowSizeY;
-
-			if (data.Length > BulkDrawFloats / 4) { // if it takes more than one array to store all of the data
-				vertices[1] = startY;
-				vertices[2] = vertices[6] = tX;
-				vertices[3] = vertices[7] = tY;
-				int i = 8;
-				for (; i < BulkDrawFloats/2+1; i *= 2) Array.Copy(vertices, 1, vertices, i + 1, i - 1);
-				if (i < BulkDrawFloats) Array.Copy(vertices, 1, vertices, i + 1, BulkDrawFloats - i - 1);
-				// please work
-				vertices.CopyTo(vertices, 0);
-				
-				for (i = 0; i < data.Length; i++) {
-					// float xPos = (0.5f + MathF.Floor(absPosX)) / windowSizeX;
-					// float endY = (float)((0.5 + Math.Floor(absPosY + data[i] / sizeY)) / windowSizeY);
-
-					// vertices[vI] = vertices[vI + 4] = xPos;
-					vertices[vI] = vertices[vI + 4] = absPosX / windowSizeX;
-					vertices[vI + 5] = (float)((0.5 + Math.Floor(absPosY + data[i] / sizeY)) / windowSizeY);
-					// vertices[vI + 5] = endY;
-					if (vI == BulkDrawFloats - 8)
-					{
-						vI = 0;
-						GL.BufferSubData(BufferTarget.ArrayBuffer, 0, sizeof(float) * BulkDrawFloats, vertices);
-						GL.DrawArrays(PrimitiveType.Lines, 0, BulkDrawFloats); /*it's still bulkdrawfloats because i have an array thing of some length and i'll use ALL of it.*/
-					}
-					else vI += 8;
-					// absPos += new Vector2i((int)(Chr.advance.X * o.textScaleX), (int)(Chr.advance.Y * o.textScaleY));
-					absPosX += sizeX * 2;
-				}
-			}
-			// vertices[1] = startY;
-			// vertices[2] = vertices[6] = tX;
-			// vertices[3] = vertices[7] = tY;
-
-			else for (int i = 0; i < data.Length; i++) {
-				// float xPos = (0.5f + MathF.Floor(absPosX)) / windowSizeX;
-				// float endY = (float)((0.5 + Math.Floor(absPosY + data[i] / sizeY)) / windowSizeY);
-
-				// vertices[vI] = vertices[vI + 4] = xPos;
-				vertices[vI] = vertices[vI + 4] = absPosX / windowSizeX;
-				vertices[vI + 1] = startY;
-				vertices[vI + 2] = vertices[vI + 6] = tX;
-				vertices[vI + 3] = vertices[vI + 7] = tY;
-				vertices[vI + 5] = (float)((0.5 + Math.Floor(absPosY + data[i] / sizeY)) / windowSizeY);
-				// vertices[vI + 5] = endY;
-				if (vI == BulkDrawFloats - 8) { vI = 0;
-					GL.BufferSubData(BufferTarget.ArrayBuffer, 0, sizeof(float) * BulkDrawFloats, vertices);
-					GL.DrawArrays(PrimitiveType.Lines, 0, BulkDrawFloats); /*it's still bulkdrawfloats because i have an array thing of some length and i'll use ALL of it.*/ }
-				else vI += 8;
-				// absPos += new Vector2i((int)(Chr.advance.X * o.textScaleX), (int)(Chr.advance.Y * o.textScaleY));
-				absPosX += sizeX * 2; }
-			if (vI != 0) {
-				GL.BufferSubData(BufferTarget.ArrayBuffer, 0, sizeof(float) * vI, vertices);
-				GL.DrawArrays(PrimitiveType.Lines, 0, vI); /*it's still bulkdrawfloats because i have an array thing of some length and i'll use ALL of it.*/ }
-			GL.BindBuffer(BufferTarget.ArrayBuffer, 0);
-			GL.BindVertexArray(0);}
-		public void RenderProfilerIndexedLoopingGraph(Game game, Vector2 position, Vector2 size, Vector3 color, double[] data, int startIndex, int length = -1) {
-			(int windowSizeX, int windowSizeY) = (game._clientSize.X, game._clientSize.Y);
-			(float sizeX, float sizeY) = (size.X * 2, size.Y * 2);
-			int dataLen = data.Length;
-			if (length < 0) length = dataLen;
-			Shader shader = game._textShader;
-			shader.Use();
-			shader.SetVector3("textColor", color);
-			GL.BindVertexArray(VAO);
-			GL.BindBuffer(BufferTarget.ArrayBuffer, VBO);
-
-			float absPosX = MathF.Floor(position.X * windowSizeX) + 0.5f;
-			float absPosY = MathF.Floor(position.Y * windowSizeY) + 0.5f;
-
-			float[] v = new float[BulkDrawFloats];
-			int vI = 0;
-			// int tRSX = 0;
-			int tRSY = 32;
-			// float tX = tRSX / (float)TextTexture.Width;
-			float tX = 0;
-			float tY = tRSY / (float)TextTexture.Height;
-			float startY = absPosY / windowSizeY;
-
-			v[1] = v[9] = startY;
-			v[2] = v[10] = v[6] = v[14] = tX;
-			v[3] = v[11] = v[7] = v[15] = tY;
-			// if (length > BulkDrawFloats / 8) { // if it takes a full array or more to store all of the data
-			int i = 16;
-			for (; i < BulkDrawFloats/2+1; i *= 2) Array.Copy(v, 1, v, i + 1, i - 1);
-			if (i < BulkDrawFloats) Array.Copy(v, 1, v, i + 1, BulkDrawFloats - i - 1);
-			// please work
-			// } else {
-			// 	int amount = (length+length%2) * 8; // for each length there is 8 floats. Rounds length up to the nearest 2 and then multiplies by 8 so it is always a multiple of 16.
-			// 	int i = 16;
-			// 	for (; i < amount/2+1; i *= 2) Array.Copy(v, 1, v, i + 1, i - 1);
-			// 	if (i < amount) Array.Copy(v, 1, v, i + 1, amount - i - 1);
-			// }
-			// weird and not so good for loop code
-			bool error = false;
-			int k = startIndex % dataLen;
-			int dlm1 = dataLen - 1;
-			for (int j = startIndex; j > startIndex - length - 1; j--) {
-				// float xPos = (0.5f + MathF.Floor(absPosX)) / windowSizeX;
-				// float endY = (float)((0.5 + Math.Floor(absPosY + data[i] / sizeY)) / windowSizeY);
-				k = (k + dlm1) % dataLen;
-				if (k < 0 || k > data.Length) {Console.WriteLine("K: " + k); error = true; continue; }
-
-				// vertices[vI] = vertices[vI + 4] = xPos;
-				v[vI] = v[vI + 4] = absPosX / windowSizeX;
-				v[vI + 5] = (float)((0.5 + Math.Floor(absPosY + data[k] / sizeY)) / windowSizeY);
-				// vertices[vI + 5] = endY;
-				if (vI == BulkDrawFloats - 8) { vI = 0;
-					GL.BufferSubData(BufferTarget.ArrayBuffer, 0, sizeof(float) * BulkDrawFloats, v);
-					GL.DrawArrays(PrimitiveType.Lines, 0, BulkDrawFloats/4); } /*it's still bulkdrawfloats because i have an array thing of some length and i'll use ALL of it.*/
-				else vI += 8;
-				absPosX += sizeX;
-			}
-			if (error) throw new Exception("bruh what the hell");
-			if (vI != 0) {
-				GL.BufferSubData(BufferTarget.ArrayBuffer, 0, sizeof(float) * vI, v);
-				GL.DrawArrays(PrimitiveType.Lines, 0, vI / 4); }
-			GL.BindBuffer(BufferTarget.ArrayBuffer, 0);
-			GL.BindVertexArray(0);}
-		public int NewTxtThing(TxtOptions O) {
-			TextThingies.Add(O);
-			return TextThingies.Count - 1;}
-		public void Dispose() {
-			GL.DeleteBuffer(VBO);
-			GL.DeleteBuffer(EBO);
-			GL.DeleteVertexArray(VAO);
-			// Reset static initialization flag for next instance
-			IsInitialized = false;}}
 	public struct TxtOptions(Vector2i posOffset, Vector2 posScale, Vector2 textScale, Vector3 color, float lineHeight, FontCharacterData fontCharData, bool useSpecialChar = false) {
 		public int posOffsetX = posOffset.X;
 		public int posOffsetY = posOffset.Y;
@@ -1471,7 +891,7 @@ namespace GameEngineThing {
 			_ffmpeg = new Process {
 				StartInfo = new ProcessStartInfo {
 					FileName = "ffmpeg",
-					Arguments = BuildFfmpegArgs(useNvenc, withAudio, width, height, fps, outputPath),
+					Arguments = BuildFfmpegArgs(useNvenc, withAudio, width, height, fps * speed, outputPath),
 					RedirectStandardInput = true,
 					RedirectStandardOutput = true,  // Add this
 					RedirectStandardError = true,   // Add this
@@ -1493,7 +913,7 @@ namespace GameEngineThing {
 					Console.WriteLine("FFmpeg out: " + e.Data); };
 
 			_nextTickNs = Stopwatch.GetTimestamp() * 1_000_000_000L / Stopwatch.Frequency; }
-		private static string BuildFfmpegArgs(bool useNvenc, bool withAudio, int w, int h, int fps, string outPath) {
+		private static string BuildFfmpegArgs(bool useNvenc, bool withAudio, int w, int h, float fps, string outPath) {
 			// Raw BGRA frames on stdin
 			// Video encoder: NVENC (if available) or libx264 fallback. yuv420p ensures wide compatibility.
 			// Optional Windows audio capture: WASAPI default device or DirectShow loopback device.
@@ -1517,7 +937,7 @@ namespace GameEngineThing {
 			// 	videoEnc + " -pix_fmt yuv420p -movflags +faststart \"" + outPath + "\"";
 
 			// for debugging purposes
-			string strThing = "-n -f rawvideo -pix_fmt bgra -s " + w + "x" + h + " -r " + fps + " -i - " +
+			string strThing = "-n -f rawvideo -pix_fmt bgra -s " + w + "x" + h + $" -r {fps:N4} -i - " +
 				audioIn +
 				videoEnc + "-pix_fmt yuv420p \"" + outPath + "\"";
 			Console.WriteLine("ffmpeg args: " + strThing);
@@ -1571,9 +991,7 @@ namespace GameEngineThing {
                     (data[bot + x], data[top + x]) = (data[top + x], data[bot + x]);
                     (data[bot + ++x], data[top + x]) = (data[top + x], data[bot + x]);
                     (data[bot + ++x], data[top + x]) = (data[top + x], data[bot + x]);
-                    (data[bot + ++x], data[top + x]) = (data[top + x], data[bot + x]);
-                } // partial unrolling of 4. idk if this makes a difference, if it makes the performance better slightly, or even worse slightly but i hope not...
-            } }
+                    (data[bot + ++x], data[top + x]) = (data[top + x], data[bot + x]); } /*4-unroll. idk if it makes any difference.*/} }
 		public void Stop() {
 			if (!_recording) return;
 			_recording = false;

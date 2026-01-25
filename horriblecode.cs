@@ -1,7 +1,8 @@
 using System;
 using System.Collections.Generic;
-using OpenTK.Graphics.OpenGL4;
+using System.IO;
 using OpenTK.Mathematics;
+using OpenTK.Windowing.Common;
 
 namespace GameEngineThing
 {
@@ -455,7 +456,7 @@ namespace GameEngineThing
 			// 0 is red, 1/3 is green, 2/3 is blue, in-betweens are a mix and values where 2/3<h<1 it is a mix of red and blue.
 			// 1/6 is yellow, 1/2 is cyan, 5/6 is magenta.
 			hue *= 6;
-			(float rr, float rg, float rb) = (Math.Abs(hue-3),Math.Abs(hue-2),Math.Abs(hue-4)); // raw red, raw green, raw blue
+			(float rr, float rg, float rb) = (Math.Abs(hue - 3), Math.Abs(hue - 2), Math.Abs(hue - 4)); // raw red, raw green, raw blue
 			return new(
 				(rr < 2) ? ((rr > 1) ? (rr - 1) : 0) : 1,
 				(rg < 2) ? ((rg > 1) ? (2 - rg) : 1) : 0,
@@ -472,6 +473,8 @@ namespace GameEngineThing
 		// 		(rg < 2) ? ((rg > 1) ? (2 - rg) : 1) : 0,
 		// 		(rb < 2) ? ((rb > 1) ? (2 - rb) : 1) : 0);
 		// }
+		public static Dictionary<string, (Action<Game, string> action, bool breakOut)> chatCommands = [];
+		public static Dictionary<string, (Action<Game> action, bool breakOut)> noInputChatCommands = [];
 		static DataStuff()
 		{
 			BuiltInV1KCharts = new V1KChart[2];
@@ -482,6 +485,167 @@ namespace GameEngineThing
 
 			BuiltInV1KCharts[0] = new V1KChart(V1KChart1KeyData);
 			BuiltInV1KCharts[1] = new V1KChart(V1KChart2KeyData);
+
+
+
+
+
+			noInputChatCommands["exit"] = noInputChatCommands["quit"] = noInputChatCommands["cabbage"] = (delegate (Game game) {
+				game.WillReopen = false; game.Close();
+			}, true);
+			noInputChatCommands["pong"] = noInputChatCommands["snake"] = noInputChatCommands["fnf"] = (delegate (Game game) {
+				game.ReopenData = game._chattingText;
+				game.WillReopen = true;
+				game.Close();
+			}, true);
+			noInputChatCommands["v1kshowalldata"] = noInputChatCommands["v1kshowall"] = noInputChatCommands["v1kshowallinfo"] = (delegate (Game game) {
+				VerticalOneKey.DisplayFullInfo = !VerticalOneKey.DisplayFullInfo;
+			}, true);
+			noInputChatCommands["maniashowalldata"] = (delegate (Game game) { ManiaRG.DisplayFullInfo = !ManiaRG.DisplayFullInfo; }, true);
+			noInputChatCommands["debugtxt"] = noInputChatCommands["debugtext"] = noInputChatCommands["dbtxt"] = (delegate (Game game) {
+				Console.WriteLine("debug txt entered debugging thing idk\nPrevious thing: " + game._debugFlags.HasFlag(DebugFlags.debugText));
+				// if (game._debugFlags.HasFlag(DebugFlags.debugText))
+				// 	game._debugFlags &= ~DebugFlags.debugText; else game._debugFlags |= DebugFlags.debugText;
+					game._debugFlags ^= DebugFlags.debugText;
+				Console.WriteLine("Now: " + game._debugFlags.HasFlag(DebugFlags.debugText));
+			}, true);
+			noInputChatCommands["debuglog"] = (delegate (Game game) {
+				Console.WriteLine("debug logging entered debugging thing idk\nPrevious: " + game._debugFlags.HasFlag(DebugFlags.debugLogging));
+				// if (game._debugFlags.HasFlag(DebugFlags.debugLogging))
+				// 	game._debugFlags &= ~DebugFlags.debugLogging; else game._debugFlags |= DebugFlags.debugLogging;
+				game._debugFlags ^= DebugFlags.debugLogging;
+				Console.WriteLine("Now: " + game._debugFlags.HasFlag(DebugFlags.debugText));
+			}, true);
+			noInputChatCommands["showvsync"] = (delegate (Game game) {
+				Console.WriteLine("Vsync mode right now: " + game.VSync);
+			}, true);
+			noInputChatCommands["vsyncon"] = (delegate (Game game) { game.VSync = VSyncMode.On; }, true);
+			noInputChatCommands["vsyncoff"] = (delegate (Game game) { game.VSync = VSyncMode.Off; }, true);
+			noInputChatCommands["vsyncadapt"] = (delegate (Game game) { game.VSync = VSyncMode.Adaptive; }, true);
+			noInputChatCommands["stoprecording"] = (delegate (Game game) {
+				Console.WriteLine("Stopping recording hopefully."); game.StopRecording(); Console.WriteLine("Stopped recording hopefully...");
+			}, true);
+			noInputChatCommands["reopen"] = (delegate (Game game) {  game.WillReopen = true; game.Close(); }, true);
+
+			chatCommands["reopen"] = (delegate (Game game, string str) {
+				game.WillReopen = true;
+				if (str.Length > 1 && str[0] == ' ') {
+					game.ReopenData = str[1..];
+					Console.WriteLine("ReopenData: \"" + game.ReopenData + "\""); } game.Close();
+			}, true);
+
+			chatCommands["help"] = (delegate (Game game, string str) {
+				switch (str)
+				{
+					case " record":
+						Console.WriteLine("""
+chatCommands["record "] = (delegate (Game game, string str) { game.StartRecording(str); Console.WriteLine("Recording with file path " + str); }, true);
+chatCommands["record_"] = (delegate (Game game, string str) {
+	int breakcharpos = str.IndexOf(',');
+	if (breakcharpos == -1) { Console.WriteLine("file path never specified..."); return; }
+	int fps = Convert.ToInt32(str[..breakcharpos++]);
+	game.StartRecording(str[breakcharpos..], fps: fps); Console.WriteLine("Recording at " + fps + " fps with file path " + str[breakcharpos..]);
+}, true);
+chatCommands["recordf"] = chatCommands["records"] = (delegate (Game game, string str) {
+	int breakcharpos1 = str.IndexOf(',');
+	if (breakcharpos1 == -1) { Console.WriteLine("speed + file location never specified..."); return; }
+	int inputfps = Convert.ToInt32(str[..breakcharpos1++]);
+	int breakcharpos2 = str.IndexOf(',', breakcharpos1);
+	if (breakcharpos2 == -1) { Console.WriteLine("file path never specified..."); return; }
+	float recordingSpeed = Convert.ToSingle(str[breakcharpos1..breakcharpos2]);
+	string newFilePath = str[(breakcharpos2+1)..];
+	game.StartRecording(newFilePath, fps: inputfps, speed: recordingSpeed); Console.WriteLine("Recording at " + inputfps + " fps at " + recordingSpeed + "x speed with file path " + newFilePath);
+}, true);
+
+yeah it does that.
+"record " records with whatever filepath after it, e.g. "record filethingy.mp4" will record with file name "filethingy.mp4".
+
+"record_" records with a specified framerate, where the first is fps(?) and the second is the file path. formatted like "{framerate},{filepath}" or something idk
+
+"recordf" records with "{fps},{recordingspeed},{filepath}" or something n stuff idk
+
+""");
+						game.Close();
+						break;
+					default:
+						Console.WriteLine("idk");
+						break;
+				}
+			}, true);
+
+			// chatCommands["record"] = (delegate (Game game, string str) {
+			// 	if (str.Length > 7) {
+			// 		switch (str[6]) {
+			// 			case ' ': // normal recording behavior
+			// 				game.StartRecording(str[7..]); Console.WriteLine("Recording with file path " + str[7..]);
+			// 				break;
+			// 			case '_': // record at some specified fps
+			// 				int breakcharpos = str.IndexOf(',', 7);
+			// 				if (breakcharpos == -1) { Console.WriteLine("fps not found..."); return; }
+			// 				int fps = Convert.ToInt32(str[7..breakcharpos++]);
+			// 				game.StartRecording(str[breakcharpos..], fps: fps); Console.WriteLine("Recording at " + fps + " fps with file path " + str[breakcharpos..]);
+			// 				break;
+			// 			case 'f' or 's': // stands for either fast, slow, or speed i guess idk
+			// 				int breakcharpos1 = str.IndexOf(',', 7);
+			// 				if (breakcharpos1 == -1) { Console.WriteLine("fps not found..."); return; }
+			// 				int inputfps = Convert.ToInt32(str[7..breakcharpos1++]);
+			// 				int breakcharpos2 = str.IndexOf(',', breakcharpos1);
+			// 				if (breakcharpos2 == -1) { Console.WriteLine("speed not found..."); return; }
+			// 				float recordingSpeed = Convert.ToSingle(str[breakcharpos1..breakcharpos2]);
+			// 				string newFilePath = str[(breakcharpos2+1)..];
+			// 				game.StartRecording(newFilePath, fps: inputfps, speed: recordingSpeed); Console.WriteLine("Recording at " + inputfps + " fps with file path " + newFilePath);
+			// 				break; }}
+			// }, true);
+			chatCommands["record "] = (delegate (Game game, string str) { game.StartRecording(str); Console.WriteLine("Recording with file path " + str); }, true);
+			chatCommands["record_"] = (delegate (Game game, string str) {
+				int breakcharpos = str.IndexOf(',');
+				if (breakcharpos == -1) { Console.WriteLine("file path never specified..."); return; }
+				int fps = Convert.ToInt32(str[..breakcharpos++]);
+				game.StartRecording(str[breakcharpos..], fps: fps); Console.WriteLine("Recording at " + fps + " fps with file path " + str[breakcharpos..]);
+			}, true);
+			chatCommands["recordf"] = chatCommands["records"] = (delegate (Game game, string str) {
+				int breakcharpos1 = str.IndexOf(',');
+				if (breakcharpos1 == -1) { Console.WriteLine("speed + file location never specified..."); return; }
+				int inputfps = Convert.ToInt32(str[..breakcharpos1++]);
+				int breakcharpos2 = str.IndexOf(',', breakcharpos1);
+				if (breakcharpos2 == -1) { Console.WriteLine("file path never specified..."); return; }
+				float recordingSpeed = Convert.ToSingle(str[breakcharpos1..breakcharpos2]);
+				string newFilePath = str[(breakcharpos2+1)..];
+				game.StartRecording(newFilePath, fps: inputfps, speed: recordingSpeed); Console.WriteLine("Recording at " + inputfps + " fps at " + recordingSpeed + "x speed with file path " + newFilePath);
+			}, true);
+			chatCommands["loadmap "] = (delegate (Game game, string path) {
+				List<VerticalOneKey> v1kl = [];
+				List<ManiaRG> mrgl = [];
+				foreach (IMinigame minigame in game._currentMinigames) { if (minigame is VerticalOneKey m0) v1kl.Add(m0); else if (minigame is ManiaRG m1) mrgl.Add(m1); }
+				bool cont = v1kl.Count + mrgl.Count > 0;
+				if (cont) {
+					if (File.Exists(path)) {
+						string data = File.ReadAllText(path);
+						foreach (VerticalOneKey _m in v1kl)
+						if (_m.TryLoadMapFromString(data)) Console.WriteLine("Loadmap success!"); else Console.WriteLine("Failed to load map.");
+						foreach (ManiaRG _m in mrgl)
+						if (_m.TryLoadMapFromString(data)) Console.WriteLine("Loadmap success!"); else Console.WriteLine("Failed to load map."); }
+					else Console.WriteLine("Path does not exist!"); }
+			}, true);
+			chatCommands["profamt "] = chatCommands["proflen "] = (delegate (Game game, string str) {
+				try { game.profilerFrameTimes = new double[Math.Min(Convert.ToUInt32(str), 1048576)]; game.profilerIndex = 0; }
+				catch (FormatException ex) { Console.WriteLine("Incorrect formatting. " + ex.Message); }
+				catch (OverflowException ex) { Console.WriteLine("Overflow. ARE YOU TRYING TO CRASH YOUR COMPUTER OR SOMETHING??? (automatically capped at 1048576, but this error only appears above ~4.2B) " + ex.Message); }
+			}, true);
+
+			// chatCommands["what"] = (delegate (Game game, string str) { Console.WriteLine("Hello, World!"); }, true);
+			// noInputChatCommands["what"] = (delegate (Game game) { Console.WriteLine("Hello, World!"); }, true);
+			// /*template*/
 		}
 	}
+	public struct Announcement(string msg, long dsts, Vector3 textColor, Vector3 bgColor, float bgTransparency, bool st = false, float fot = 1)
+    {
+		public string Message = msg;
+		public long DisappearTimestamp = dsts;
+		public Vector3 TextColor = textColor;
+		public Vector3 BGColor = bgColor;
+		public float BGTransparency = bgTransparency;
+		public bool SpecialText = st;
+		public float FadeOutTime = fot;
+    }
 }

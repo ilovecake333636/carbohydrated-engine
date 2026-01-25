@@ -1,22 +1,22 @@
 using System;
-using System.IO;
-using System.Collections.Generic;
+// using System.IO;
+// using System.Collections.Generic;
 using OpenTK.Mathematics;
-using OpenTK.Graphics.OpenGL4;
-using OpenTK.Windowing.Common;
-using OpenTK.Windowing.Desktop;
-using OpenTK.Windowing.GraphicsLibraryFramework;
+// using OpenTK.Graphics.OpenGL4;
+// using OpenTK.Windowing.Common;
+// using OpenTK.Windowing.Desktop;
+// using OpenTK.Windowing.GraphicsLibraryFramework;
 using System.Diagnostics;
-using StbImageSharp;
-using System.ComponentModel;
-using PixelFormat = OpenTK.Graphics.OpenGL4.PixelFormat;
+// using StbImageSharp;
+// using System.ComponentModel;
+// using PixelFormat = OpenTK.Graphics.OpenGL4.PixelFormat;
 
 
 namespace GameEngineThing
 {
     public static class debuggingThingClass
     {
-        public const bool IsDebugging = false;
+        public static bool IsDebugging = false;
         /// <summary>
         /// idk some debugging thing. it doesn't really do anything except exist and log some stuff if you pass true.
         /// </summary>
