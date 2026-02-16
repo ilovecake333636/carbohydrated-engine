@@ -465,66 +465,116 @@ namespace GameEngineThing {
 				GL.DrawArrays(PrimitiveType.Lines, 0, vI); /*it's still bulkdrawfloats because i have an array thing of some length and i'll use ALL of it.*/ }
 			GL.BindBuffer(BufferTarget.ArrayBuffer, 0);
 			GL.BindVertexArray(0);}
-		public void RenderProfilerIndexedLoopingGraph(Game game, Vector2 position, Vector2 size, Vector3 color, double[] data, int startIndex, int length = -1) {
-			(int windowSizeX, int windowSizeY) = (game._clientSize.X, game._clientSize.Y);
-			(float sizeX, float sizeY) = (size.X * 2, size.Y * 2);
+		public void ProfilerRender(Game game) {
+			(float posX, float posY) = (1f, 1f);
+			double[] data = game.profilerFrameTimes;
+			int startIndex = game.profilerIndex;
+			const float sizeX = -2f;
+			const double sizeY = -1f / 60f;
+			(int windowSizeX, int windowSizeY) = game._clientSize;
+			(float WSXInv, float WSYInv) = (1f/windowSizeX, 1f/windowSizeY);
+			
 			int dataLen = data.Length;
-			if (length < 0) length = dataLen;
 			Shader shader = game._textShader;
 			shader.Use();
-			shader.SetVector3("textColor", color);
+			shader.SetVector3("textColor", new(0.8f, 0.4f, 0f));
 			GL.BindVertexArray(VAO);
 			GL.BindBuffer(BufferTarget.ArrayBuffer, VBO);
+			
+			float absPosX = (MathF.Floor(posX * windowSizeX) + 0.5f)*WSXInv;
+			float XIncrementAmt = sizeX*WSXInv;
+			float absPosY = MathF.Floor(posY * windowSizeY) + 0.5f;
 
-			float absPosX = MathF.Floor(position.X * windowSizeX) + 0.5f;
-			float absPosY = MathF.Floor(position.Y * windowSizeY) + 0.5f;
-
-			float[] v = new float[BulkDrawFloats];
+			float[] v = game.profilerVD;
 			int vI = 0;
-			// int tRSX = 0;
-			int tRSY = 32;
-			// float tX = tRSX / (float)TextTexture.Width;
-			float tX = 0;
-			float tY = tRSY / (float)TextTexture.Height;
-			float startY = absPosY / windowSizeY;
-
-			v[1] = v[9] = startY;
-			v[2] = v[10] = v[6] = v[14] = tX;
-			v[3] = v[11] = v[7] = v[15] = tY;
-			// if (length > BulkDrawFloats / 8) { // if it takes a full array or more to store all of the data
-			int i = 16;
-			for (; i < BulkDrawFloats/2+1; i *= 2) Array.Copy(v, 1, v, i + 1, i - 1);
-			if (i < BulkDrawFloats) Array.Copy(v, 1, v, i + 1, BulkDrawFloats - i - 1);
-			// please work
-			// } else {
-			// 	int amount = (length+length%2) * 8; // for each length there is 8 floats. Rounds length up to the nearest 2 and then multiplies by 8 so it is always a multiple of 16.
-			// 	int i = 16;
-			// 	for (; i < amount/2+1; i *= 2) Array.Copy(v, 1, v, i + 1, i - 1);
-			// 	if (i < amount) Array.Copy(v, 1, v, i + 1, amount - i - 1);
-			// }
-			// weird and not so good for loop code
-			bool error = false;
+			int i;
 			int k = startIndex % dataLen;
 			int dlm1 = dataLen - 1;
-			for (int j = startIndex; j > startIndex - length - 1; j--) {
-				// float xPos = (0.5f + MathF.Floor(absPosX)) / windowSizeX;
-				// float endY = (float)((0.5 + Math.Floor(absPosY + data[i] / sizeY)) / windowSizeY);
-				k = (k + dlm1) % dataLen;
-				if (k < 0 || k > data.Length) {Console.WriteLine("K: " + k); error = true; continue; }
+			for (int j = startIndex; j > startIndex - dataLen; j--, vI += 8, absPosX += XIncrementAmt, k = (k + dlm1) % dataLen) {
+				v[vI]=v[vI+4]=absPosX;
+				v[vI+5]=(0.5f+MathF.Floor((float)(absPosY+data[k]/sizeY)))*WSYInv;}
+			GL.BufferSubData(BufferTarget.ArrayBuffer, 0, sizeof(float) * vI, v);
+			GL.DrawArrays(PrimitiveType.Lines, 0, vI >> 2);
+			int pl = dataLen;
+			int pi = game.profilerIndex + pl - 1;
+			double a = data[pi%pl];
+			string txt = "FPS1: " + (1000d / a);
+			for(i=pi-1;i>pi-10;i--){a+=data[i%pl];}txt+="\nFPS10: "+(10000d/a);
+			for(i=pi-10;i>pi-30;i--){a+=data[i%pl];}txt+="\nFPS30: "+(30000d/a);
+			for(i=pi-30;i>pi-50;i--){a+=data[i%pl];}txt+="\nFPS50: "+(50000d/a);
+			for(i=pi-50;i>pi-100;i--){a+=data[i%pl];}txt+="\nFPS100: "+(100000d/a);
+			ReadOnlySpan<char> text = txt.AsSpan();
+			const int posOffsetX = 0;
+			const int posOffsetY = -40;
+			const float posScaleX = -1f;
+			const float posScaleY = 1f;
+			const float textScaleX = 4;
+			const float textScaleY = 4;
+			shader.SetVector3("textColor", new Vector3(1,1,0));
+			const float lineHeight = 10f;
+			const float lineHeightScaled = lineHeight * textScaleY;
+			FontCharacterData fontCharData = FontCharFillerThing.FontCharDeeta;
+			// Vector2 absPos = new(posOffsetX + posScaleX * windowSizeX, posOffsetY + posScaleY * windowSizeY);
+			float startPosX = absPosX = posOffsetX + posScaleX * windowSizeX; absPosY = posOffsetY + posScaleY * windowSizeY;
+			const float spaceSize = textScaleX * 3;
+			// const float tabSize = spaceSize * 4;
+			float[] vertices = new float[BulkDrawFloats];
+			vI = 0;
+			GL.BindBuffer(BufferTarget.ArrayBuffer, VBO);
+			// int incorrectSpecialChar = 0;
+			int txtLen = text.Length;
+			int lm1 = txtLen - 1;
+			float TWInv = 1f / TextTexture.Width;
+			float THInv = 1f / TextTexture.Height;
+			GlyphData Chr;
+			char c;
+			for (i = 0; i < txtLen; i++) {
+				c = text[i];
+				// if (incorrectSpecialChar > 0 && --incorrectSpecialChar == 0 && c == '|') continue;
+				switch (c) {
+					case ' ': absPosX += spaceSize; continue;
+					// case '	': absPosX += tabSize; continue;
+					case '\n': absPosX = startPosX; absPosY -= lineHeightScaled; continue;
+					case '\\':
+						int ip1 = i + 1;
+						char nextChar = text[ip1];
+						if (ip1 > lm1 || nextChar == '\\') { Chr = fontCharData.Chars['\\']; break; } // if this is the last char or the next char is another '\\' then show a '\\' char.
+						if (nextChar == '|') { Chr = fontCharData.Chars['\\']; i++; break; } // if the next char is a | char (my format is \| for '\\' chars) then show a '\\', then increment i so the '|' isn't shown.
+						if (nextChar == '\n') { i++; goto case '\n'; } // if the line goes to a new line then increment i and do the next line stuff.
+						int IsStacking = 0;
+						int j = txt.IndexOfAny(CharSearchThingy, ip1);
+						if (j == -1) j = txtLen; else if (text[j] != '|') IsStacking = 1;
+						int len = j - ip1;
+						// string s;
+						// if (len == -1) s = txt[ip1..];
+						// else s = txt.Substring(ip1, len);
+						// string s = len == -1 ? txt[ip1..] : txt.Substring(ip1, len);
+						// if (!fontCharData.SChars.TryGetValue(s, out Chr)) // if it can find the special character then jump to the index of the last chr in the special character, and the next char will be a new one.
+						if (!fontCharData.SChars.TryGetValue(len==-1?txt[ip1..]:txt.Substring(ip1,len),out Chr)) // if it cant find the special character then uhh idk
+							/*incorrectSpecialChar = len + 1; Chr = fontCharData.Chars['\\'];*/Chr=fontCharData.SChars["unknown"]; i = j - IsStacking;
+						break;
+					default: if (!fontCharData.Chars.TryGetValue(c, out Chr)) Chr = fontCharData.Chars['?']; break;}
+				float startX = (MathF.Floor(absPosX + Chr.bearing.X * textScaleX) + .5f) * WSXInv;
+				float startY = (MathF.Floor(absPosY + Chr.bearing.Y * textScaleY) + .5f) * WSYInv;
+				float endX = (MathF.Floor(absPosX + Chr.bearing.X * textScaleX + MathF.Ceiling(Chr.size.X * textScaleX)) + .5f) * WSXInv;
+				float endY = (MathF.Floor(absPosY + Chr.bearing.Y * textScaleY + MathF.Ceiling(Chr.size.Y * textScaleY)) + .5f) * WSYInv;
 
-				// vertices[vI] = vertices[vI + 4] = xPos;
-				v[vI] = v[vI + 4] = absPosX / windowSizeX;
-				v[vI + 5] = (float)((0.5 + Math.Floor(absPosY + data[k] / sizeY)) / windowSizeY);
-				// vertices[vI + 5] = endY;
-				if (vI == BulkDrawFloats - 8) { vI = 0;
-					GL.BufferSubData(BufferTarget.ArrayBuffer, 0, sizeof(float) * BulkDrawFloats, v);
-					GL.DrawArrays(PrimitiveType.Lines, 0, BulkDrawFloats/4); }
-				else vI += 8;
-				absPosX += sizeX; }
-			if (error) throw new Exception("bruh what the hell");
+				float tStartX = Chr.textureStart.X * TWInv;
+				float tStartY = Chr.textureStart.Y * THInv;
+				float tEndX = (Chr.textureStart.X + Chr.textureSize.X) * TWInv;
+				float tEndY = (Chr.textureStart.Y + Chr.textureSize.Y) * THInv;
+				vertices[vI]=vertices[vI+4]=startX;vertices[vI+2]=vertices[vI+6]=tStartX;
+				vertices[vI+1]=vertices[vI+13]=startY;vertices[vI+3]=vertices[vI+15]=tStartY;
+				vertices[vI+5]=vertices[vI+9]=endY;vertices[vI+7]=vertices[vI+11]=tEndY;
+				vertices[vI+8]=vertices[vI+12]=endX;vertices[vI+10]=vertices[vI+14]=tEndX;
+				if (vI == BulkDrawFloats - 16) {
+					GL.BufferSubData(BufferTarget.ArrayBuffer, 0, sizeof(float) * BulkDrawFloats, vertices);
+					GL.DrawElements(PrimitiveType.Triangles, MTILen, DrawElementsType.UnsignedInt, 0);
+					vI = 0;} else vI += 16;
+				absPosX += (int)(Chr.advance.X * textScaleX); absPosY += (int)(Chr.advance.Y * textScaleY);}
 			if (vI != 0) {
-				GL.BufferSubData(BufferTarget.ArrayBuffer, 0, sizeof(float) * vI, v);
-				GL.DrawArrays(PrimitiveType.Lines, 0, vI / 4); }
+				GL.BufferSubData(BufferTarget.ArrayBuffer, 0, sizeof(float) * vI, vertices);
+				GL.DrawElements(PrimitiveType.Triangles, (vI * 3) >> 3, DrawElementsType.UnsignedInt, 0);}
 			GL.BindBuffer(BufferTarget.ArrayBuffer, 0);
 			GL.BindVertexArray(0);}
 		public void AnnouncementsRender(List<Announcement> announcements, Game game, Shader shader, float lineHeight, Vector2i windowSize)
@@ -532,110 +582,112 @@ namespace GameEngineThing {
 			// Game game, Shader shader, string text, Vector2i posOffset, Vector2 posScale, Vector2 textScale, Vector3 color, float lineHeight, Vector2i windowSize, FontCharacterData fontCharData, bool useSpecialChar = false
 
 			shader.Use();
-			FontCharacterData fontCharData = FontCharFillerThing.FontCharDeeta;
-			int index = 0;
-			Announcement tA = announcements[0];
-			shader.SetVector3("textColor", tA.TextColor);
 			GL.BindVertexArray(VAO);
-
-			const float posScaleX = 0.2f;
-			const float posScaleY = 0.05f;
+			GL.BindBuffer(BufferTarget.ArrayBuffer, VBO);
+			FontCharacterData fontCharData = FontCharFillerThing.FontCharDeeta;
+			int vI = 0;
+			const float posScaleX = -0.6f;
+			const float posScaleY = -0.9f;
 			const float textScaleX = 2;
 			const float textScaleY = 2;
+			for (int index = announcements.Count-1; index > -1; index--){
+				Announcement tA = announcements[0];
+				shader.SetVector3("textColor", tA.TextColor);
 
+				// Vector2 absPos = new(posScaleX * windowSize.X,posScaleY * windowSize.Y);
+				float absPosX = posScaleX * windowSize.X;
+				float absPosY = posScaleY * windowSize.Y;
+				float spaceSize = textScaleX * 3;
+				float tabSize = spaceSize * 4;
 
-			Vector2 absPos = new(posScaleX * windowSize.X,posScaleY * windowSize.Y);
-			float spaceSize = textScaleX * 3;
-			float tabSize = spaceSize * 4;
+				float[] vertices = new float[BulkDrawFloats];
 
-			float[] vertices = new float[BulkDrawFloats];
-			int vI = 0;
+				if (tA.SpecialText) {
+					int incorrectSpecialChar = 0;
+					for (int i = 0; i < tA.Message.Length; i++) {
+						char c = tA.Message[i];
+						GlyphData Chr;
+						if (incorrectSpecialChar > 0 && --incorrectSpecialChar == 0 && c == '|') continue;
+						switch (c) {
+							// case ' ': absPos = new(absPos.X + spaceSize, absPos.Y); continue;
+							// case '	': absPos = new(absPos.X + tabSize, absPos.Y); continue;
+							// case '\n': absPos = new(posScaleX * windowSize.X, absPos.Y - textScaleY * lineHeight); continue;
+							case ' ': absPosX += spaceSize; continue;
+							case '	': absPosX += tabSize; continue;
+							case '\n': absPosX = posScaleX * windowSize.X; absPosY -= textScaleY * lineHeight; continue;
+							case '\\':
+								int ip1 = i + 1;
+								if (ip1 >= tA.Message.Length || tA.Message[ip1] == '\\') { Chr = fontCharData.Chars['\\']; break; } // if this is the last char or the next char is another '\\' then show a '\\' char.
+								char nextChar = tA.Message[ip1];
+								if (nextChar == '|') { Chr = fontCharData.Chars['\\']; i++; break; } // if the next char is a | char (my format is \| for '\\' chars) then show a '\\', then increment i so the '|' isn't shown.
+								if (nextChar == '\n') { i++; goto case '\n'; } // if the line goes to a new line then increment i and do the next line stuff.
+								byte IsStacking = 0;
+								int j = tA.Message.IndexOfAny(CharSearchThingy, ip1);
+								if (j == -1) j = tA.Message.Length; else if (tA.Message[j] != '|') IsStacking = 1;
+								int len = j - ip1;
+								string s;
+								if (len == -1) s = tA.Message[ip1..];
+								else s = tA.Message.Substring(ip1, len);
+								if (fontCharData.SChars.TryGetValue(s, out Chr)) { i = j - IsStacking; } // if it can find the special character then jump to the index of the last chr in the special character, and the next char will be a new one.
+								else { // if it cant find the special character then color the characters red, if there is at least one character.
+									shader.SetVector3("textColor", new(.5f, 0, 1f));
+									incorrectSpecialChar = len + 1;
+									Chr = fontCharData.Chars['\\'];}
+								break;
+							default: if (!fontCharData.Chars.TryGetValue(c, out Chr)) Chr = fontCharData.Chars['?']; break;}
+						float startX = (MathF.Floor(absPosX + Chr.bearing.X * textScaleX) + .5f) / windowSize.X;
+						float startY = (MathF.Floor(absPosY + Chr.bearing.Y * textScaleY) + .5f) / windowSize.Y;
+						float endX = (MathF.Floor(absPosX + Chr.bearing.X * textScaleX + MathF.Ceiling(Chr.size.X * textScaleX)) + .5f) / windowSize.X;
+						float endY = (MathF.Floor(absPosY + Chr.bearing.Y * textScaleY + MathF.Ceiling(Chr.size.Y * textScaleY)) + .5f) / windowSize.Y;
 
-			GL.BindBuffer(BufferTarget.ArrayBuffer, VBO);
-			if (tA.SpecialText) {
-				int incorrectSpecialChar = 0;
-				for (int i = 0; i < tA.Message.Length; i++) {
-					char c = tA.Message[i];
-					GlyphData Chr;
-					if (incorrectSpecialChar > 0 && --incorrectSpecialChar == 0 && c == '|') continue;
-					switch (c) {
-						case ' ': absPos = new(absPos.X + spaceSize, absPos.Y); continue;
-						case '	': absPos = new(absPos.X + tabSize, absPos.Y); continue;
-						case '\n': absPos = new(posScaleX * windowSize.X, absPos.Y - textScaleY * lineHeight); continue;
-						case '\\':
-							int ip1 = i + 1;
-							if (ip1 >= tA.Message.Length || tA.Message[ip1] == '\\') { Chr = fontCharData.Chars['\\']; break; } // if this is the last char or the next char is another '\\' then show a '\\' char.
-							char nextChar = tA.Message[ip1];
-							if (nextChar == '|') { Chr = fontCharData.Chars['\\']; i++; break; } // if the next char is a | char (my format is \| for '\\' chars) then show a '\\', then increment i so the '|' isn't shown.
-							if (nextChar == '\n') { i++; goto case '\n'; } // if the line goes to a new line then increment i and do the next line stuff.
-							byte IsStacking = 0;
-							int j = tA.Message.IndexOfAny(CharSearchThingy, ip1);
-							if (j == -1) j = tA.Message.Length; else if (tA.Message[j] != '|') IsStacking = 1;
-							int len = j - ip1;
-							string s;
-							if (len == -1) s = tA.Message[ip1..];
-							else s = tA.Message.Substring(ip1, len);
-							if (fontCharData.SChars.TryGetValue(s, out Chr)) { i = j - IsStacking; } // if it can find the special character then jump to the index of the last chr in the special character, and the next char will be a new one.
-							else { // if it cant find the special character then color the characters red, if there is at least one character.
-								shader.SetVector3("textColor", new(.5f, 0, 1f));
-								incorrectSpecialChar = len + 1;
-								Chr = fontCharData.Chars['\\'];}
-							break;
-						default: if (!fontCharData.Chars.TryGetValue(c, out Chr)) Chr = fontCharData.Chars['?']; break;}
-					float startX = (MathF.Floor(absPos.X + Chr.bearing.X * textScaleX) + .5f) / windowSize.X;
-					float startY = (MathF.Floor(absPos.Y + Chr.bearing.Y * textScaleY) + .5f) / windowSize.Y;
-					float endX = (MathF.Floor(absPos.X + Chr.bearing.X * textScaleX + MathF.Ceiling(Chr.size.X * textScaleX)) + .5f) / windowSize.X;
-					float endY = (MathF.Floor(absPos.Y + Chr.bearing.Y * textScaleY + MathF.Ceiling(Chr.size.Y * textScaleY)) + .5f) / windowSize.Y;
+						float tStartX = Chr.textureStart.X / (float)TextTexture.Width;
+						float tStartY = Chr.textureStart.Y / (float)TextTexture.Height;
+						float tEndX = (Chr.textureStart.X + Chr.textureSize.X) / (float)TextTexture.Width;
+						float tEndY = (Chr.textureStart.Y + Chr.textureSize.Y) / (float)TextTexture.Height;
+						vertices[vI]=vertices[vI+4]=startX;vertices[vI+1]=vertices[vI+13]=startY;
+						vertices[vI+2]=vertices[vI+6]=tStartX;vertices[vI+3]=vertices[vI+15]=tStartY;
+						vertices[vI+5]=vertices[vI+9]=endY;vertices[vI+7]=vertices[vI+11]=tEndY;
+						vertices[vI+8]=vertices[vI+12]=endX;vertices[vI+10]=vertices[vI+14]=tEndX;
+						
+						if (vI == BulkDrawFloats - 16) {
+							GL.BufferSubData(BufferTarget.ArrayBuffer, 0, sizeof(float) * BulkDrawFloats, vertices);
+							GL.DrawElements(PrimitiveType.Triangles, MTILen, DrawElementsType.UnsignedInt, 0); vI = 0;} else vI += 16;
+						// absPos += new Vector2i((int)(Chr.advance.X * textScaleX), (int)(Chr.advance.Y * textScaleY));}
+						absPosX += (int)(Chr.advance.X * textScaleX); absPosY += (int)(Chr.advance.Y * textScaleY);}
+				} else {
+					for (int i = 0; i < tA.Message.Length; i++) {
+						char c = tA.Message[i];
+						GlyphData Chr;
+						switch (c) {
+							case ' ': absPosX += spaceSize; continue;
+							case '	': absPosX += tabSize; continue;
+							case '\n': absPosX = posScaleX * windowSize.X; absPosY -= textScaleY * lineHeight; continue;
+							default: if (!fontCharData.Chars.TryGetValue(c, out Chr)) Chr = fontCharData.Chars['?']; break;}
+						float startX = (MathF.Floor(absPosX + Chr.bearing.X * textScaleX) + .5f) / windowSize.X;
+						float startY = (MathF.Floor(absPosY + Chr.bearing.Y * textScaleY) + .5f) / windowSize.Y;
+						float endX = (MathF.Floor(absPosX + Chr.bearing.X * textScaleX + MathF.Ceiling(Chr.size.X * textScaleX)) + .5f) / windowSize.X;
+						float endY = (MathF.Floor(absPosY + Chr.bearing.Y * textScaleY + MathF.Ceiling(Chr.size.Y * textScaleY)) + .5f) / windowSize.Y;
 
-					float tStartX = Chr.textureStart.X / (float)TextTexture.Width;
-					float tStartY = Chr.textureStart.Y / (float)TextTexture.Height;
-					float tEndX = (Chr.textureStart.X + Chr.textureSize.X) / (float)TextTexture.Width;
-					float tEndY = (Chr.textureStart.Y + Chr.textureSize.Y) / (float)TextTexture.Height;
-					vertices[vI] = startX; vertices[vI + 1] = startY; vertices[vI + 2] = tStartX; vertices[vI + 3] = tStartY;
-					vertices[vI + 4] = startX; vertices[vI + 5] = endY; vertices[vI + 6] = tStartX; vertices[vI + 7] = tEndY;
-					vertices[vI + 8] = endX; vertices[vI + 9] = endY; vertices[vI + 10] = tEndX; vertices[vI + 11] = tEndY;
-					vertices[vI + 12] = endX; vertices[vI + 13] = startY; vertices[vI + 14] = tEndX; vertices[vI + 15] = tStartY;
-					if (vI == BulkDrawFloats - 16) {
-						GL.BufferSubData(BufferTarget.ArrayBuffer, 0, sizeof(float) * BulkDrawFloats, vertices);
+						float tStartX = Chr.textureStart.X / (float)TextTexture.Width;
+						float tStartY = Chr.textureStart.Y / (float)TextTexture.Height;
+						float tEndX = (Chr.textureStart.X + Chr.textureSize.X) / (float)TextTexture.Width;
+						float tEndY = (Chr.textureStart.Y + Chr.textureSize.Y) / (float)TextTexture.Height;
 
-						GL.DrawElements(PrimitiveType.Triangles, MTILen, DrawElementsType.UnsignedInt, 0);
-						vI = 0;} else vI += 16;
-					absPos += new Vector2i((int)(Chr.advance.X * textScaleX), (int)(Chr.advance.Y * textScaleY));}
+						vertices[vI]=vertices[vI+4]=startX;vertices[vI+1]=vertices[vI+13]=startY;
+						vertices[vI+2]=vertices[vI+6]=tStartX;vertices[vI+3]=vertices[vI+15]=tStartY;
+						vertices[vI+5]=vertices[vI+9]=endY;vertices[vI+7]=vertices[vI+11]=tEndY;
+						vertices[vI+8]=vertices[vI+12]=endX;vertices[vI+10]=vertices[vI+14]=tEndX;
+						if (vI == BulkDrawFloats - 16) {
+							GL.BufferSubData(BufferTarget.ArrayBuffer, 0, sizeof(float) * BulkDrawFloats, vertices);
+
+							GL.DrawElements(PrimitiveType.Triangles, MTILen, DrawElementsType.UnsignedInt, 0);
+							vI = 0;} else vI += 16;
+						// absPos += new Vector2i((int)(Chr.advance.X * textScaleX), (int)(Chr.advance.Y * textScaleY));}
+						absPosX += (int)(Chr.advance.X * textScaleX); absPosY += (int)(Chr.advance.Y * textScaleY);}}
 				if (vI != 0) {
 					GL.BufferSubData(BufferTarget.ArrayBuffer, 0, sizeof(float) * vI, vertices);
-					GL.DrawElements(PrimitiveType.Triangles, vI * 3 / 8, DrawElementsType.UnsignedInt, 0);}}
-			else {
-				for (int i = 0; i < tA.Message.Length; i++) {
-					char c = tA.Message[i];
-					GlyphData Chr;
-					switch (c) {
-						case ' ': absPos = new(absPos.X + spaceSize, absPos.Y); continue;
-						case '	': absPos = new(absPos.X + tabSize, absPos.Y); continue;
-						case '\n': absPos = new(posScaleX * windowSize.X, absPos.Y - textScaleY * lineHeight); continue;
-						default: if (!fontCharData.Chars.TryGetValue(c, out Chr)) Chr = fontCharData.Chars['?']; break;}
-					float startX = (MathF.Floor(absPos.X + Chr.bearing.X * textScaleX) + .5f) / windowSize.X;
-					float startY = (MathF.Floor(absPos.Y + Chr.bearing.Y * textScaleY) + .5f) / windowSize.Y;
-					float endX = (MathF.Floor(absPos.X + Chr.bearing.X * textScaleX + MathF.Ceiling(Chr.size.X * textScaleX)) + .5f) / windowSize.X;
-					float endY = (MathF.Floor(absPos.Y + Chr.bearing.Y * textScaleY + MathF.Ceiling(Chr.size.Y * textScaleY)) + .5f) / windowSize.Y;
-
-					float tStartX = Chr.textureStart.X / (float)TextTexture.Width;
-					float tStartY = Chr.textureStart.Y / (float)TextTexture.Height;
-					float tEndX = (Chr.textureStart.X + Chr.textureSize.X) / (float)TextTexture.Width;
-					float tEndY = (Chr.textureStart.Y + Chr.textureSize.Y) / (float)TextTexture.Height;
-
-					vertices[vI] = startX; vertices[vI + 1] = startY; vertices[vI + 2] = tStartX; vertices[vI + 3] = tStartY;
-					vertices[vI + 4] = startX; vertices[vI + 5] = endY; vertices[vI + 6] = tStartX; vertices[vI + 7] = tEndY;
-					vertices[vI + 8] = endX; vertices[vI + 9] = endY; vertices[vI + 10] = tEndX; vertices[vI + 11] = tEndY;
-					vertices[vI + 12] = endX; vertices[vI + 13] = startY; vertices[vI + 14] = tEndX; vertices[vI + 15] = tStartY;
-					if (vI == BulkDrawFloats - 16) {
-						GL.BufferSubData(BufferTarget.ArrayBuffer, 0, sizeof(float) * BulkDrawFloats, vertices);
-
-						GL.DrawElements(PrimitiveType.Triangles, MTILen, DrawElementsType.UnsignedInt, 0);
-						vI = 0;} else vI += 16;
-					absPos += new Vector2i((int)(Chr.advance.X * textScaleX), (int)(Chr.advance.Y * textScaleY));}
-				if (vI != 0) {
-					GL.BufferSubData(BufferTarget.ArrayBuffer, 0, sizeof(float) * vI, vertices);
-					GL.DrawElements(PrimitiveType.Triangles, vI * 3 / 8, DrawElementsType.UnsignedInt, 0);}}
+					GL.DrawElements(PrimitiveType.Triangles, (vI * 3) >> 3, DrawElementsType.UnsignedInt, 0);}
+			}
 			GL.BindBuffer(BufferTarget.ArrayBuffer, 0);
 			GL.BindVertexArray(0);
 		}

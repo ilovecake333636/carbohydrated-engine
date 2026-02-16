@@ -258,32 +258,32 @@ namespace GameEngineThing
 		];
 		public static readonly uint[] TetrahedronI = [0, 1, 2, 0, 1, 3, 0, 2, 3, 1, 2, 3];
 		public static readonly float[] PlrTorsoV = [
-			-.5f, -.5f, -.5f,   60/1024f, 128/256f, -.5f, -.4f, -.5f,   64/1024f, 128/256f,
-			 .5f, -.5f, -.5f,   60/1024f, 148/256f,  .5f, -.4f, -.5f,   64/1024f, 148/256f,
-			 .5f, -.5f,  .5f,   60/1024f, 128/256f,  .5f, -.4f,  .5f,   64/1024f, 128/256f,
-			-.5f, -.5f,  .5f,   60/1024f, 148/256f, -.5f, -.4f,  .5f,   64/1024f, 148/256f,
+			-.5f, -.5f, -.5f,   60/1024f, 128/256f, -.5f, -.3f, -.5f,   64/1024f, 128/256f,
+			 .5f, -.5f, -.5f,   60/1024f, 148/256f,  .5f, -.3f, -.5f,   64/1024f, 148/256f,
+			 .5f, -.5f,  .5f,   60/1024f, 128/256f,  .5f, -.3f,  .5f,   64/1024f, 128/256f,
+			-.5f, -.5f,  .5f,   60/1024f, 148/256f, -.5f, -.3f,  .5f,   64/1024f, 148/256f,
 
 			-.5f, -.5f, -.5f,   40/1024f, 128/256f,  .5f, -.5f, -.5f,   60/1024f, 128/256f,
 			 .5f, -.5f,  .5f,   60/1024f, 148/256f, -.5f, -.5f,  .5f,   40/1024f, 148/256f,
-			-.5f, -.4f, -.5f,   40/1024f, 128/256f,  .5f, -.4f, -.5f,   60/1024f, 128/256f,
-			 .5f, -.4f,  .5f,   60/1024f, 148/256f, -.5f, -.4f,  .5f,   40/1024f, 148/256f,
+			-.5f, -.3f, -.5f,   40/1024f, 128/256f,  .5f, -.3f, -.5f,   60/1024f, 128/256f,
+			 .5f, -.3f,  .5f,   60/1024f, 148/256f, -.5f, -.3f,  .5f,   40/1024f, 148/256f,
 
 
-			-.5f,  .5f, -.5f,   60/1024f, 128/256f, -.5f,  .4f, -.5f,   64/1024f, 128/256f,
-			 .5f,  .5f, -.5f,   60/1024f, 148/256f,  .5f,  .4f, -.5f,   64/1024f, 148/256f,
-			 .5f,  .5f,  .5f,   60/1024f, 128/256f,  .5f,  .4f,  .5f,   64/1024f, 128/256f,
-			-.5f,  .5f,  .5f,   60/1024f, 148/256f, -.5f,  .4f,  .5f,   64/1024f, 148/256f,
+			-.5f,  .5f, -.5f,   60/1024f, 128/256f, -.5f,  .3f, -.5f,   64/1024f, 128/256f,
+			 .5f,  .5f, -.5f,   60/1024f, 148/256f,  .5f,  .3f, -.5f,   64/1024f, 148/256f,
+			 .5f,  .5f,  .5f,   60/1024f, 128/256f,  .5f,  .3f,  .5f,   64/1024f, 128/256f,
+			-.5f,  .5f,  .5f,   60/1024f, 148/256f, -.5f,  .3f,  .5f,   64/1024f, 148/256f,
 
 			-.5f,  .5f, -.5f,   40/1024f, 128/256f,  .5f,  .5f, -.5f,   60/1024f, 128/256f,
 			 .5f,  .5f,  .5f,   60/1024f, 148/256f, -.5f,  .5f,  .5f,   40/1024f, 148/256f,
-			-.5f,  .4f, -.5f,   40/1024f, 128/256f,  .5f,  .4f, -.5f,   60/1024f, 128/256f,
-			 .5f,  .4f,  .5f,   60/1024f, 148/256f, -.5f,  .4f,  .5f,   40/1024f, 148/256f,
+			-.5f,  .3f, -.5f,   40/1024f, 128/256f,  .5f,  .3f, -.5f,   60/1024f, 128/256f,
+			 .5f,  .3f,  .5f,   60/1024f, 148/256f, -.5f,  .3f,  .5f,   40/1024f, 148/256f,
 
 
-			-.35f, -.45f, -.35f,   64/1024f, 128/256f, -.35f,  .45f, -.35f,   64/1024f, 146/256f,
-			 .35f, -.45f, -.35f,   78/1024f, 128/256f,  .35f,  .45f, -.35f,   78/1024f, 146/256f,
-			 .35f, -.45f,  .35f,   64/1024f, 128/256f,  .35f,  .45f,  .35f,   64/1024f, 146/256f,
-			-.35f, -.45f,  .35f,   78/1024f, 128/256f, -.35f,  .45f,  .35f,   78/1024f, 146/256f,
+			-.375f, -.35f, -.375f,   64/1024f, 128/256f, -.375f,  .35f, -.375f,   64/1024f, 142/256f,
+			 .375f, -.35f, -.375f,   79/1024f, 128/256f,  .375f,  .35f, -.375f,   79/1024f, 142/256f,
+			 .375f, -.35f,  .375f,   64/1024f, 128/256f,  .375f,  .35f,  .375f,   64/1024f, 142/256f,
+			-.375f, -.35f,  .375f,   79/1024f, 128/256f, -.375f,  .35f,  .375f,   79/1024f, 142/256f,
 		];
 		public static readonly uint[] PlrTorsoI = [
 			0,1,2, 1,2,3,  2,3,4, 3,4,5,  4,5,6, 5,6,7,  6,7,0, 7,0,1,
@@ -368,20 +368,22 @@ namespace GameEngineThing
 			// =======================================
 
 			// 28-31 bottom
-			-.7f,-.5f,-1f,        188f/1024f, 128f/256f,
-			 .7f,-.5f,-1f,        132f/1024f, 128f/256f,
-			 .7f,-.5f, 1f,        78f/1024f, 128f/256f,
-			-.7f,-.5f, 1f,        134f/1024f, 128f/256f,
+			-.7f,-.5f,-1f,        210f/1024f, 128f/256f,
+			 .7f,-.5f,-1f,        154f/1024f, 128f/256f,
+			 .7f,-.5f, 1f,        384f/1024f, 126f/256f,
+			-.7f,-.5f, 1f,        566f/1024f, 126f/256f,
 			// 32-35 right ear-ish
-			-PlrEarW, .5f,-1f,     (160f+40f*PlrEarW)/1024f, 168f/256f,
-			-PlrEarW, .5f, 1f,     (106f+40f*PlrEarW)/1024f, 168f/256f,
-			-.7f,  .191f,-1f,     188f/1024f, 155.64f/256f,
-			-.7f,  .191f, 1f,     134f/1024f, 155.64f/256f,
+			-PlrEarW, .5f,-1f,     (182f+40f*PlrEarW)/1024f, 168f/256f,
+			-PlrEarW, .5f, 1f,     (475f+130f*PlrEarW)/1024f, 256f/256f,
+			-.7f,  .191f,-1f,     210f/1024f, 155.64f/256f,
+			// -.7f,  .191f, 1f,     566f/1024f, 155.64f/256f,
+			-.7f,  .191f, 1f,     566f/1024f, 215.83f/256f,
 			// 36-39 left ear-ish
-			 PlrEarW, .5f,-1f,     (160f-40f*PlrEarW)/1024f, 168f/256f,
-			 PlrEarW, .5f, 1f,     (106f-40f*PlrEarW)/1024f, 168f/256f,
-			 .7f,  .191f,-1f,     132f/1024f, 155.64f/256f,
-			 .7f,  .191f, 1f,     78f/1024f, 155.64f/256f,
+			 PlrEarW, .5f,-1f,     (182f-40f*PlrEarW)/1024f, 168f/256f,
+			 PlrEarW, .5f, 1f,     (475f-130f*PlrEarW)/1024f, 256f/256f,
+			 .7f,  .191f,-1f,     154f/1024f, 155.64f/256f,
+			//  .7f,  .191f, 1f,     384f/1024f, 155.64f/256f,
+			 .7f,  .191f, 1f,     384f/1024f, 215.83f/256f,
 			
 			// 40-43 ear centers
 			-PlrEarC, .5f,-1f,     392f/1024f, 15f/256f, // right-back
@@ -526,6 +528,9 @@ namespace GameEngineThing
 				Console.WriteLine("Stopping recording hopefully."); game.StopRecording(); Console.WriteLine("Stopped recording hopefully...");
 			}, true);
 			noInputChatCommands["reopen"] = (delegate (Game game) {  game.WillReopen = true; game.Close(); }, true);
+			noInputChatCommands["playerrendertoggle"] = (delegate (Game game) { game.renderPlayer = !game.renderPlayer; }, true);
+			noInputChatCommands["flysilly"] = (delegate (Game game) { game.GameEngineFlyBehavior = 1; }, true);
+			noInputChatCommands["flyunsilly"] = (delegate (Game game) { game.GameEngineFlyBehavior = 0; }, true);
 
 			chatCommands["reopen"] = (delegate (Game game, string str) {
 				game.WillReopen = true;
@@ -567,6 +572,11 @@ yeah it does that.
 """);
 						game.Close();
 						break;
+					case "":
+						Console.WriteLine("""
+hi this is the help command idk. This is carbohydrated-engine, a "game engine" written in c# that uses OpenTK and StbImageSharp and some tutorials and stuff, made by the person with usernames "@ilovecake333636" and also maybe(?) "carbohydrated".
+"carbohydrated-engine" on github
+""");break;
 					default:
 						Console.WriteLine("idk");
 						break;
@@ -613,6 +623,16 @@ yeah it does that.
 				string newFilePath = str[(breakcharpos2+1)..];
 				game.StartRecording(newFilePath, fps: inputfps, speed: recordingSpeed); Console.WriteLine("Recording at " + inputfps + " fps at " + recordingSpeed + "x speed with file path " + newFilePath);
 			}, true);
+			chatCommands["recordc"] = (delegate (Game game, string str) {
+				int breakcharpos1 = str.IndexOf(',');
+				if (breakcharpos1 == -1) { Console.WriteLine("inFPS + file location never specified..."); return; }
+				float outFPS = Convert.ToSingle(str[..breakcharpos1++]);
+				int breakcharpos2 = str.IndexOf(',', breakcharpos1);
+				if (breakcharpos2 == -1) { Console.WriteLine("file path never specified..."); return; }
+				float inFPS = Convert.ToSingle(str[breakcharpos1..breakcharpos2]);
+				string newFilePath = str[(breakcharpos2+1)..];
+				game.StartRecording(newFilePath, resfps: outFPS, inpfps: inFPS); Console.WriteLine("Inputting at " + inFPS + " fps, output file has " + outFPS + " fps with file path " + newFilePath);
+			}, true);
 			chatCommands["loadmap "] = (delegate (Game game, string path) {
 				List<VerticalOneKey> v1kl = [];
 				List<ManiaRG> mrgl = [];
@@ -631,6 +651,35 @@ yeah it does that.
 				try { game.profilerFrameTimes = new double[Math.Min(Convert.ToUInt32(str), 1048576)]; game.profilerIndex = 0; }
 				catch (FormatException ex) { Console.WriteLine("Incorrect formatting. " + ex.Message); }
 				catch (OverflowException ex) { Console.WriteLine("Overflow. ARE YOU TRYING TO CRASH YOUR COMPUTER OR SOMETHING??? (automatically capped at 1048576, but this error only appears above ~4.2B) " + ex.Message); }
+			}, true);
+			chatCommands["mininggame "] = chatCommands["miner "] = (delegate (Game game, string str) {
+				int i;
+				bool ret = true;
+				for (i = 0; i < game._currentMinigames.Count; i++) if (game._currentMinigames[i] is MiningGame) { ret = false; break; }
+				if (ret) { Console.WriteLine("nuh uh there ain't a mining game active bozo"); return; }
+				switch (str)
+				{
+					case "oldmininggame":
+						game._currentMinigames[i] = new OldMiningGame();
+						break;
+					default:
+						Console.WriteLine("uhh what you entered i haven't really implemented yet or you've misspelled or you're Searching For a Code That Doesn't Exist /j (i haven't actually watched that idk what happens in it :3)");
+						break;
+				}
+			}, true);
+			chatCommands["oldmininggame "] = chatCommands["miner "] = (delegate (Game game, string str) {
+				int i;
+				bool ret = true;
+				for (i = 0; i < game._currentMinigames.Count; i++) if (game._currentMinigames[i] is OldMiningGame) { ret = false; break; }
+				if (ret) { Console.WriteLine("nuh uh there ain't an old mining game active bozo"); return; }
+				switch (str) {
+					case "newmininggame":
+						game._currentMinigames[i] = new MiningGame();
+						break;
+					default:
+						Console.WriteLine("uhh um what you entered i haven't really implemented yet or you've misspelled or you're Searching For a Code That Doesn't Exist /j (i haven't actually watched that idk what happens in it :3)");
+						break;
+				}
 			}, true);
 
 			// chatCommands["what"] = (delegate (Game game, string str) { Console.WriteLine("Hello, World!"); }, true);

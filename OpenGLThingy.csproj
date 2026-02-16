@@ -10,6 +10,9 @@
     <None Include="Shaders/**" CopyToOutputDirectory="PreserveNewest" />
     <None Include="Textures/**" CopyToOutputDirectory="PreserveNewest" />
     <None Include="Fonts/fonttest.png" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="readme.txt" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="LICENSE" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="OTHER_LICENSES.md" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 
   <ItemGroup>

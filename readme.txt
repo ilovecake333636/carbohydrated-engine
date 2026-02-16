@@ -21,8 +21,9 @@ yeah.
 
 
 
-
-
+(I have not updated this text file in quite a while... btw inputting command "help" does something and so does "reopen miner". you should totally "flysilly" in the mining game)
+(if you don't want to "flysilly" but you already have you can "flyunsilly")
+(there's also "record" like "record sdjfklmcdms.mp4" records with a file called "sdjfklmcdms.mp4". there is more but i don't feel like describing everything hahahhahahaha)
 
 
                                                                                                                                                          :D

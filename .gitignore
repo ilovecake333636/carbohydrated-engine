@@ -3,3 +3,5 @@ bin/
 *.code-workspace
 *.mp4
 *.png~
+*.png.kra
+*.png-autosave.kra

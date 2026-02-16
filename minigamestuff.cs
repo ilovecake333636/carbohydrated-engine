@@ -1,5 +1,6 @@
 #undef MINING_GAME_DEBUG
 #undef MINING_GAME_PROFILELOG
+#define MINING_GAME_PER_FACE_CULL
 using System;
 using System.Collections.Generic;
 using OpenTK.Mathematics;
@@ -991,7 +992,7 @@ namespace GameEngineThing {
 			Update(); }
         public override void OnKeyUp(KeyboardKeyEventArgs e) {
             base.OnKeyUp(e); } }
-	public class MiningGame : IMinigame {
+	public class OldMiningGame : IMinigame {
 		public const int cBSN = 5; // chunk bitshift number; 1<<cBSAmt is the chunk size. the name also coincidentally references chaotic bean simulator :3
 		public const int cSz = 1<<cBSN; // chunk size
 		public const int cSzSq = cSz * cSz; // chunk size squared
@@ -1022,7 +1023,7 @@ namespace GameEngineThing {
 			// if (v != value.v[key2]) { value.v[key2] = v; CDT[key1][key2>>5] = 1u<<(int)(key2&31); }
 			if (v != value[key2]) { value[key2] = v; CDT[key1] = 1u; }
 		}
-		public MiningGame() { }
+		public OldMiningGame() { }
 		int cubeVAO;
 		int cubeVBO;
 		int instanceVBO;
@@ -1199,7 +1200,10 @@ namespace GameEngineThing {
 				(int basePosX, int basePosY, int basePosZ) = (chunkPosX << cBSN, chunkPosY << cBSN, chunkPosZ << cBSN);
 				// Console.WriteLine("1184lengths: " + _d.Length + ", " + _f.Length);
 				int j, ind, tmp2, j1, k, j2, j1xcs, j1xcssq, _i = 0;
-				uint tmp, tmp1;
+				uint tmp;
+#if MINING_GAME_PER_FACE_CULL
+				uint tmp1;
+#endif
 				// Console.WriteLine("1185");
 #if MINING_GAME_PROFILELOG
 				sdfjkl = Stopwatch.GetTimestamp();
@@ -1389,10 +1393,11 @@ namespace GameEngineThing {
 							(B[k|24]==0?0:0x1000000u)|(B[k|25]==0?0:0x2000000u)|(B[k|26]==0?0:0x4000000u)|(B[k|27]==0?0:0x8000000u)|(B[k|28]==0?0:0x10000000u)|
 							(B[k|29]==0?0:0x20000000u)|(B[k|30]==0?0:0x40000000u)|(B[k|31]==0?0:0x80000000);
 							//tmp=(tmp&~(tmp<<1))|(tmp&~(tmp>>1));
+							ind=(j2<<cBSN)+j1xcssq;
+#if MINING_GAME_PER_FACE_CULL
 							tmp1=tmp&~((tmp<<1)|(ocfd[_i]==0?0:1u));
 							tmp&=~((tmp>>1)|(ocfd[_i|cSzSq]==0?0:0x80000000));
 							//ind=(y<<cBSN)+(z<<cBS2);
-							ind=(j2<<cBSN)+j1xcssq;
 							tmp2=System.Numerics.BitOperations.TrailingZeroCount(tmp);
 							while(tmp2<32) {
 								F[(ind|tmp2)>>3]|=0b00000010ul<<((tmp2&7)<<3);
@@ -1403,12 +1408,23 @@ namespace GameEngineThing {
 								F[(ind|tmp2)>>3]|=0b00000001ul<<((tmp2&7)<<3); // BRUH ONE CHARACTER MISSING LOL (THE L CHARACTER)
 								tmp1^=1u<<tmp2;
 								tmp2=System.Numerics.BitOperations.TrailingZeroCount(tmp1); }
+#else
+							tmp&=~((tmp<<1)|(tmp>>1)|(ocfd[_i]==0?0:1u)|(ocfd[_i|cSzSq]==0?0:0x80000000));
+							tmp2=System.Numerics.BitOperations.TrailingZeroCount(tmp);
+							while(tmp2<32) {
+								F[(ind|tmp2)>>3]|=0b00111111ul<<((tmp2&7)<<3);
+								tmp^=1u<<tmp2;
+								tmp2=System.Numerics.BitOperations.TrailingZeroCount(tmp); }
+#endif
+							int irs3 = _i >> 3; // i right shifted by 3. INTERNAL REVENUE SERVICE MENTION!?!?1?!?!1?!1?!!?1?!1?3991680010395?!1!?1?10395?!?!1?1039511?
 							tmp=(B[_i]==0?0:1u)|(B[_i|cSzSq]==0?0:2u)|(B[_i|(cSzSq*2)]==0?0:4u)|(B[_i|(cSzSq*3)]==0?0:8u)|(B[_i|(cSzSq*4)]==0?0:16u)|(B[_i|(cSzSq*5)]==0?0:32u)|(B[_i|(cSzSq*6)]==0?0:64u)|
 							(B[_i|(cSzSq*7)]==0?0:128u)|(B[_i|(cSzSq*8)]==0?0:256u)|(B[_i|(cSzSq*9)]==0?0:512u)|(B[_i|(cSzSq*10)]==0?0:1024u)|(B[_i|(cSzSq*11)]==0?0:2048u)|(B[_i|(cSzSq*12)]==0?0:4096u)|
 							(B[_i|(cSzSq*13)]==0?0:8192u)|(B[_i|(cSzSq*14)]==0?0:16384u)|(B[_i|(cSzSq*15)]==0?0:32768u)|(B[_i|(cSzSq*16)]==0?0:65536u)|(B[_i|(cSzSq*17)]==0?0:131072u)|(B[_i|(cSzSq*18)]==0?0:262144u)|
 							(B[_i|(cSzSq*19)]==0?0:524288u)|(B[_i|(cSzSq*20)]==0?0:1048576u)|(B[_i|(cSzSq*21)]==0?0:2097152u)|(B[_i|(cSzSq*22)]==0?0:4194304u)|(B[_i|(cSzSq*23)]==0?0:8388608u)|
 							(B[_i|(cSzSq*24)]==0?0:16777216u)|(B[_i|(cSzSq*25)]==0?0:33554432u)|(B[_i|(cSzSq*26)]==0?0:67108864u)|(B[_i|(cSzSq*27)]==0?0:0x8000000u)|(B[_i|(cSzSq*28)]==0?0:0x10000000u)|
 							(B[_i|(cSzSq*29)]==0?0:0x20000000u)|(B[_i|(cSzSq*30)]==0?0:0x40000000u)|(B[_i|(cSzSq*31)]==0?0:0x80000000);
+#if MINING_GAME_PER_FACE_CULL
+							ulong bsamtish = 0b00100000ul<<((_i&7)<<3); // bitshift amount ish
 							// tmp=(tmp&~(tmp<<1))|(tmp&~(tmp>>1));
 							// tmp&=~(tmp<<1)|~(tmp>>1);
 							// tmp&=~((tmp<<1)&(tmp>>1));
@@ -1424,8 +1440,6 @@ namespace GameEngineThing {
 							// 	_f[ind | tmp2<<cBS2] |= 0b00110000;
 							// 	tmp ^= 1u<<tmp2;
 							// 	tmp2 = System.Numerics.BitOperations.TrailingZeroCount(tmp); }
-							ulong bsamtish = 0b00100000ul<<((_i&7)<<3); // bitshift amount ish
-							int irs3 = _i >> 3; // i right shifted by 3. INTERNAL REVENUE SERVICE MENTION!?!?1?!?!1?!1?!!?1?!1?3991680010395?!1!?1?10395?!?!1?1039511?
 							while(tmp2<32){
 								// vdataBF[i] = (basePosX + tmp2, y, z);
 								F[irs3|(tmp2<<(cBS2-3))]|=bsamtish;
@@ -1438,6 +1452,16 @@ namespace GameEngineThing {
 								F[irs3|(tmp2<<(cBS2-3))]|=bsamtish;
 								tmp1^=1u<<tmp2;
 								tmp2=System.Numerics.BitOperations.TrailingZeroCount(tmp1);}
+#else
+							ulong bsamtish = 0b00111111ul<<((_i&7)<<3); // bitshift amount ish
+							tmp&=~((tmp<<1)|(tmp>>1)|(ocfd[cSzSq*4|_i]==0?0:1u)|(ocfd[cSzSq*5|_i]==0?0:0x80000000));
+							tmp2=System.Numerics.BitOperations.TrailingZeroCount(tmp);
+							while(tmp2<32){
+								// vdataBF[i] = (basePosX + tmp2, y, z);
+								F[irs3|(tmp2<<(cBS2-3))]|=bsamtish;
+								tmp^=1u<<tmp2;
+								tmp2=System.Numerics.BitOperations.TrailingZeroCount(tmp);}
+#endif
 							j=j1xcssq|j2;
 							tmp=(B[j]==0?0:1u)|(B[j|cSz]==0?0:2u)|(B[j|cSz*2]==0?0:4u)|(B[j|cSz*3]==0?0:8u)|(B[j|cSz*4]==0?0:16u)|(B[j|cSz*5]==0?0:32u)|(B[j|cSz*6]==0?0:64u)|
 							(B[j|cSz*7]==0?0:128u)|(B[j|cSz*8]==0?0:256u)|(B[j|cSz*9]==0?0:512u)|(B[j|cSz*10]==0?0:1024u)|(B[j|cSz*11]==0?0:2048u)|(B[j|cSz*12]==0?0:4096u)|
@@ -1445,12 +1469,13 @@ namespace GameEngineThing {
 							(B[j|cSz*19]==0?0:524288u)|(B[j|cSz*20]==0?0:1048576u)|(B[j|cSz*21]==0?0:2097152u)|(B[j|cSz*22]==0?0:4194304u)|(B[j|cSz*23]==0?0:8388608u)|
 							(B[j|cSz*24]==0?0:16777216u)|(B[j|cSz*25]==0?0:33554432u)|(B[j|cSz*26]==0?0:67108864u)|(B[j|cSz*27]==0?0:0x8000000u)|(B[j|cSz*28]==0?0:0x10000000u)|
 							(B[j|cSz*29]==0?0:0x20000000u)|(B[j|cSz*30]==0?0:0x40000000u)|(B[j|cSz*31]==0?0:0x80000000);
+							irs3 = (j2|j1xcssq) >> 3; // i right shifted by 3. INTERNAL REVENUE SERVICE MENTION!?!?1?!?!1?!1?!!?1?!1?3991680010395?!1!?1?10395?!?!1?1039511?
+#if MINING_GAME_PER_FACE_CULL
 							tmp1=tmp&~((tmp<<1)|(ocfd[cSzSq*2|_i]==0?0:1u));
 							tmp&=~((tmp>>1)|(ocfd[cSzSq*3|_i]==0?0:0x80000000));
-							ind=j2|j1xcssq;
+							// ind=j2|j1xcssq;
 							tmp2=System.Numerics.BitOperations.TrailingZeroCount(tmp);
 							bsamtish >>= 1;
-							irs3 = ind >> 3; // i right shifted by 3. INTERNAL REVENUE SERVICE MENTION!?!?1?!?!1?!1?!!?1?!1?3991680010395?!1!?1?10395?!?!1?1039511?
 							while(tmp2<32){
 								F[irs3|(tmp2<<(cBSN-3))]|=bsamtish;
 								tmp^=1u<<tmp2;
@@ -1460,7 +1485,16 @@ namespace GameEngineThing {
 							while(tmp2<32){
 								F[irs3|(tmp2<<(cBSN-3))]|=bsamtish;
 								tmp1^=1u<<tmp2;
-								tmp2=System.Numerics.BitOperations.TrailingZeroCount(tmp1);}}}
+								tmp2=System.Numerics.BitOperations.TrailingZeroCount(tmp1);}
+#else
+							tmp&=~((tmp<<1)|(tmp>>1)|(ocfd[cSzSq*3|_i]==0?0:0x80000000)|(ocfd[cSzSq*2|_i]==0?0:1u));
+							tmp2=System.Numerics.BitOperations.TrailingZeroCount(tmp);
+							while(tmp2<32){
+								F[irs3|(tmp2<<(cBSN-3))]|=bsamtish;
+								tmp^=1u<<tmp2;
+								tmp2=System.Numerics.BitOperations.TrailingZeroCount(tmp);}
+#endif
+					}}
 					CDT[d.Key] = 0;
 #if MINING_GAME_PROFILELOG
 					testt3 +=Stopwatch.GetElapsedTime(sdfjkl2).TotalMicroseconds;
@@ -1576,6 +1610,506 @@ namespace GameEngineThing {
 #if MINING_GAME_DEBUG
 			Console.Write("thingy took " + Stopwatch.GetElapsedTime(bruh).TotalMilliseconds + "ms.");
 #endif
+		}
+		public override void OnKeyDown(KeyboardKeyEventArgs e)
+		{
+			base.OnKeyDown(e);
+			if (e.Key == Keys.L) GL.PolygonMode(MaterialFace.FrontAndBack, PolygonMode.Point + Random.Shared.Next(3));
+        }
+		public override void OnClosing(CancelEventArgs e)
+		{
+			base.OnClosing(e);
+			Console.WriteLine("mining game closing");
+#if MINING_GAME_DEBUG
+				string write0 = "\n\nyo this mining game is closing i guess\n\n";
+				string write1 = "";
+				// int skipAmount = bData.Count - 2;
+				uint thisVal;
+				foreach (var v in bData) {
+					// if (skipAmount > 0) { skipAmount--; continue; } // this will probably perform terribly but oh well
+					uint currentVal = v.Value[0];
+					write0 += v.Key + "; "+currentVal;
+					uint repeatCount = 1;
+					for (int i = 1; i < cSzCb; i++) {
+						if (v.Value[i] == currentVal) repeatCount++;
+						else {
+							thisVal = v.Value[i];
+							if (repeatCount > 1) {write0 += "x" + repeatCount + "," + thisVal; repeatCount = 1;}
+							else write0 += "," + thisVal;
+							currentVal = thisVal;
+							if (write0.Length > 1024) { write1 += write0; write0 = ""; }}}
+					if (repeatCount > 1) {write0 += "x" + repeatCount;}
+					write0 += "\n";
+					Console.Write(write1 + write0);
+					write1 = write0 = "";}
+				Console.Write("\n\nhas like a lot of voxels, like " + bData.Count + " chunks of them, which is(n't) " + bData.Count * 36 + " verts, or " + bData.Count * 12 + " faces.\n");
+#endif
+		}}
+	public class MiningGame : IMinigame {
+		public const int cBSN = 5; // chunk bitshift number; 1<<cBSAmt is the chunk size. the name also coincidentally references chaotic bean simulator :3
+		public const int cSz = 1<<cBSN; // chunk size
+		public const int cSzSq = cSz * cSz; // chunk size squared
+		public const int cBS2 = 10; // chunk bitshift number * 2; 1<<cBS2 is cSzSq. this is now PURPOSEFULLY referencing cbs :3
+		public const int cSzCb = cSzSq * cSz; // chunk size cubed
+		public const int cBSX3 = 15; // chunk bitshift number * 3; 1<<cBSX3 is cSzCb. the name PURPOSEFULLY references cbs and has a cool X3 face :3
+		public Dictionary<Vector3i, ushort[]> bData = []; // for key, should have probably like 16 bits for x, 22 bits for y, 16 bits for z. for val, should probably have 10 bits for type and 6 for faces.
+		public Dictionary<Vector3i, int[]> fData = []; // for key, should have probably like 16 bits for x, 22 bits for y, 16 bits for z. for val, should probably have 10 bits for type and 6 for faces.
+		public Dictionary<Vector3i, uint> CDT = []; // for key, should have probably like 16 bits for x, 22 bits for y, 16 bits for z. for val, should probably have 10 bits for type and 6 for faces.
+		public Shader shader;
+		// public static UInt128 DictionaryKey(uint x, uint y, uint z) => ((UInt128)x << 64) + ((UInt128)y << 32) + z;
+		// Vector3i[] vdataBF = new Vector3i[Text.BulkDrawConst];
+		int[] pos = new int[Text.BulkDrawConst*3];
+		public void SetBlock(int x, int y, int z, ushort v)
+		{
+			Vector3i key1 = (x >> cBSN, y >> cBSN, z >> cBSN);
+			(uint X, uint Y, uint Z) = unchecked(((uint)x, (uint)y, (uint)z));
+			// uint key2=X-(X>>cBSN<<cBSN)|((Y-(Y>>cBSN<<cBSN))<<cBSN)|((Z-(Z>>cBSN<<cBSN))<<cBS2);
+			uint key2=(X&31)|((Y&31)<<cBSN)|((Z&31)<<cBS2);
+			if (!bData.TryGetValue(key1, out ushort[] value)) {
+                value = new ushort[cSzCb];
+                bData[key1] = value;
+                // fData[key1] = new ulong[cSzCb/8];
+                fData[key1] = new int[cSzCb*3];
+				CDT[key1] = 0;
+			}
+			// try {value[key2] = v;} catch { throw new Exception("bruh anyways " + x + "," + y + "," + z + "," + v + ", " + key1 + ", " + key2); }
+			// if (v != value.v[key2]) { value.v[key2] = v; CDT[key1][key2>>5] = 1u<<(int)(key2&31); }
+			if (v != value[key2]) { value[key2] = v; CDT[key1] = 1u; }
+		}
+		public MiningGame() { }
+		int cubeVAO;
+		int cubeVBO;
+		int instanceVBO;
+		float[] cubeVerts = [
+			0,0,1, 0,0, 1,0,1, 1,0, 0,1,1, 0,1,  1,0,1, 1,0, 1,1,1, 1,1, 0,1,1, 1,0, // front
+			0,0,0, 0,0, 0,1,0, 1,0, 1,0,0, 0,1,  1,0,0, 1,0, 0,1,0, 1,1, 1,1,0, 1,0, // back
+			1,0,0, 0,0, 1,1,0, 1,0, 1,0,1, 0,1,  1,0,1, 1,0, 1,1,0, 1,1, 1,1,1, 1,0, // right
+			0,0,0, 0,0, 0,0,1, 1,0, 0,1,0, 0,1,  0,0,1, 1,0, 0,1,1, 1,1, 0,1,0, 1,0, // left
+			0,1,1, 0,0, 0,1,0, 1,0, 1,1,1, 0,1,  1,1,1, 1,0, 0,1,0, 1,1, 1,1,0, 1,0, // top
+			0,0,1, 0,0, 1,0,1, 1,0, 0,0,0, 0,1,  1,0,1, 1,0, 1,0,0, 1,1, 0,0,0, 1,0, // bottom
+		];
+		// private void UpdateBlocks()
+		// {
+		// 	Vector3i[] translations = new Vector3i[blockData.Count];
+		// 	int i = 0;
+		// 	foreach (KeyValuePair<UInt128, uint> thingy in blockData) {
+		// 		if (thingy.Value == 0) continue;
+		// 		translations[i] = new Vector3i((int)(thingy.Key >> 64), (int)(thingy.Key >> 32), (int)thingy.Key);
+		// 		i++;
+		// 	}
+		// 	translations = translations[..i];
+		// 	GL.BindBuffer(BufferTarget.ArrayBuffer, instanceVBO);
+		// 	renderingAmount = translations.Length;
+		// 	GL.BufferSubData(BufferTarget.ArrayBuffer, 0, renderingAmount * 3, translations);
+
+		// }
+		private void GenDefaultWorld() {
+			const int r = 18;
+			int x, y, z, innerCircle, circleAmount;
+			for (x = 0; x < r; x++) {
+				circleAmount = (int)MathF.Sqrt(r * r - x * x);
+				for (z = 0; z < circleAmount; z++)
+					for (y = 0; y < 100; y += 17){
+						SetBlock(x,y,z,1);SetBlock(-x,y,z,1);SetBlock(x,y,-z,1);SetBlock(-x,y,-z,1);}}
+			for (x = 0; x < r; x++) {
+				circleAmount = (int)MathF.Sqrt(r * r - x * x);
+				for (y = 0; y < circleAmount; y++){
+					int circleAmount2 = (int)MathF.Sqrt(r * r - x * x - y * y);
+					for (z = 0; z < circleAmount2; z++){
+						SetBlock(50+x, y, z,1);
+						SetBlock(50-x, y, z,1);
+						SetBlock(50+x, y,-z,1);
+						SetBlock(50-x, y,-z,1);
+						SetBlock(50+x,-y, z,1);
+						SetBlock(50-x,-y, z,1);
+						SetBlock(50+x,-y,-z,1);
+						SetBlock(50-x,-y,-z,1);}}}
+			for (x = 0; x < 75; x++) {
+				circleAmount = (int)MathF.Sqrt(75 * 75 - x * x);
+				int px = 200 + x;
+				int nx = 200 - x;
+				for (y = 0; y < circleAmount; y++){
+					int circleAmount2 = (int)MathF.Sqrt(75 * 75 - x * x - y * y);
+					for (z = 0; z < circleAmount2; z++){
+						SetBlock(px, y, z,1);
+						SetBlock(nx, y, z,1);
+						SetBlock(px, y,-z,1);
+						SetBlock(nx, y,-z,1);
+						SetBlock(px,-y, z,1);
+						SetBlock(nx,-y, z,1);
+						SetBlock(px,-y,-z,1);
+						SetBlock(nx,-y,-z,1);}}}
+			long bruh = Stopwatch.GetTimestamp();
+			const int r2 = 53; float rsq=r2*r2;float inRSQ=(r2-8f)*(r2-8f);float temp;
+			for (x = r2; x > 0; x--) {
+				int xsq = x * x;int px = x + 50;int nx = -x + 50; // "positive" x and "negative" x
+				circleAmount = (int)MathF.Sqrt(rsq - xsq);
+				for (y = circleAmount; y > 0; y--) {
+					int ysqmxsq = -(y * y + xsq); // y^2 plus x^2
+					int circleAmount2 = (int)MathF.Sqrt(rsq - ysqmxsq);
+					temp = MathF.Sqrt(inRSQ - ysqmxsq);
+					innerCircle = float.IsNaN(temp) ? 0 : (int)temp;
+					for (z = circleAmount2; z > innerCircle; z--) {
+						SetBlock(px, y, z,1);SetBlock(nx, y, z,1);SetBlock(px,-y, z,1);SetBlock(nx,-y, z,1);
+						SetBlock(px, y,-z,1);SetBlock(nx, y,-z,1);SetBlock(px,-y,-z,1);SetBlock(nx,-y,-z,1);}
+					if (innerCircle == 0)
+					{SetBlock(px,y,0,1);SetBlock(nx,y,0,1);SetBlock(px,-y,0,1);SetBlock(nx,-y,0,1);}}
+				temp = MathF.Sqrt(inRSQ - xsq);
+				innerCircle = float.IsNaN(temp) ? 0 : (int)temp;
+				for (z = circleAmount; z > innerCircle; z--) {
+					SetBlock(px,0,z,1);SetBlock(nx,0,z,1);SetBlock(px,0,-z,1);SetBlock(nx,0,-z,1);}
+				SetBlock(px, 0, 0, 1); SetBlock(nx, 0, 0, 1);}
+			circleAmount = (int)r2;
+			for(y=circleAmount;y>0;y--){int ysq=y*y;int circleAmount2=(int)MathF.Sqrt(rsq-ysq);temp=MathF.Sqrt(inRSQ - ysq);
+				innerCircle=float.IsNaN(temp)?0:(int)temp;
+				for(z=circleAmount2;z>innerCircle;z--){SetBlock(50,y,z,1);SetBlock(50,-y,z,1);SetBlock(50,y,-z,1);SetBlock(50,-y,-z,1);}
+				SetBlock(50, y, 0, 1); SetBlock(50, -y, 0, 1);}
+			for(z=circleAmount;z>inRSQ;z--){ SetBlock(50, 0, z, 1); SetBlock(50, 0, -z, 1);}SetBlock(50, 0, 0, 1);
+			Console.WriteLine("sphere gen took " + Stopwatch.GetElapsedTime(bruh).TotalMilliseconds + "ms.");}
+		public override void OnLoad(Game game) {
+			base.OnLoad(game);
+			game._camera.IsFlying = true;
+			game._camera.MaxDist = 1024;
+			shader = new("Shaders/miningGame/shader.vert", "Shaders/miningGame/shader.frag");
+			GL.UseProgram(shader.Handle);
+
+			GenDefaultWorld();
+
+			cubeVAO = GL.GenVertexArray();
+			GL.BindVertexArray(cubeVAO);
+
+			cubeVBO = GL.GenBuffer();
+			GL.BindBuffer(BufferTarget.ArrayBuffer, cubeVBO);
+			GL.BufferData(BufferTarget.ArrayBuffer, cubeVerts.Length * sizeof(float), cubeVerts, BufferUsageHint.StaticDraw);
+
+			// Set up vertex attributes
+			GL.EnableVertexAttribArray(0);
+			GL.VertexAttribPointer(0, 3, VertexAttribPointerType.Float, false, 5 * sizeof(float), 0);
+			GL.EnableVertexAttribArray(1);
+			GL.VertexAttribPointer(1, 2, VertexAttribPointerType.Float, false, 5 * sizeof(float), 3 * sizeof(float));
+
+			instanceVBO = GL.GenBuffer();
+			GL.BindBuffer(BufferTarget.ArrayBuffer, instanceVBO);
+			GL.BufferData(BufferTarget.ArrayBuffer, sizeof(int) * Text.BulkDrawConst * 3, pos, BufferUsageHint.DynamicDraw);
+
+			GL.EnableVertexAttribArray(2);
+			GL.VertexAttribIPointer(2, 3, VertexAttribIntegerType.Int, 3 * sizeof(int), 0);
+			GL.BindBuffer(BufferTarget.ArrayBuffer, 0);
+			GL.VertexAttribDivisor(2, 1);
+
+			// unbind to prevent later code from accidentally modifying this VAO/EBO
+			GL.BindBuffer(BufferTarget.ArrayBuffer, 0);
+			GL.BindVertexArray(0);
+			// GL.BindBuffer(BufferTarget.ElementArrayBuffer, 0);
+		}
+		public override void OnRenderFrame(Game game, double dt) {// 1154
+			base.OnRenderFrame(game, dt);
+			shader.Use();
+			// Vector3 up = game._camera.Up;
+			// assume up is 0,1,0
+			(float vX,float vY,float vZ)=game._camera.Position-game._camera.Target;float n=1f/MathF.Sqrt(vX*vX+vY*vY+vZ*vZ);vX*=n;vY*=n;vZ*=n;
+			n=1f/MathF.Sqrt(vZ*vZ+vX*vX);(float rX,float rZ)=(vZ*n,-vX*n);
+			(float v2X,float v2Y,float v2Z)=(vY*rZ,vZ*rX-vX*rZ,-vY*rX);
+			n=1f/MathF.Sqrt(v2X*v2X+v2Y*v2Y+v2Z*v2Z);v2X*=n;v2Y*=n;v2Z*=n;
+			(float eX,float eY,float eZ)=game._camera.Position;Matrix4 r=game._camera.Projection;
+			float x4=-rX*eX-rZ*eZ;float y4=-v2X*eX-v2Y*eY-v2Z*eZ;float z4=-vX*eX-vY*eY-vZ*eZ;
+			(float x5,float y5,float z5,float w5,float x6,float y6,float z6,float w6,float x7,float y7,float z7,float w7,float x8,float y8,float z8,float w8)
+			=(r.Row0.X,r.Row0.Y,r.Row0.Z,r.Row0.W,r.Row1.X,r.Row1.Y,r.Row1.Z,r.Row1.W,r.Row2.X,r.Row2.Y,r.Row2.Z,r.Row2.W,r.Row3.X,r.Row3.Y,r.Row3.Z,r.Row3.W);
+			shader.SetMatrix4("view", new(new(rX*x5+v2X*x6+vX*x7,rX*y5+v2X*y6+vX*y7,rX*z5+v2X*z6+vX*z7,rX*w5+v2X*w6+vX*w7),
+			new(v2Y*x6+vY*x7,v2Y*y6+vY*y7,v2Y*z6+vY*z7,v2Y*w6+vY*w7),
+			new(rZ*x5+v2Z*x6+vZ*x7,rZ*y5+v2Z*y6+vZ*y7,rZ*z5+v2Z*z6+vZ*z7,rZ*w5+v2Z*w6+vZ*w7),
+			new(x4*x5+y4*x6+z4*x7+x8,x4*y5+y4*y6+z4*y7+y8,x4*z5+y4*z6+z4*z7+z8,x4*w5+y4*w6+z4*w7+w8)));
+			// int location = GL.GetUniformLocation(shader.Handle, "texOffset");
+			// GL.Uniform2(location, Vector2.Zero);
+			// shader.SetMatrix4("projection", game._camera.Projection);
+			GL.BindVertexArray(cubeVAO);
+			GL.BindBuffer(BufferTarget.ArrayBuffer, instanceVBO);
+			int i = 0;
+			// Vector3i[] pos = new Vector3i[Text.BulkDrawConst];
+#if MINING_GAME_PROFILELOG
+			int test = 0;
+			long sdfjkl0, sdfjkl, sdfjkl1, sdfjkl2, sdfjkl3, sdfjkl4, sdfjklsjd = Stopwatch.GetTimestamp();
+			double testt = 0, testt2 = 0, testt3 = 0, testt4, testt5 = 0, testt6 = 0, testt10 = 0, nonrendertime = 0;
+#endif
+			foreach (KeyValuePair<Vector3i, ushort[]> d in bData) {
+				ushort[] B = d.Value;
+				// ulong[] F = fData[d.Key];
+				ulong[] F = new ulong[cSzCb >> 3];
+				int[] realF = fData[d.Key];
+#if MINING_GAME_PROFILELOG
+				sdfjkl0 = Stopwatch.GetTimestamp();
+#endif
+				(int chunkPosX, int chunkPosY, int chunkPosZ) = d.Key;
+				(int basePosX, int basePosY, int basePosZ) = (chunkPosX << cBSN, chunkPosY << cBSN, chunkPosZ << cBSN);
+				// Console.WriteLine("1184lengths: " + _d.Length + ", " + _f.Length);
+				int j, ind, tmp2, j1, k, j2, j1xcs, j1xcssq, _i = 0;
+				uint tmp;
+#if MINING_GAME_PER_FACE_CULL
+				uint tmp1;
+#endif
+				// Console.WriteLine("1185");
+#if MINING_GAME_PROFILELOG
+				sdfjkl = Stopwatch.GetTimestamp();
+#endif
+				if (CDT[d.Key] > 0) {
+					Array.Fill(F, 0ul);
+					ushort[] ocfd = new ushort[cSzSq * 6]; // other chunk face deeta
+#if MINING_GAME_PROFILELOG
+					test++;
+					testt10 += Stopwatch.GetElapsedTime(sdfjkl).TotalMilliseconds;
+					sdfjkl1 = Stopwatch.GetTimestamp();
+#endif
+					{
+						if (bData.TryGetValue((chunkPosX, chunkPosY, chunkPosZ - 1), out ushort[] _B)) {
+							Array.Copy(_B, cSzCb-cSzSq, ocfd, cSzSq*4, cSzSq); }
+						if (bData.TryGetValue((chunkPosX, chunkPosY, chunkPosZ + 1), out _B)) {
+							Array.Copy(_B, 0, ocfd, cSzSq*5, cSzSq); }
+						int Y1, Y2;
+						if (bData.TryGetValue((chunkPosX - 1, chunkPosY, chunkPosZ), out _B)) {
+							for(Y2=0;Y2<cSzCb;Y2+=cSzSq){Y1=Y2>>cBSN;
+								ocfd[Y1]=_B[Y2|31];ocfd[Y1|1]=_B[Y2|63];ocfd[Y1|2]=_B[Y2|95];ocfd[Y1|3]=_B[Y2|127];
+								ocfd[Y1|4]=_B[Y2|159];ocfd[Y1|5]=_B[Y2|191];ocfd[Y1|6]=_B[Y2|223];ocfd[Y1|7]=_B[Y2|255];
+								ocfd[Y1|8]=_B[Y2|287];ocfd[Y1|9]=_B[Y2|319];ocfd[Y1|10]=_B[Y2|351];ocfd[Y1|11]=_B[Y2|383];
+								ocfd[Y1|12]=_B[Y2|415];ocfd[Y1|13]=_B[Y2|447];ocfd[Y1|14]=_B[Y2|479];ocfd[Y1|15]=_B[Y2|511];
+								ocfd[Y1|16]=_B[Y2|543];ocfd[Y1|17]=_B[Y2|575];ocfd[Y1|18]=_B[Y2|607];ocfd[Y1|19]=_B[Y2|639];
+								ocfd[Y1|20]=_B[Y2|671];ocfd[Y1|21]=_B[Y2|703];ocfd[Y1|22]=_B[Y2|735];ocfd[Y1|23]=_B[Y2|767];
+								ocfd[Y1|24]=_B[Y2|799];ocfd[Y1|25]=_B[Y2|831];ocfd[Y1|26]=_B[Y2|863];ocfd[Y1|27]=_B[Y2|895];
+								ocfd[Y1|28]=_B[Y2|927];ocfd[Y1|29]=_B[Y2|959];ocfd[Y1|30]=_B[Y2|991];ocfd[Y1|31]=_B[Y2|1023];}}
+						if (bData.TryGetValue((chunkPosX + 1, chunkPosY, chunkPosZ), out _B)) {
+							// for(YB1=0;YB1<cSzSq;YB1+=cSz){YB2=YB1<<cBSN;
+							// 	YP = cSzSq|YB1;
+							for(Y2=0;Y2<cSzCb;Y2+=cSzSq){Y1=cSzSq|(Y2>>cBSN);
+								ocfd[Y1]=_B[Y2];ocfd[Y1|1]=_B[Y2|32];ocfd[Y1|2]=_B[Y2|64];ocfd[Y1|3]=_B[Y2|96];
+								ocfd[Y1|4]=_B[Y2|128];ocfd[Y1|5]=_B[Y2|160];ocfd[Y1|6]=_B[Y2|192];ocfd[Y1|7]=_B[Y2|224];
+								ocfd[Y1|8]=_B[Y2|256];ocfd[Y1|9]=_B[Y2|288];ocfd[Y1|10]=_B[Y2|320];ocfd[Y1|11]=_B[Y2|352];
+								ocfd[Y1|12]=_B[Y2|384];ocfd[Y1|13]=_B[Y2|416];ocfd[Y1|14]=_B[Y2|448];ocfd[Y1|15]=_B[Y2|480];
+								ocfd[Y1|16]=_B[Y2|512];ocfd[Y1|17]=_B[Y2|544];ocfd[Y1|18]=_B[Y2|576];ocfd[Y1|19]=_B[Y2|608];
+								ocfd[Y1|20]=_B[Y2|640];ocfd[Y1|21]=_B[Y2|672];ocfd[Y1|22]=_B[Y2|704];ocfd[Y1|23]=_B[Y2|736];
+								ocfd[Y1|24]=_B[Y2|768];ocfd[Y1|25]=_B[Y2|800];ocfd[Y1|26]=_B[Y2|832];ocfd[Y1|27]=_B[Y2|864];
+								ocfd[Y1|28]=_B[Y2|896];ocfd[Y1|29]=_B[Y2|928];ocfd[Y1|30]=_B[Y2|960];ocfd[Y1|31]=_B[Y2|992];}}
+						if (bData.TryGetValue((chunkPosX, chunkPosY - 1, chunkPosZ), out _B)) {
+							// for(YB1=0;YB1<cSzSq;YB1+=cSz){YB2=YB1<<cBSN;
+							// 	YP = cSzSq*2|YB1;
+							for(Y2=0;Y2<cSzCb;Y2+=cSzSq){Y1=(cSzSq*2)|(Y2>>cBSN);
+								ocfd[Y1]=_B[Y2|992];ocfd[Y1|1]=_B[Y2|993];ocfd[Y1|2]=_B[Y2|994];ocfd[Y1|3]=_B[Y2|995];
+								ocfd[Y1|4]=_B[Y2|996];ocfd[Y1|5]=_B[Y2|997];ocfd[Y1|6]=_B[Y2|998];ocfd[Y1|7]=_B[Y2|999];
+								ocfd[Y1|8]=_B[Y2|1000];ocfd[Y1|9]=_B[Y2|1001];ocfd[Y1|10]=_B[Y2|1002];ocfd[Y1|11]=_B[Y2|1003];
+								ocfd[Y1|12]=_B[Y2|1004];ocfd[Y1|13]=_B[Y2|1005];ocfd[Y1|14]=_B[Y2|1006];ocfd[Y1|15]=_B[Y2|1007];
+								ocfd[Y1|16]=_B[Y2|1008];ocfd[Y1|17]=_B[Y2|1009];ocfd[Y1|18]=_B[Y2|1010];ocfd[Y1|19]=_B[Y2|1011];
+								ocfd[Y1|20]=_B[Y2|1012];ocfd[Y1|21]=_B[Y2|1013];ocfd[Y1|22]=_B[Y2|1014];ocfd[Y1|23]=_B[Y2|1015];
+								ocfd[Y1|24]=_B[Y2|1016];ocfd[Y1|25]=_B[Y2|1017];ocfd[Y1|26]=_B[Y2|1018];ocfd[Y1|27]=_B[Y2|1019];
+								ocfd[Y1|28]=_B[Y2|1020];ocfd[Y1|29]=_B[Y2|1021];ocfd[Y1|30]=_B[Y2|1022];ocfd[Y1|31]=_B[Y2|1023];}}
+						if (bData.TryGetValue((chunkPosX, chunkPosY + 1, chunkPosZ), out _B)) {
+							// for(YB1=0;YB1<cSzSq;YB1+=cSz){YB2=YB1<<cBSN;
+							// 	YP = cSzSq*3|YB1;
+							for(Y2=0;Y2<cSzCb;Y2+=cSzSq){Y1=(cSzSq*3)|(Y2>>cBSN);
+								ocfd[Y1]=_B[Y2];ocfd[Y1|1]=_B[Y2|1];ocfd[Y1|2]=_B[Y2|2];ocfd[Y1|3]=_B[Y2|3];
+								ocfd[Y1|4]=_B[Y2|4];ocfd[Y1|5]=_B[Y2|5];ocfd[Y1|6]=_B[Y2|6];ocfd[Y1|7]=_B[Y2|7];
+								ocfd[Y1|8]=_B[Y2|8];ocfd[Y1|9]=_B[Y2|9];ocfd[Y1|10]=_B[Y2|10];ocfd[Y1|11]=_B[Y2|11];
+								ocfd[Y1|12]=_B[Y2|12];ocfd[Y1|13]=_B[Y2|13];ocfd[Y1|14]=_B[Y2|14];ocfd[Y1|15]=_B[Y2|15];
+								ocfd[Y1|16]=_B[Y2|16];ocfd[Y1|17]=_B[Y2|17];ocfd[Y1|18]=_B[Y2|18];ocfd[Y1|19]=_B[Y2|19];
+								ocfd[Y1|20]=_B[Y2|20];ocfd[Y1|21]=_B[Y2|21];ocfd[Y1|22]=_B[Y2|22];ocfd[Y1|23]=_B[Y2|23];
+								ocfd[Y1|24]=_B[Y2|24];ocfd[Y1|25]=_B[Y2|25];ocfd[Y1|26]=_B[Y2|26];ocfd[Y1|27]=_B[Y2|27];
+								ocfd[Y1|28]=_B[Y2|28];ocfd[Y1|29]=_B[Y2|29];ocfd[Y1|30]=_B[Y2|30];ocfd[Y1|31]=_B[Y2|31];}}}
+					// woah this probably belongs in horriblecode.cs
+#if MINING_GAME_PROFILELOG
+					testt += Stopwatch.GetElapsedTime(sdfjkl1).TotalMicroseconds;
+					sdfjkl2 = Stopwatch.GetTimestamp();
+#endif
+					for (j1=0,k=0;j1<cSz;j1++){
+						j1xcs=j1<<cBSN;
+						j1xcssq=j1<<cBS2;
+						for(j2=0;j2<cSz;j2++,k+=cSz,_i++){
+							tmp=(B[k]==0?0:1u)|(B[k|1]==0?0:2u)|(B[k|2]==0?0:4u)|(B[k|3]==0?0:8u)|(B[k|4]==0?0:0x10u)|(B[k|5]==0?0:0x20u)|(B[k|6]==0?0:0x40u)|
+							(B[k|7]==0?0:0x80u)|(B[k|8]==0?0:0x100u)|(B[k|9]==0?0:0x200u)|(B[k|10]==0?0:0x400u)|(B[k|11]==0?0:0x800u)|(B[k|12]==0?0:0x1000u)|
+							(B[k|13]==0?0:0x2000u)|(B[k|14]==0?0:0x4000u)|(B[k|15]==0?0:0x8000u)|(B[k|16]==0?0:0x10000u)|(B[k|17]==0?0:0x20000u)|(B[k|18]==0?0:0x40000u)|
+							(B[k|19]==0?0:0x80000u)|(B[k|20]==0?0:0x100000u)|(B[k|21]==0?0:0x200000u)|(B[k|22]==0?0:0x400000u)|(B[k|23]==0?0:0x800000u)|
+							(B[k|24]==0?0:0x1000000u)|(B[k|25]==0?0:0x2000000u)|(B[k|26]==0?0:0x4000000u)|(B[k|27]==0?0:0x8000000u)|(B[k|28]==0?0:0x10000000u)|
+							(B[k|29]==0?0:0x20000000u)|(B[k|30]==0?0:0x40000000u)|(B[k|31]==0?0:0x80000000);
+							//tmp=(tmp&~(tmp<<1))|(tmp&~(tmp>>1));
+							ind=(j2<<cBSN)+j1xcssq;
+#if MINING_GAME_PER_FACE_CULL
+							tmp1=tmp&~((tmp<<1)|(ocfd[_i]==0?0:1u));
+							tmp&=~((tmp>>1)|(ocfd[_i|cSzSq]==0?0:0x80000000));
+							//ind=(y<<cBSN)+(z<<cBS2);
+							tmp2=System.Numerics.BitOperations.TrailingZeroCount(tmp);
+							while(tmp2<32) {
+								F[(ind|tmp2)>>3]|=0b00000010ul<<((tmp2&7)<<3);
+								tmp^=1u<<tmp2;
+								tmp2=System.Numerics.BitOperations.TrailingZeroCount(tmp); }
+							tmp2=System.Numerics.BitOperations.TrailingZeroCount(tmp1);
+							while(tmp2<32) {
+								F[(ind|tmp2)>>3]|=0b00000001ul<<((tmp2&7)<<3); // BRUH ONE CHARACTER MISSING LOL (THE L CHARACTER)
+								tmp1^=1u<<tmp2;
+								tmp2=System.Numerics.BitOperations.TrailingZeroCount(tmp1); }
+#else
+							tmp&=~((tmp<<1)|(tmp>>1)|(ocfd[_i]==0?0:1u)|(ocfd[_i|cSzSq]==0?0:0x80000000));
+							tmp2=System.Numerics.BitOperations.TrailingZeroCount(tmp);
+							while(tmp2<32) {
+								F[(ind|tmp2)>>3]|=0b00111111ul<<((tmp2&7)<<3);
+								tmp^=1u<<tmp2;
+								tmp2=System.Numerics.BitOperations.TrailingZeroCount(tmp); }
+#endif
+							int irs3 = _i >> 3; // i right shifted by 3. INTERNAL REVENUE SERVICE MENTION!?!?1?!?!1?!1?!!?1?!1?3991680010395?!1!?1?10395?!?!1?1039511?
+							tmp=(B[_i]==0?0:1u)|(B[_i|cSzSq]==0?0:2u)|(B[_i|(cSzSq*2)]==0?0:4u)|(B[_i|(cSzSq*3)]==0?0:8u)|(B[_i|(cSzSq*4)]==0?0:16u)|(B[_i|(cSzSq*5)]==0?0:32u)|(B[_i|(cSzSq*6)]==0?0:64u)|
+							(B[_i|(cSzSq*7)]==0?0:128u)|(B[_i|(cSzSq*8)]==0?0:256u)|(B[_i|(cSzSq*9)]==0?0:512u)|(B[_i|(cSzSq*10)]==0?0:1024u)|(B[_i|(cSzSq*11)]==0?0:2048u)|(B[_i|(cSzSq*12)]==0?0:4096u)|
+							(B[_i|(cSzSq*13)]==0?0:8192u)|(B[_i|(cSzSq*14)]==0?0:16384u)|(B[_i|(cSzSq*15)]==0?0:32768u)|(B[_i|(cSzSq*16)]==0?0:65536u)|(B[_i|(cSzSq*17)]==0?0:131072u)|(B[_i|(cSzSq*18)]==0?0:262144u)|
+							(B[_i|(cSzSq*19)]==0?0:524288u)|(B[_i|(cSzSq*20)]==0?0:1048576u)|(B[_i|(cSzSq*21)]==0?0:2097152u)|(B[_i|(cSzSq*22)]==0?0:4194304u)|(B[_i|(cSzSq*23)]==0?0:8388608u)|
+							(B[_i|(cSzSq*24)]==0?0:16777216u)|(B[_i|(cSzSq*25)]==0?0:33554432u)|(B[_i|(cSzSq*26)]==0?0:67108864u)|(B[_i|(cSzSq*27)]==0?0:0x8000000u)|(B[_i|(cSzSq*28)]==0?0:0x10000000u)|
+							(B[_i|(cSzSq*29)]==0?0:0x20000000u)|(B[_i|(cSzSq*30)]==0?0:0x40000000u)|(B[_i|(cSzSq*31)]==0?0:0x80000000);
+#if MINING_GAME_PER_FACE_CULL
+							ulong bsamtish = 0b00100000ul<<((_i&7)<<3); // bitshift amount ish
+							// tmp=(tmp&~(tmp<<1))|(tmp&~(tmp>>1));
+							// tmp&=~(tmp<<1)|~(tmp>>1);
+							// tmp&=~((tmp<<1)&(tmp>>1));
+							tmp1=tmp&~((tmp<<1)|(ocfd[cSzSq*4|_i]==0?0:1u));
+							tmp&=~((tmp>>1)|(ocfd[cSzSq*5|_i]==0?0:0x80000000));
+							// x = basePosX | j2;
+							// y = basePosY | j1;
+							// ind = x | (y<<cBSN);
+							// ind = j2 | j1xcs;
+							tmp2=System.Numerics.BitOperations.TrailingZeroCount(tmp);
+							// while (tmp2 < 32) {
+							// 	// vdataBF[i] = (x, y, basePosZ+tmp2);
+							// 	_f[ind | tmp2<<cBS2] |= 0b00110000;
+							// 	tmp ^= 1u<<tmp2;
+							// 	tmp2 = System.Numerics.BitOperations.TrailingZeroCount(tmp); }
+							while(tmp2<32){
+								// vdataBF[i] = (basePosX + tmp2, y, z);
+								F[irs3|(tmp2<<(cBS2-3))]|=bsamtish;
+								tmp^=1u<<tmp2;
+								tmp2=System.Numerics.BitOperations.TrailingZeroCount(tmp);}
+							tmp2=System.Numerics.BitOperations.TrailingZeroCount(tmp1);
+							bsamtish >>= 1;
+							while(tmp2<32){
+								// vdataBF[i] = (basePosX + tmp2, y, z);
+								F[irs3|(tmp2<<(cBS2-3))]|=bsamtish;
+								tmp1^=1u<<tmp2;
+								tmp2=System.Numerics.BitOperations.TrailingZeroCount(tmp1);}
+#else
+							ulong bsamtish = 0b00111111ul<<((_i&7)<<3); // bitshift amount ish
+							tmp&=~((tmp<<1)|(tmp>>1)|(ocfd[cSzSq*4|_i]==0?0:1u)|(ocfd[cSzSq*5|_i]==0?0:0x80000000));
+							tmp2=System.Numerics.BitOperations.TrailingZeroCount(tmp);
+							while(tmp2<32){
+								// vdataBF[i] = (basePosX + tmp2, y, z);
+								F[irs3|(tmp2<<(cBS2-3))]|=bsamtish;
+								tmp^=1u<<tmp2;
+								tmp2=System.Numerics.BitOperations.TrailingZeroCount(tmp);}
+#endif
+							j=j1xcssq|j2;
+							tmp=(B[j]==0?0:1u)|(B[j|cSz]==0?0:2u)|(B[j|cSz*2]==0?0:4u)|(B[j|cSz*3]==0?0:8u)|(B[j|cSz*4]==0?0:16u)|(B[j|cSz*5]==0?0:32u)|(B[j|cSz*6]==0?0:64u)|
+							(B[j|cSz*7]==0?0:128u)|(B[j|cSz*8]==0?0:256u)|(B[j|cSz*9]==0?0:512u)|(B[j|cSz*10]==0?0:1024u)|(B[j|cSz*11]==0?0:2048u)|(B[j|cSz*12]==0?0:4096u)|
+							(B[j|cSz*13]==0?0:8192u)|(B[j|cSz*14]==0?0:16384u)|(B[j|cSz*15]==0?0:32768u)|(B[j|cSz*16]==0?0:65536u)|(B[j|cSz*17]==0?0:131072u)|(B[j|cSz*18]==0?0:262144u)|
+							(B[j|cSz*19]==0?0:524288u)|(B[j|cSz*20]==0?0:1048576u)|(B[j|cSz*21]==0?0:2097152u)|(B[j|cSz*22]==0?0:4194304u)|(B[j|cSz*23]==0?0:8388608u)|
+							(B[j|cSz*24]==0?0:16777216u)|(B[j|cSz*25]==0?0:33554432u)|(B[j|cSz*26]==0?0:67108864u)|(B[j|cSz*27]==0?0:0x8000000u)|(B[j|cSz*28]==0?0:0x10000000u)|
+							(B[j|cSz*29]==0?0:0x20000000u)|(B[j|cSz*30]==0?0:0x40000000u)|(B[j|cSz*31]==0?0:0x80000000);
+							irs3 = (j2|j1xcssq) >> 3; // i right shifted by 3. INTERNAL REVENUE SERVICE MENTION!?!?1?!?!1?!1?!!?1?!1?3991680010395?!1!?1?10395?!?!1?1039511?
+#if MINING_GAME_PER_FACE_CULL
+							tmp1=tmp&~((tmp<<1)|(ocfd[cSzSq*2|_i]==0?0:1u));
+							tmp&=~((tmp>>1)|(ocfd[cSzSq*3|_i]==0?0:0x80000000));
+							// ind=j2|j1xcssq;
+							tmp2=System.Numerics.BitOperations.TrailingZeroCount(tmp);
+							bsamtish >>= 1;
+							while(tmp2<32){
+								F[irs3|(tmp2<<(cBSN-3))]|=bsamtish;
+								tmp^=1u<<tmp2;
+								tmp2=System.Numerics.BitOperations.TrailingZeroCount(tmp);}
+							tmp2=System.Numerics.BitOperations.TrailingZeroCount(tmp1);
+							bsamtish >>= 1;
+							while(tmp2<32){
+								F[irs3|(tmp2<<(cBSN-3))]|=bsamtish;
+								tmp1^=1u<<tmp2;
+								tmp2=System.Numerics.BitOperations.TrailingZeroCount(tmp1);}
+#else
+							tmp&=~((tmp<<1)|(tmp>>1)|(ocfd[cSzSq*3|_i]==0?0:0x80000000)|(ocfd[cSzSq*2|_i]==0?0:1u));
+							tmp2=System.Numerics.BitOperations.TrailingZeroCount(tmp);
+							while(tmp2<32){
+								F[irs3|(tmp2<<(cBSN-3))]|=bsamtish;
+								tmp^=1u<<tmp2;
+								tmp2=System.Numerics.BitOperations.TrailingZeroCount(tmp);}
+#endif
+					}}
+					CDT[d.Key] = 0;
+#if MINING_GAME_PROFILELOG
+					testt3 +=Stopwatch.GetElapsedTime(sdfjkl2).TotalMicroseconds;
+					testt2+=Stopwatch.GetElapsedTime(sdfjkl).TotalMicroseconds;
+					/*Console.WriteLine("culling took " + Stopwatch.GetElapsedTime(asdasda).TotalMilliseconds + "ms");*/
+					sdfjkl3 = Stopwatch.GetTimestamp();
+#endif
+					ulong a;
+					j = 0;
+					int y, z;
+					// realF = fData[d.Key];
+					// (ulong rx, ulong ry, ulong rz) = ((basePosX>0?(ulong)basePosX:(ulong)(basePosX+1048576))<<43,(basePosY>0?(ulong)basePosY:(ulong)(basePosY+2097152))<<21,basePosZ>0?(ulong)basePosZ:(ulong)(basePosZ+1048576));
+					// (uint rx, uint ry, uint rz) = ((uint)basePosX,(uint)basePosY,(uint)basePosZ);
+					int count = 0;
+					for (z=basePosZ;z<basePosZ+cSz;z++){
+						for(y=basePosY;y<basePosY+cSz;y++,j+=4){
+							a=F[j];if(a>0){if((a&255)>0){realF[count]=basePosX;realF[count+1]=y;realF[count+2]=z;count+=3;}if((a&0xFF00)>0){realF[count]=basePosX|1;realF[count+1]=y;realF[count+2]=z;count+=3;}
+								if((a&0xFF0000)>0){realF[count]=basePosX|2;realF[count+1]=y;realF[count+2]=z;count+=3;}if((a&0xFF000000)>0){realF[count]=basePosX|3;realF[count+1]=y;realF[count+2]=z;count+=3;}
+								if((a&0xFF00000000)>0){realF[count]=basePosX|4;realF[count+1]=y;realF[count+2]=z;count+=3;}if((a&0xFF0000000000)>0){realF[count]=basePosX|5;realF[count+1]=y;realF[count+2]=z;count+=3;}
+								if((a&0xFF000000000000)>0){realF[count]=basePosX|6;realF[count+1]=y;realF[count+2]=z;count+=3;}if((a>>56)>0){realF[count]=basePosX|7;realF[count+1]=y;realF[count+2]=z;count+=3;}}
+							a=F[j|1];if(a>0){if((a&255)>0){realF[count]=basePosX|8;realF[count+1]=y;realF[count+2]=z;count+=3;}if((a&0xFF00)>0){realF[count]=basePosX|9;realF[count+1]=y;realF[count+2]=z;count+=3;}
+								if((a&0xFF0000)>0){realF[count]=basePosX|10;realF[count+1]=y;realF[count+2]=z;count+=3;}if((a&0xFF000000)>0){realF[count]=basePosX|11;realF[count+1]=y;realF[count+2]=z;count+=3;}
+								if((a&0xFF00000000)>0){realF[count]=basePosX|12;realF[count+1]=y;realF[count+2]=z;count+=3;}if((a&0xFF0000000000)>0){realF[count]=basePosX|13;realF[count+1]=y;realF[count+2]=z;count+=3;}
+								if((a&0xFF000000000000)>0){realF[count]=basePosX|14;realF[count+1]=y;realF[count+2]=z;count+=3;}if((a>>56)>0){realF[count]=basePosX|15;realF[count+1]=y;realF[count+2]=z;count+=3;}}
+							a=F[j|2];if(a>0){if((a&255)>0){realF[count]=basePosX|16;realF[count+1]=y;realF[count+2]=z;count+=3;}if((a&0xFF00)>0){realF[count]=basePosX|17;realF[count+1]=y;realF[count+2]=z;count+=3;}
+								if((a&0xFF0000)>0){realF[count]=basePosX|18;realF[count+1]=y;realF[count+2]=z;count+=3;}if((a&0xFF000000)>0){realF[count]=basePosX|19;realF[count+1]=y;realF[count+2]=z;count+=3;}
+								if((a&0xFF00000000)>0){realF[count]=basePosX|20;realF[count+1]=y;realF[count+2]=z;count+=3;}if((a&0xFF0000000000)>0){realF[count]=basePosX|21;realF[count+1]=y;realF[count+2]=z;count+=3;}
+								if((a&0xFF000000000000)>0){realF[count]=basePosX|22;realF[count+1]=y;realF[count+2]=z;count+=3;}if((a>>56)>0){realF[count]=basePosX|23;realF[count+1]=y;realF[count+2]=z;count+=3;}}
+							a=F[j|3];if(a>0){if((a&255)>0){realF[count]=basePosX|24;realF[count+1]=y;realF[count+2]=z;count+=3;}if((a&0xFF00)>0){realF[count]=basePosX|25;realF[count+1]=y;realF[count+2]=z;count+=3;}
+								if((a&0xFF0000)>0){realF[count]=basePosX|26;realF[count+1]=y;realF[count+2]=z;count+=3;}if((a&0xFF000000)>0){realF[count]=basePosX|27;realF[count+1]=y;realF[count+2]=z;count+=3;}
+								if((a&0xFF00000000)>0){realF[count]=basePosX|28;realF[count+1]=y;realF[count+2]=z;count+=3;}if((a&0xFF0000000000)>0){realF[count]=basePosX|29;realF[count+1]=y;realF[count+2]=z;count+=3;}
+								if((a&0xFF000000000000)>0){realF[count]=basePosX|30;realF[count+1]=y;realF[count+2]=z;count+=3;}if((a>>56)>0){realF[count]=basePosX|31;realF[count+1]=y;realF[count+2]=z;count+=3;}} }}
+					realF[cSzCb*3-1] = count/3;
+#if MINING_GAME_PROFILELOG
+					testt5 += Stopwatch.GetElapsedTime(sdfjkl3).TotalMicroseconds; }nonrendertime += Stopwatch.GetElapsedTime(sdfjkl0).TotalMilliseconds;
+#else
+				}
+#endif
+					int amt = realF[cSzCb*3-1];
+				if (amt > 0){
+					if (i+amt > Text.BulkDrawConst) {
+#if MINING_GAME_PROFILELOG
+						sdfjkl4 = Stopwatch.GetTimestamp();
+						Console.WriteLine("1308bruh"+i);
+						GL.BufferSubData(BufferTarget.ArrayBuffer, 0, sizeof(int)*3*i, pos);
+						GL.DrawArraysInstanced(PrimitiveType.Triangles, 0, 36, i); i = 0;
+						testt6 += Stopwatch.GetElapsedTime(sdfjkl4).TotalMilliseconds;
+#else
+						GL.BufferSubData(BufferTarget.ArrayBuffer, 0, sizeof(int)*3*i, pos);
+						GL.DrawArraysInstanced(PrimitiveType.Triangles, 0, 36, i); i = 0;
+#endif
+					}// realF.CopyTo(pos, i);
+					Array.Copy(realF, 0, pos, i*3, amt*3);
+					i += amt;}}
+#if MINING_GAME_PROFILELOG
+			// Console.WriteLine("1313:" + i);
+			Console.WriteLine("1493," + i);if (i > 0) {
+				sdfjkl4 = Stopwatch.GetTimestamp();
+				// Console.WriteLine("1316bruh"+i);
+				GL.BufferSubData(BufferTarget.ArrayBuffer, 0, sizeof(int)*3*i, pos);
+				GL.DrawArraysInstanced(PrimitiveType.Triangles, 0, 36, i);
+				testt6 += Stopwatch.GetElapsedTime(sdfjkl4).TotalMilliseconds;}
+			testt4 = Stopwatch.GetElapsedTime(sdfjklsjd).TotalMilliseconds;
+			Console.WriteLine("updated " + test + " chunks/"+bData.Count+". took " + testt10 + "ms to fill," + testt + "μs for other side loading; " + (testt / test) + "μsper for othersides, "+(testt10/test)+"msper for fill. chunkasm "+testt3+"μs;"+(testt3/test)+"μsper; full asm time:"+testt2+"μs,"+(testt2/test)+"μsper. total time was "+testt4+"ms;rendertime(?):"+testt6+"ms.(that's "+(100*testt6/testt4)+"%.)datagathering:"+testt5+"μs,"+(testt5/bData.Count)+"μsper. nonrender time: "+nonrendertime+"ms (that's "+(100*nonrendertime/testt4)+"%.)");
+#else
+			if (i > 0) {
+				GL.BufferSubData(BufferTarget.ArrayBuffer, 0, sizeof(int)*3*i, pos);
+				GL.DrawArraysInstanced(PrimitiveType.Triangles, 0, 36, i);
+			}
+#endif
+		}// 1434
+		public override void OnUpdateFrame(Game game, double dt)
+		{
+			base.OnUpdateFrame(game, dt);
+			(int x, int y, int z) = (Vector3i)game._player.RootPosition;
+			x >>= 2; y = -y>>2; z >>= 2;
+			if (game.MouseState[MouseButton.Right]) {
+				SetBlock(x, y, z, 1);
+			} else if (game.MouseState[MouseButton.Left]) {
+				SetBlock(x, y, z, 0);
+			}
 		}
 		public override void OnKeyDown(KeyboardKeyEventArgs e)
 		{

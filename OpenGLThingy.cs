@@ -10,6 +10,7 @@ using System.Diagnostics;
 using StbImageSharp;
 using System.ComponentModel;
 using PixelFormat = OpenTK.Graphics.OpenGL4.PixelFormat;
+using System.Text;
 
 // uses StbImageSharp
 
@@ -40,13 +41,13 @@ namespace GameEngineThing {
 		// private int _seconds = 0;
 		public static float _groundHeight = 0f;
 
-		private Player _player;
+		public Player _player;
 		private ObjectMesh _playerTorsoMesh;
 		private ObjectMesh _playerHeadMesh;
 		private ObjectMesh _playerArmMesh;
 		private ObjectMesh _playerLegMesh;
 		private bool _isChatting = false;
-		private byte _chattingBlinker = 0;
+		private int _chattingBlinker = 0;
 		public string _chattingText { get; private set; } = "";
 		private int _chattingTextLines = 1;
 		private Vector2 _chattingTextSize = new(2);
@@ -66,16 +67,94 @@ namespace GameEngineThing {
 		private VideoRecorder _videoRecorder;
 		private long previousFrameTimestamp = 0;
 		public double[] profilerFrameTimes = new double[2048];
+		public float[] profilerVD; // profiler vertex data
 		public int profilerIndex = 0;
 		private bool profilerOn = false;
 		public readonly long gameStartTimestamp = Stopwatch.GetTimestamp();
+		public bool renderPlayer = true;
+		public int GameEngineFlyBehavior;
+		public static readonly Action<Game>[] GameEngineFlyBehaviorsThing = [delegate (Game game){
+			Camera cam = game._camera;
+			var KeyboardState = game.KeyboardState;
+			float moveAmount = cam.CamSpeed / game._gameTickSpeed;
+			Player player = game._player;
+			long frameCount = game._frameCount;
+			float movement = (KeyboardState.IsKeyDown(Keys.W) ? -moveAmount : 0) + (KeyboardState.IsKeyDown(Keys.S) ? moveAmount : 0);
+			Vector3 plrMovement = Vector3.Zero;
+			plrMovement += cam.Direction * movement;
+			movement = (KeyboardState.IsKeyDown(Keys.A) ? -moveAmount : 0) + (KeyboardState.IsKeyDown(Keys.D) ? moveAmount : 0);
+			plrMovement += cam.Right * movement;
+			movement = ((KeyboardState.IsKeyDown(Keys.Space) || KeyboardState.IsKeyDown(Keys.E)) ? moveAmount : 0) + ((KeyboardState.IsKeyDown(Keys.LeftShift) || KeyboardState.IsKeyDown(Keys.Q)) ? -moveAmount : 0);
+			plrMovement += cam.Up * movement;
+			player.RootPosition += plrMovement;
+			(float ax, float ay, float az) = player.RootRotation;
+			float num = MathF.Cos(ax),
+			num2 = MathF.Sin(ax),
+			num3 = MathF.Cos(ay),
+			num4 = MathF.Sin(ay),
+			num5 = MathF.Cos(az),
+			num6 = MathF.Sin(az),
+			x2 = num2 * num4,x3 = num * num4;
+			(float sX, float sY, float sZ) = player.RootScale;
+			(float tX, float tY, float tZ) = player.RootPosition;
+			player.RootModel = new(sX * num3 * num5,sX * num3 * num6,-sX * num4,0,
+			sY * (x2 * num5 - num * num6),sY * (x2 * num6 + num * num5),sY * num2 * num3,0,
+			sZ * (x3 * num5 + num2 * num6),sZ * (x3 * num6 - num2 * num5),sZ * num * num3,0,
+			tX,tY,tZ,1);
+			player.UpdateLimbs();
+		},delegate (Game game){
+			Camera cam = game._camera;
+			var KeyboardState = game.KeyboardState;
+			float moveAmount = cam.CamSpeed / game._gameTickSpeed;
+			Player player = game._player;
+			long frameCount = game._frameCount;
+			float movement = (KeyboardState.IsKeyDown(Keys.W) ? -moveAmount : 0) + (KeyboardState.IsKeyDown(Keys.S) ? moveAmount : 0);
+			Vector3 plrMovement = Vector3.Zero;
+			plrMovement += cam.Direction * movement;
+			movement = (KeyboardState.IsKeyDown(Keys.A) ? -moveAmount : 0) + (KeyboardState.IsKeyDown(Keys.D) ? moveAmount : 0);
+			plrMovement += cam.Right * movement;
+			movement = ((KeyboardState.IsKeyDown(Keys.Space) || KeyboardState.IsKeyDown(Keys.E)) ? moveAmount : 0) + ((KeyboardState.IsKeyDown(Keys.LeftShift) || KeyboardState.IsKeyDown(Keys.Q)) ? -moveAmount : 0);
+			plrMovement += cam.Up * movement;
+			player.RootPosition += plrMovement;
+			// player.RootModel = Matrix4.CreateRotationX(player.RootRotation.X) * Matrix4.CreateRotationY(player.RootRotation.Y) * Matrix4.CreateRotationZ(player.RootRotation.Z) * Matrix4.CreateScale(player.RootScale) * Matrix4.CreateTranslation(player.RootPosition);
+			bool silly = (frameCount & 256) == 0;(float ax, float ay, float az) = player.RootRotation;
+			if (silly)
+			{
+				ax += MathF.Sin(frameCount * .009f)*5;
+				ay += MathF.Sin(frameCount * .012f)*5;
+				az += MathF.Sin(frameCount * .006f)*5;
+			}
+			// float x,y,z,w,x2,y2,z2,w2,x3,y3,z3,w3,x4,y4,z4,w4,x5,y5,z5,w5,x6,y6,z6,w6,x7,y7,z7,w7,x8,y8,z8,w8;
+			// float x9,y9,z9,w9,x10,y10,z10,w10,x11,y11,z11,w11,x12,y12,z12,w12;
+			float num = MathF.Cos(ax),
+			num2 = MathF.Sin(ax),
+			num3 = MathF.Cos(ay),
+			num4 = MathF.Sin(ay),
+			num5 = MathF.Cos(az),
+			num6 = MathF.Sin(az),
+			x2 = num2 * num4,x3 = num * num4;
+			(float sX, float sY, float sZ) = player.RootScale;
+			(float tX, float tY, float tZ) = player.RootPosition;
+			if (silly) {
+				sX += MathF.Sin(frameCount * 0.0017f)*1.5f;
+				sY += MathF.Sin(frameCount * 0.0022f)*1.5f;
+				sZ += MathF.Sin(frameCount * 0.0031f)*1.5f;
+				tX += MathF.Sin(frameCount * 0.0012f);
+				tY += MathF.Sin(frameCount * 0.00133f);
+				tZ += MathF.Sin(frameCount * 0.00162f);
+			}
+			player.RootModel = new(sX * num3 * num5,sX * num3 * num6,-sX * num4,0,
+			sY * (x2 * num5 - num * num6),sY * (x2 * num6 + num * num5),sY * num2 * num3,0,
+			sZ * (x3 * num5 + num2 * num6),sZ * (x3 * num6 - num2 * num5),sZ * num * num3,0,
+			tX,tY,tZ,1);
+			player.UpdateLimbs();
+		}];
 
 		public List<Announcement> _announcementsThing;
 
 
 		public Game(int width, int height, string title) :
 		base(GameWindowSettings.Default, new NativeWindowSettings() { ClientSize = (width, height), Title = title }) { _gameID = _gameCount++; }
-
 
 		static void Main() {
 			Console.WriteLine("Starting OpenGL application...");
@@ -99,7 +178,7 @@ namespace GameEngineThing {
 			Text.Initialize();
 
 			_tetrahedron = new ObjectMesh(new Vector3(0f, 10f, 0f), Vector3.Zero, Vector3.One, DataStuff.TetrahedronV, DataStuff.TetrahedronI);
-			_cube = new ObjectMesh(Vector3.Zero, Vector3.Zero, Vector3.One, DataStuff.CubeV, DataStuff.CubeI);
+			_cube = new ObjectMesh((2,0,0), Vector3.Zero, Vector3.One, DataStuff.CubeV, DataStuff.CubeI);
 			_plane = new ObjectMesh(Vector3.Zero, Vector3.Zero, Vector3.One, DataStuff.PlaneV, DataStuff.PlaneI);
 
 			_playerTorsoMesh = new ObjectMesh(Vector3.Zero, Vector3.Zero, Vector3.One, DataStuff.PlrTorsoV, DataStuff.PlrTorsoI);
@@ -113,12 +192,11 @@ namespace GameEngineThing {
 				new(Vector3.Zero, Vector3.Zero, new Vector3(-1f, 1f, 1f), _playerArmMesh),
 				new(_playerLegMesh, 0),
 				new(Vector3.Zero, Vector3.Zero, new Vector3(-1f, 1f, 1f), _playerLegMesh),
-			], [Vector3.Zero, new(0f, 1.2f, 0f), new(-.8f, 0f, 0f), new(.8f, 0f, 0f), new(-.25f, -1f, 0f), new(.25f, -1f, 0f),
+			], [Vector3.Zero, new(0f, 1.2f, 0f), new(-1f, 0f, 0f), new(1f, 0f, 0f), new(-.3f, -1.2f, 0f), new(.3f, -1.2f, 0f),
 			], [Vector3.Zero, Vector3.Zero, Vector3.Zero, Vector3.Zero, Vector3.Zero, Vector3.Zero], [
-				Vector3.One, Vector3.One, Vector3.One,
-				new(-1f, 1f, 1f),
-				Vector3.One,
-				new(-1f, 1f, 1f),
+				Vector3.One, (0.9f,0.9f,0.9f),
+				Vector3.One, new(-1f, 1f, 1f),
+				Vector3.One, new(-1f, 1f, 1f),
 			]);
 			_shader = new Shader("Shaders/shader.vert", "Shaders/shader.frag");
 			_shader.Use();
@@ -143,18 +221,19 @@ namespace GameEngineThing {
 
 
 			// _camera.Projection = Matrix4.CreatePerspectiveFieldOfView(MathHelper.DegreesToRadians(45f), 800f / 600f, .1f, 100f);
-			_camera.UpdateVectors();
-
-			_camera.Direction = Vector3.Normalize(_camera.Position - _camera.Target);
-			_camera.Right = Vector3.Normalize(Vector3.Cross(_camera.Up, _camera.Direction));
-			_camera.View = Matrix4.LookAt(_camera.Position, _camera.Target, _camera.Up);
+			// _camera.UpdateVectors();
+			// _camera.Direction = Vector3.Normalize(_camera.Position - _camera.Target);
+			// _camera.Right = Vector3.Normalize(Vector3.Cross(_camera.Up, _camera.Direction));
+			// _camera.View = Matrix4.LookAt(_camera.Position, _camera.Target, _camera.Up);
 			_clientSize = ClientSize;
+			_camera.Projection = Matrix4.CreatePerspectiveFieldOfView(MathHelper.DegreesToRadians(45f), _clientSize.X / (float)_clientSize.Y, .1f, 10000f);
 
 			Console.WriteLine("Max vertices: " + GL.GetInteger(GetPName.MaxElementsVertices));
 			Console.WriteLine("Max indices: " + GL.GetInteger(GetPName.MaxElementsIndices));
 
 			Console.WriteLine("FontCharacterData info: FontCharDeeta has " + FontCharFillerThing.FontCharDeeta.Chars.Count + " normal characters, and " + FontCharFillerThing.FontCharDeeta.SChars.Count + " special characters.");
-			float _lineHeight = 10f;
+			const float _lineHeight = 10f;
+			GameEngineFlyBehavior = 0;
 
 			_announcementsThing = [new("testing testing", Stopwatch.GetTimestamp() + Stopwatch.Frequency*12, (.8f, .2f, .8f), (.1f, .1f, .1f), .8f, fot:4),new("tst test2 dsfsdfsdds", Stopwatch.GetTimestamp() + Stopwatch.Frequency*30,(.3f,.5f,.3f),(.5f,.5f,.5f),.5f, fot:0)];
 
@@ -213,26 +292,12 @@ namespace GameEngineThing {
 			// _shader.SetMatrix4("projection", _camera.Projection);
 
 
-			_shader.SetTextureLocation("tx0", new Vector4(0f, 0f, 1f, 1f));
-			_player.Render(_shader);
+			if (renderPlayer){_shader.SetTextureLocation("tx0", new Vector4(0f, 0f, 1f, 1f)); _player.Render(_shader);}
 
-			foreach(IMinigame minigame in _currentMinigames)
-			minigame.OnRenderFrame(this, e.Time);
+			foreach(IMinigame minigame in _currentMinigames) minigame.OnRenderFrame(this, e.Time);
 
 			// UI time!! :3
 			// remember that this renderer is pretty weird or smth and if you render in the wrong order the game may not render properly.
-			if (profilerOn) {
-				_textRenderer.RenderProfilerIndexedLoopingGraph(this, new(1f, 1f), new(-1f, -1f / 30f), new(0.8f, 0.4f, 0f), profilerFrameTimes, profilerIndex, length: profilerFrameTimes.Length);
-				int pl = profilerFrameTimes.Length;
-				int pi = profilerIndex + pl - 1;
-				double a = profilerFrameTimes[pi%pl];
-				string txt = "FPS1: " + (1000d / a);
-				int i;
-				for(i=pi-1;i>pi-10;i--){a+=profilerFrameTimes[i%pl];}txt+="\nFPS10: "+(10000d/a);
-				for(i=pi-10;i>pi-30;i--){a+=profilerFrameTimes[i%pl];}txt+="\nFPS30: "+(30000d/a);
-				for(i=pi-30;i>pi-50;i--){a+=profilerFrameTimes[i%pl];}txt+="\nFPS50: "+(50000d/a);
-				for(i=pi-50;i>pi-100;i--){a+=profilerFrameTimes[i%pl];}txt+="\nFPS100: "+(100000d/a);
-				_textRenderer.RenderText(this,_textShader,txt,new(0,-40),new(-1,1f),new(4),new Vector3(1,1,0),10f,_clientSize,FontCharFillerThing.FontCharDeeta,true);}
 			bool debugText = _debugFlags.HasFlag(DebugFlags.debugText);
 			if (debugText) {
 				_textRenderer.Render(0, this, $"FPS: {1 / _dT:N4}");
@@ -260,53 +325,54 @@ namespace GameEngineThing {
 				Vector2i posOffset = new(0, (int)(_chattingTextLines * _chattingTextLineHeight * _chattingTextSize.Y));
 				_textRenderer.RenderText(this, _textShader, chatTxt, posOffset, new(-1), _chattingTextSize, new(1), _chattingTextLineHeight, _clientSize, FontCharFillerThing.FontCharDeeta, true);
 				if (debugText) _textRenderer.RenderText(this, _textShader, chatTxt, posOffset, new(-1, -.8f), _chattingTextSize, new(.7f), _chattingTextLineHeight, _clientSize, FontCharFillerThing.FontCharDeeta, false);}
-			_textRenderer.AnnouncementsRender(_announcementsThing, this, _textShader, 10f, _clientSize);
+			if (_gameModes[0] == "DEFAULT_BEHAVIOR") _textRenderer.AnnouncementsRender(_announcementsThing, this, _textShader, 10f, _clientSize);
 			// _videoRecorder?.CaptureFrame(this.ClientSize, VSync == VSyncMode.On);
-			_videoRecorder?.CaptureFrame(this.ClientSize, false);
 			long timestampNow = Stopwatch.GetTimestamp();
 			profilerFrameTimes[profilerIndex] = (timestampNow - previousFrameTimestamp) / (double)Stopwatch.Frequency * 1000;
 			previousFrameTimestamp = timestampNow;
+			if (profilerOn) { _textRenderer.ProfilerRender(this);}
 			profilerIndex = (profilerIndex + 1) % profilerFrameTimes.Length;
+			_videoRecorder?.CaptureFrame(_clientSize);
 			SwapBuffers();}
 		protected override void OnUpdateFrame(FrameEventArgs e) {
 			base.OnUpdateFrame(e);
 			_frameCount++;
 			_dT = e.Time;
 			_semiRealTime += _dT;
-			if (_frameCount % 128 == 0) {
+			if ((_frameCount & 127) == 0) {
 				Title = "GameEngineThingy :3 FPS: " + 128d / _DTOverTime;
 				_DTOverTime = _dT;}
 			else _DTOverTime += _dT;
 
-			if (_isChatting) { _chattingBlinker++; }
-			_cube.Update(0, Vector3.Zero, new Vector3(0f, (float)_gameTime, (float)Math.Sin(_gameTime) * 2f), Vector3.One);
-			_tetrahedron.Update(0, new Vector3(0f, 3f, 0f), new Vector3(0f, (float)_gameTime, (float)Math.Sin(_gameTime) * 2f), Vector3.One);
 			if (IsFocused) {
-				if (KeyboardState.IsKeyPressed(Keys.F11) || KeyboardState.IsKeyDown(Keys.GraveAccent) && KeyboardState.IsKeyDown(Keys.F11))
-					if (WindowState == WindowState.Fullscreen) WindowState = previousState;
-					else { previousState = WindowState; WindowState = WindowState.Fullscreen; VSync = VSyncMode.On; }
-				if (_isChatting) {
-					if (KeyboardState.IsKeyPressed(Keys.Escape)) { _isChatting = false; }}
+				if (_isChatting) {_chattingBlinker=(_chattingBlinker+3)&255;}
 				else {
+					_cube.Update(0, (2,0,0), new Vector3(0f, (float)_gameTime, (float)Math.Sin(_gameTime) * 2f), Vector3.One);
+					_tetrahedron.Update(0, new Vector3(0f, 3f, 0f), new Vector3(0f, (float)_gameTime, (float)Math.Sin(_gameTime) * 2f), Vector3.One);
 					float TickSpeedInv = 1f / _gameTickSpeed;
 					if (MouseState.ScrollDelta.Y != 0) { // (3f * TickSpeedInv + 1)
 						_camera.CamSpeed = Math.Max(.1f, Math.Min(1024f, _camera.CamSpeed * (MouseState.ScrollDelta.Y * 0.1f + 1)));
 						if (_debugFlags.HasFlag(DebugFlags.debugLogging)) Console.WriteLine("scroll speed changed; new speed: " + _camera.CamSpeed);}
-					if (MouseState.IsButtonDown(MouseButton.Right)){
-						float deltaX = MouseState.X - MouseState.PreviousX;
-						float deltaY = MouseState.Y - MouseState.PreviousY;
+					bool IsNotEngineTick = _semiRealTime < TickSpeedInv; if (MouseState[MouseButton.Right] || MouseState[MouseButton.Middle]){
+						// float deltaX = MouseState.X - MouseState.PreviousX;
+						// float deltaY = MouseState.Y - MouseState.PreviousY;
+						(float deltaX, float deltaY) = MouseState.Position - MouseState.PreviousPosition;
 						if (deltaX != 0 || deltaY != 0) {
-							_camera.Yaw = (_camera.Yaw + deltaX * _camera.MouseSensitivity) % (float)(2.0 * Math.PI);
-							_camera.Pitch = Math.Max(MathHelper.DegreesToRadians(-89f), Math.Min(MathHelper.DegreesToRadians(89f), _camera.Pitch - deltaY * _camera.MouseSensitivity));
+							float Yaw = (_camera.Yaw + deltaX * _camera.MouseSensitivity) % (float)(2.0 * Math.PI);
+							float Pitch = Math.Max(MathHelper.DegreesToRadians(-89f), Math.Min(MathHelper.DegreesToRadians(89f), _camera.Pitch - deltaY * _camera.MouseSensitivity));
+							_camera.Yaw = Yaw;
+							_camera.Pitch = Pitch;
+							float NCosPitch = -(float)Math.Cos(Pitch);
 
-							_camera.CameraToTargetOffset = -Vector3.Normalize(new Vector3(
-								(float)Math.Cos(_camera.Pitch) * (float)Math.Cos(_camera.Yaw),
-								(float)Math.Sin(_camera.Pitch),
-								(float)Math.Cos(_camera.Pitch) * (float)Math.Sin(_camera.Yaw)));}}
-					if (_semiRealTime < TickSpeedInv) { // if this frame is too early to go to the next game tick
-					  // update camera vectors so the camera movement is smooth
-						_camera.UpdateVectors();
-						return;}
+							_camera.CameraToTargetOffset = Vector3.Normalize(new Vector3(
+								NCosPitch * (float)Math.Cos(Yaw),
+								-(float)Math.Sin(Pitch),
+								NCosPitch * (float)Math.Sin(Yaw)));if (IsNotEngineTick) {_camera.UpdateVectors(); return;}}}
+					// if (IsNotEngineTick) { // if this frame is too early to go to the next game tick
+					//   // update camera vectors so the camera movement is smooth
+					// 	_camera.UpdateVectors();
+					// 	return;}
+					if (IsNotEngineTick) return; // if this frame is too early to go to the next game tick
 					// increment game tick and update game time
 					_gameTick++;
 					_gameTime = _gameTick * TickSpeedInv;
@@ -322,25 +388,10 @@ namespace GameEngineThing {
 					if (_debugFlags.HasFlag(DebugFlags.debugLogging) && _gameTick % (long)(_gameTickSpeed * 2) == 0) Console.WriteLine("Time: " + _stopwatch.Elapsed.TotalSeconds); // print time every 2 seconds
 
 					// movement
-					float moveAmount = _camera.CamSpeed * TickSpeedInv;
 					if (_camera.IsFlying) {
-						// if (KeyboardState.IsKeyDown(Keys.W)) _camera.Target -= _camera.Direction * moveAmount;
-						// if (KeyboardState.IsKeyDown(Keys.S)) _camera.Target += _camera.Direction * moveAmount;
-						// if (KeyboardState.IsKeyDown(Keys.A)) _camera.Target -= _camera.Right * moveAmount;
-						// if (KeyboardState.IsKeyDown(Keys.D)) _camera.Target += _camera.Right * moveAmount;
-						// if (KeyboardState.IsKeyDown(Keys.Space) || KeyboardState.IsKeyDown(Keys.E)) _camera.Target += _camera.Up * moveAmount;
-						// if (KeyboardState.IsKeyDown(Keys.LeftShift) || KeyboardState.IsKeyDown(Keys.Q)) _camera.Target -= _camera.Up * moveAmount;
-						float movement = (KeyboardState.IsKeyDown(Keys.W) ? -moveAmount : 0) + (KeyboardState.IsKeyDown(Keys.S) ? moveAmount : 0);
-						Vector3 plrMovement = Vector3.Zero;
-						plrMovement += _camera.Direction * movement;
-						movement = (KeyboardState.IsKeyDown(Keys.A) ? -moveAmount : 0) + (KeyboardState.IsKeyDown(Keys.D) ? moveAmount : 0);
-						plrMovement += _camera.Right * movement;
-						movement = ((KeyboardState.IsKeyDown(Keys.Space) || KeyboardState.IsKeyDown(Keys.E)) ? moveAmount : 0) + ((KeyboardState.IsKeyDown(Keys.LeftShift) || KeyboardState.IsKeyDown(Keys.Q)) ? -moveAmount : 0);
-						plrMovement += _camera.Up * movement;
-						_player.RootPosition += plrMovement;
-						_player.RootModel = Matrix4.CreateRotationX(_player.RootRotation.X) * Matrix4.CreateRotationY(_player.RootRotation.Y) * Matrix4.CreateRotationZ(_player.RootRotation.Z) * Matrix4.CreateScale(_player.RootScale) * Matrix4.CreateTranslation(_player.RootPosition);
-						_player.UpdateLimbs();
+						GameEngineFlyBehaviorsThing[GameEngineFlyBehavior](this);
 					} else {
+						float moveAmount = _camera.CamSpeed * TickSpeedInv;
 						// if (KeyboardState.IsKeyDown(Keys.W)) _player.RootPosition -= Vector3.Normalize(new Vector3(_camera.Direction.X, 0f, _camera.Direction.Z)) * moveAmount;
 						// if (KeyboardState.IsKeyDown(Keys.S)) _player.RootPosition += Vector3.Normalize(new Vector3(_camera.Direction.X, 0f, _camera.Direction.Z)) * moveAmount;
 						// if (KeyboardState.IsKeyDown(Keys.A)) _player.RootPosition -= Vector3.Normalize(new Vector3(_camera.Right.X, 0f, _camera.Right.Z)) * moveAmount;
@@ -365,9 +416,7 @@ namespace GameEngineThing {
 					_camera.UpdateVectors(); // update cam
 
 					foreach (IMinigame minigame in _currentMinigames)
-					minigame.OnUpdateFrame(this, e.Time);
-
-					if (_isChatting) _chattingBlinker += 3;}}
+					minigame.OnUpdateFrame(this, _dT);}}
 			else {/* window is not focused */}}
 		protected override void OnResize(ResizeEventArgs e) {
 			base.OnResize(e);
@@ -387,6 +436,11 @@ namespace GameEngineThing {
 			base.OnKeyDown(e);
 			if (_isChatting) {
 				switch (e.Key) {
+					case Keys.F11:
+						if (WindowState == WindowState.Fullscreen) WindowState = previousState;
+						else { previousState = WindowState; WindowState = WindowState.Fullscreen; VSync = VSyncMode.On; } break;
+					case Keys.Escape:
+						_isChatting = false; break;
 					case Keys.Delete or Keys.Backspace:
 						if (_chattingText.Length > 0) { if (_chattingText[^1] == '\n') _chattingTextLines--; _chattingText = _chattingText[..^1]; }
 						break;
@@ -434,22 +488,37 @@ namespace GameEngineThing {
 			else {
 				foreach (IMinigame minigame in _currentMinigames) minigame.OnKeyDown(e);
 				switch (e.Key) {
-					case Keys.F6: if (e.Modifiers.HasFlag(KeyModifiers.Control)) { profilerOn = !profilerOn; } break;
+					case Keys.F6: if (e.Modifiers.HasFlag(KeyModifiers.Control)) {
+							if (profilerOn) {profilerOn = false; profilerVD = [];} else {
+								profilerOn = true;
+								float winSizeY = _clientSize.Y;
+								int amt = profilerFrameTimes.Length << 3;
+								profilerVD = new float[amt];
+								// int tRSX = 0;
+								// float tX = tRSX / (float)TextTexture.Width;
+
+								profilerVD[1]=profilerVD[9]=(winSizeY + 0.5f) / winSizeY;
+								// profilerVD[2]=profilerVD[10]=profilerVD[6]=profilerVD[14]=0;
+								profilerVD[3]=profilerVD[11]=profilerVD[7]=profilerVD[15]=32f / _textRenderer.TextTexture.Height;
+								// if (length > BulkDrawFloats / 8) { // if it takes a full array or more to store all of the data
+								int i = 16;
+								for (; i < (amt>>1)+1; i <<= 1) Array.Copy(profilerVD, 1, profilerVD, i + 1, i - 1);
+								if (i < amt) Array.Copy(profilerVD, 1, profilerVD, i + 1, amt - 1 - i);
+							}
+					} break;
 					default: break; } }}
 		protected override void OnKeyUp(KeyboardKeyEventArgs e) {
 			base.OnKeyUp(e);
 			foreach (IMinigame minigame in _currentMinigames) minigame.OnKeyUp(e);
 		}
-		protected override void OnMouseDown(MouseButtonEventArgs e)
-		{
+		protected override void OnMouseDown(MouseButtonEventArgs e) {
 			base.OnMouseDown(e);
 			foreach (IMinigame minigame in _currentMinigames) minigame.OnMouseDown(e);
 			// if (e.Action.HasFlag(InputAction.Repeat))
 			// 	Console.WriteLine("repmd(" + e.Button + "," + e.Modifiers + ")");
 			// else Console.WriteLine("Mouse down:" + e.Button + "," + e.Modifiers);
 		}
-		protected override void OnMouseUp(MouseButtonEventArgs e)
-		{
+		protected override void OnMouseUp(MouseButtonEventArgs e) {
 			base.OnMouseUp(e);
 			foreach (IMinigame minigame in _currentMinigames) minigame.OnMouseUp(e);
 			// Console.WriteLine("Mouse up: " + e.Button + ", " + e.Modifiers);
@@ -493,9 +562,11 @@ namespace GameEngineThing {
 				_textShader?.Dispose();}}
 
 		public void StartRecording(string output, int fps = 60, float speed = 1) {
-			_videoRecorder = new VideoRecorder(_clientSize.X, _clientSize.Y, fps, output, speed, useNvenc: false, withAudio: false); }
+			_videoRecorder = new VideoRecorder(_clientSize.X, _clientSize.Y, fps, output, speed); }
+		public void StartRecording(string output, float resfps, float inpfps) {
+			_videoRecorder = new VideoRecorder(_clientSize.X, _clientSize.Y, resfps, output, inpfps); }
 		public void StopRecording() {
-			_videoRecorder?.Stop();
+			// _videoRecorder?.Stop();
 			_videoRecorder?.Dispose();
 			_videoRecorder = null; } }
 	public class Shader {
@@ -538,21 +609,17 @@ namespace GameEngineThing {
 			GL.DetachShader(Handle, FragmentShader);
 			GL.DeleteShader(FragmentShader);
 			GL.DeleteShader(VertexShader);}
-		public void Use() {
-			GL.UseProgram(Handle);}
+		public void Use() {GL.UseProgram(Handle);}
 		public int GetAttribLocation(string attribName) {
 			return GL.GetAttribLocation(Handle, attribName);}
 		public void SetInt(string name, int value) {
 			int location = GL.GetUniformLocation(Handle, name);
-
 			GL.Uniform1(location, value);}
 		public void SetMatrix4(string name, Matrix4 value) {
 			int location = GL.GetUniformLocation(Handle, name);
-
 			GL.UniformMatrix4(location, true, ref value);}
 
-		public void SetTextureLayer(int layer) {
-			SetInt("textureLayer", layer);}
+		public void SetTextureLayer(int layer) {SetInt("textureLayer", layer);}
 		public void SetTextureLocation(string name, Vector4 LocationAndSize) {
 			int location = GL.GetUniformLocation(Handle, name);
 			GL.Uniform4(location, LocationAndSize);}
@@ -560,8 +627,7 @@ namespace GameEngineThing {
 			int location = GL.GetUniformLocation(Handle, name);
 			GL.Uniform3(location, value);}
 
-		public void Dispose() {
-			GL.DeleteProgram(Handle);}}
+		public void Dispose() {GL.DeleteProgram(Handle);}}
 	public class Texture {
 		public readonly int Handle;
 		public readonly int Width;
@@ -652,9 +718,13 @@ namespace GameEngineThing {
 			Up = up; }
 		public void UpdateVectors() {
 			Position = Target + CameraToTargetOffset * CameraDistFromTarget;
-			Direction = Vector3.Normalize(Position - Target);
+			// Direction = Vector3.Normalize(Position - Target);
+			// Right = Vector3.Normalize(Vector3.Cross(Up, Direction));
+			// View = Matrix4.LookAt(Position, Target, Up) * Projection;
+			Direction = Vector3.Normalize(CameraToTargetOffset);
 			Right = Vector3.Normalize(Vector3.Cross(Up, Direction));
-			View = Matrix4.LookAt(Position, Target, Up) * Projection;}}
+			View = Matrix4.LookAt(Position, Target, Up) * Projection;
+		}}
 	public class ObjectMesh {
 		public static int MeshCount = 0;
 		public static List<ObjectMesh> Meshes = [];
@@ -860,144 +930,78 @@ namespace GameEngineThing {
 		none = 0,
 		debugText = 1,
 		debugLogging = 2,}
-	// the following is pretty much 99% ai code so uhhhh
 	public sealed class VideoRecorder : IDisposable {
-		private readonly int _width;
-		private readonly int _height;
-		private readonly int _fps;
-		private readonly float _speed; // speed not done by ai
-		private readonly string _outputPath;
+		private readonly int _w, _h;
+		private bool _recAllFrames;
 		private readonly Process _ffmpeg;
 		private readonly Stream _stdin;
-		private readonly byte[] _frameBuffer;
-		private readonly object _lock = new();
-		public bool _debugLoggingMode = false;
-
-		private bool _recording;
-		private long _nextTickNs;
-		private readonly long _tickStepNs;
-		public bool IsRecording => _recording && !_ffmpeg.HasExited;
-
-		public VideoRecorder(int width, int height, int fps, string outputPath, float speed = 1, bool useNvenc = true, bool withAudio = false) {
-			_width = width;
-			_height = height;
-			_fps = fps;
-			_speed = speed;
-			_outputPath = outputPath;
-
-			_frameBuffer = new byte[_width * _height * 4]; // BGRA
-			_tickStepNs = (long)(1_000_000_000.0 / fps);
-
+		private readonly byte[] _fBuffer;
+		public bool _recording {get; private set;}
+		private long _nextTickNs, _tickStepNs;
+		public VideoRecorder(int w, int h, int fps, string p, float speed = 1) { // no nvenc yet also no audio
+			// (_w, _h, _recAllFrames, _path) = (w,h,fps<0,p);
+			_w = w; _h = h; _recAllFrames = fps < 0;
+			_fBuffer = new byte[w*h<<2];
+			_tickStepNs = (long)(1000000000d/(fps*speed));
+			StringBuilder args = new("-n -f rawvideo -pix_fmt bgra -s ", 256);args.Append(w);args.Append('x');args.Append(h);args.Append(" -r ");args.Append((fps*speed).ToString("N4"));args.Append(" -i - -vf \"vflip\" -an -c:v libx265 -preset slow -crf 25 -pix_fmt yuv420p \"");args.Append(p);args.Append('\"');
 			_ffmpeg = new Process {
 				StartInfo = new ProcessStartInfo {
 					FileName = "ffmpeg",
-					Arguments = BuildFfmpegArgs(useNvenc, withAudio, width, height, fps * speed, outputPath),
-					RedirectStandardInput = true,
-					RedirectStandardOutput = true,  // Add this
-					RedirectStandardError = true,   // Add this
-					UseShellExecute = false,
-					CreateNoWindow = true } };
+					Arguments = args.ToString(),
+					RedirectStandardInput=true,
+					RedirectStandardOutput=true,
+					RedirectStandardError=true,
+					UseShellExecute=false,
+					CreateNoWindow=true}};
 			_ffmpeg.Start();
-
-			Console.WriteLine("FFmpeg args: " + _ffmpeg.StartInfo.Arguments);
-			if (_ffmpeg.HasExited) {
-				throw new InvalidOperationException($"FFmpeg failed to start. Exit code: {_ffmpeg.ExitCode}"); }
-
+			Console.WriteLine("argument thingy for ffmpeg is "+_ffmpeg.StartInfo.Arguments);
+			if (_ffmpeg.HasExited) throw new InvalidOperationException("oops my ffmpeg crashed. I lost my data, but I had an antivirus. code: "+_ffmpeg.ExitCode);
 			_stdin = _ffmpeg.StandardInput.BaseStream;
 			_recording = true;
-
-			// Start reading error output in background to see what went wrong
 			_ffmpeg.BeginErrorReadLine();
-			_ffmpeg.ErrorDataReceived += (sender, e) => {
-				if (!string.IsNullOrEmpty(e.Data))
-					Console.WriteLine("FFmpeg out: " + e.Data); };
-
-			_nextTickNs = Stopwatch.GetTimestamp() * 1_000_000_000L / Stopwatch.Frequency; }
-		private static string BuildFfmpegArgs(bool useNvenc, bool withAudio, int w, int h, float fps, string outPath) {
-			// Raw BGRA frames on stdin
-			// Video encoder: NVENC (if available) or libx264 fallback. yuv420p ensures wide compatibility.
-			// Optional Windows audio capture: WASAPI default device or DirectShow loopback device.
-			string videoEnc = useNvenc
-				? "-c:v h264_nvenc -preset p5 -cq 19 "
-				: "-c:v libx265 -preset veryfast -crf 18 ";
-
-			// string audioIn = withAudio
-			// 	? "-f wasapi -i default -c:a aac -b:a 192k" // yes the ai did write the comment right next to this one.
-			// 	: "-f lavfi -t 0.0001 -i anullsrc -shortest -c:a aac -b:a 128k"; // silent track to avoid some players complaining
-			string audioIn = withAudio
-				? "-f wasapi -i default -c:a aac -b:a 192k "
-				: "-an ";
-
-			// return $"-y -f rawvideo -pix_fmt bgra -s {w}x{h} -r {fps} -i - " +
-			// 	$"{audioIn} " +
-			// 	$"{videoEnc} -pix_fmt yuv420p -movflags +faststart \"{outPath}\"";
-
-			// return "-y -f rawvideo -pix_fmt bgra -s " + w + "x" + h + " -r " + fps + " -i - " +
-			// 	audioIn + " " +
-			// 	videoEnc + " -pix_fmt yuv420p -movflags +faststart \"" + outPath + "\"";
-
-			// for debugging purposes
-			string strThing = "-n -f rawvideo -pix_fmt bgra -s " + w + "x" + h + $" -r {fps:N4} -i - " +
-				audioIn +
-				videoEnc + "-pix_fmt yuv420p \"" + outPath + "\"";
-			Console.WriteLine("ffmpeg args: " + strThing);
-			return strThing; }
-		public void CaptureFrame(Vector2i clientSize, bool recordAllFrames) {
+			_ffmpeg.ErrorDataReceived += (sender, e) => Console.WriteLine("FFmpeg: "+e.Data);
+			_nextTickNs = Stopwatch.GetTimestamp()*1000000000L/Stopwatch.Frequency; }
+		public VideoRecorder(int w, int h, float resfps, string p, float inpfps) {
+			_w = w; _h = h; _recAllFrames = resfps < 0;
+			_fBuffer = new byte[w*h<<2];
+			_tickStepNs = (long)(1000000000d/inpfps);
+			StringBuilder args = new("-n -f rawvideo -pix_fmt bgra -s ", 256);args.Append(w);args.Append('x');args.Append(h);args.Append(" -r ");args.Append(resfps.ToString("N4"));args.Append(" -i - -vf \"vflip\" -an -c:v libx265 -preset slow -crf 25 -pix_fmt yuv420p \"");args.Append(p);args.Append('\"');
+			_ffmpeg = new Process {
+				StartInfo = new ProcessStartInfo {
+					FileName = "ffmpeg",
+					Arguments = args.ToString(),
+					RedirectStandardInput=true,
+					RedirectStandardOutput=true,
+					RedirectStandardError=true,
+					UseShellExecute=false,
+					CreateNoWindow=true}};
+			_ffmpeg.Start();
+			Console.WriteLine("argument thingy for ffmpeg is "+_ffmpeg.StartInfo.Arguments);
+			if (_ffmpeg.HasExited) throw new InvalidOperationException("oops my ffmpeg crashed. I lost my data, but I had an antivirus. code: "+_ffmpeg.ExitCode);
+			_stdin = _ffmpeg.StandardInput.BaseStream;
+			_recording = true;
+			_ffmpeg.BeginErrorReadLine();
+			_ffmpeg.ErrorDataReceived += (sender, e) => Console.WriteLine("FFmpeg: "+e.Data);
+			_nextTickNs = Stopwatch.GetTimestamp()*1000000000L/Stopwatch.Frequency; }
+		public void CaptureFrame(Vector2i ClientSize) {
 			if (!_recording) return;
-
-			// Check if FFmpeg process is still alive
-			if (_ffmpeg.HasExited) {
-				_recording = false;
-				Console.WriteLine("FFmpeg exited with code: " + _ffmpeg.ExitCode);
-				return; }
-
-			// Optional: throttle to target fps when vsync is off
-			if (!recordAllFrames) {
-				long now = Stopwatch.GetTimestamp();
-				long freq = Stopwatch.Frequency;
-				long nowNs = now * 1_000_000_000L / freq;
-				if (nowNs < _nextTickNs) return;
+			if (_ffmpeg.HasExited) { _recording = false; Console.WriteLine("ffmpeg exited: "+_ffmpeg.ExitCode); return; }
+			if (!_recAllFrames) {
+				if ((Stopwatch.GetTimestamp() * 1000000000L / Stopwatch.Frequency) < _nextTickNs) return;
 				_nextTickNs += _tickStepNs; }
-
-			// Ensure we read exactly the configured size; if window resizes, you may want to recreate the recorder.
-			if (clientSize.X != _width || clientSize.Y != _height) return;
-
-			lock (_lock) {
-				try {
-					// Read back buffer (BGRA)
-					GL.ReadBuffer(ReadBufferMode.Back);
-					GL.PixelStore(PixelStoreParameter.PackAlignment, 1);
-					GL.ReadPixels(0, 0, _width, _height, PixelFormat.Bgra, PixelType.UnsignedByte, _frameBuffer);
-
-					// Flip vertically because OpenGL origin is bottom-left, raw expects top-left
-					FlipInPlaceBgra(_frameBuffer, _width, _height);
-
-					// Write to ffmpeg with error handling
-					_stdin.Write(_frameBuffer, 0, _frameBuffer.Length);
-					/* Console.WriteLine("wrote smth hopefully idk"); */}
-				catch (IOException ex) {
-					Console.WriteLine("Pipe error: " + ex.Message);
-					_recording = false; }
-				catch (Exception ex) {
-					Console.WriteLine("Capture error: " + ex.Message);
-					_recording = false; } } }
-		private static void FlipInPlaceBgra(byte[] data, int w, int h) {
-			int stride = w * 4;
-			int half = h / 2;
-			for (int y = 0; y < half; y++) {
-				int top = y * stride;
-				int bot = (h - 1 - y) * stride;
-				for (int x = 0; x < stride; x++) {
-                    (data[bot + x], data[top + x]) = (data[top + x], data[bot + x]);
-                    (data[bot + ++x], data[top + x]) = (data[top + x], data[bot + x]);
-                    (data[bot + ++x], data[top + x]) = (data[top + x], data[bot + x]);
-                    (data[bot + ++x], data[top + x]) = (data[top + x], data[bot + x]); } /*4-unroll. idk if it makes any difference.*/} }
-		public void Stop() {
-			if (!_recording) return;
+			if (ClientSize.X != _w || ClientSize.Y != _h) Dispose();
+			try {
+				GL.ReadBuffer(ReadBufferMode.Back);
+				GL.PixelStore(PixelStoreParameter.PackAlignment, 1);
+				GL.ReadPixels(0, 0, _w, _h, PixelFormat.Bgra, PixelType.UnsignedByte, _fBuffer);
+				_stdin.Write(_fBuffer, 0, _fBuffer.Length);}
+			catch (IOException ex) { Console.WriteLine("Pipe err: " + ex.Message); Dispose(); }
+			catch (Exception ex) { Console.WriteLine("Capture err: " + ex.Message); Dispose(); }
+		}
+		public void Dispose() {
 			_recording = false;
 			try { _stdin.Flush(); } catch {}
 			try { _stdin.Close(); } catch {}
-			try { if (!_ffmpeg.WaitForExit(5000)) _ffmpeg.Kill(true); } catch {} }
-		public void Dispose() {
-			Stop();
-			_ffmpeg?.Dispose(); } } }
+			try { if (!_ffmpeg.WaitForExit(5000)) _ffmpeg.Kill(true); } catch {} _ffmpeg?.Dispose(); }
+	}
+}
