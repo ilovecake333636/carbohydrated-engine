@@ -21,22 +21,23 @@ namespace GameEngineThing {
 		public int _gameID;
 		public double _gameTime = .0;
 		private double _semiRealTime = .0;
-		private double _dT = .0;
+		public double _dT = .0;
 		public Shader _shader;
 		public Shader _textShader { get; private set; }
 		private Texture _textureSheet;
 		public Text _textRenderer;
 		public Camera _camera = new(new Vector3(0f, 0f, 3f), Vector3.Zero, Vector3.UnitY);
-		public ObjectMesh _cube;
-		public ObjectMesh _tetrahedron;
-		public ObjectMesh _plane;
 		private double _DTOverTime = 0;
 		public long _frameCount = 0;
 		// private Random _random = new();
 		private Stopwatch _stopwatch = new();
 		// private bool _gameUpdating = true;
 		public long _gameTick { get; private set; } = 0;
-		public float _gameTickSpeed { get; private set; } = 60f;
+		public float _gameTickSpeed { get; set; } = 60f;
+		/// <summary>
+		/// there's nothing stopping you from making this not the inverse of the tick speed but like maybe don't i guess idk lol
+		/// </summary>
+		public float _tickSpeedInv {get; set;} = 1f/60f;
 		private float _gameTickLagCompensationAmount = 2f;
 		// private int _seconds = 0;
 		public static float _groundHeight = 0f;
@@ -46,7 +47,7 @@ namespace GameEngineThing {
 		private ObjectMesh _playerHeadMesh;
 		private ObjectMesh _playerArmMesh;
 		private ObjectMesh _playerLegMesh;
-		private bool _isChatting = false;
+		public bool _isChatting {get; private set;} = false;
 		private int _chattingBlinker = 0;
 		public string _chattingText { get; private set; } = "";
 		private int _chattingTextLines = 1;
@@ -55,14 +56,14 @@ namespace GameEngineThing {
 		public bool WillReopen = false;
 		public string ReopenData = "";
 		public string OpenData;
-		public List<string> _gameModes;
+		public List<string> _gameModes = [];
 		public DebugFlags _debugFlags = DebugFlags.none;
 
 		private WindowState previousState;
 		// private Pong _pongGame;
 		// private VerticalOneKey _1kManiaPrototype;
 		// private ManiaRG _maniaRGPrototype;
-		public List<IMinigame> _currentMinigames { get; private set; }
+		public List<IMinigame> _currentMinigames { get; private set; } = [];
 		public int _minigameCount { get; private set; }
 		private VideoRecorder _videoRecorder;
 		private long previousFrameTimestamp = 0;
@@ -72,8 +73,7 @@ namespace GameEngineThing {
 		private bool profilerOn = false;
 		public readonly long gameStartTimestamp = Stopwatch.GetTimestamp();
 		public bool renderPlayer = true;
-		public int GameEngineFlyBehavior;
-		public static readonly Action<Game>[] GameEngineFlyBehaviorsThing = [delegate (Game game){
+		public static readonly Action<Game> DefaultFlyBehavior = delegate (Game game){
 			Camera cam = game._camera;
 			var KeyboardState = game.KeyboardState;
 			float moveAmount = cam.CamSpeed / game._gameTickSpeed;
@@ -102,54 +102,8 @@ namespace GameEngineThing {
 			sZ * (x3 * num5 + num2 * num6),sZ * (x3 * num6 - num2 * num5),sZ * num * num3,0,
 			tX,tY,tZ,1);
 			player.UpdateLimbs();
-		},delegate (Game game){
-			Camera cam = game._camera;
-			var KeyboardState = game.KeyboardState;
-			float moveAmount = cam.CamSpeed / game._gameTickSpeed;
-			Player player = game._player;
-			long frameCount = game._frameCount;
-			float movement = (KeyboardState.IsKeyDown(Keys.W) ? -moveAmount : 0) + (KeyboardState.IsKeyDown(Keys.S) ? moveAmount : 0);
-			Vector3 plrMovement = Vector3.Zero;
-			plrMovement += cam.Direction * movement;
-			movement = (KeyboardState.IsKeyDown(Keys.A) ? -moveAmount : 0) + (KeyboardState.IsKeyDown(Keys.D) ? moveAmount : 0);
-			plrMovement += cam.Right * movement;
-			movement = ((KeyboardState.IsKeyDown(Keys.Space) || KeyboardState.IsKeyDown(Keys.E)) ? moveAmount : 0) + ((KeyboardState.IsKeyDown(Keys.LeftShift) || KeyboardState.IsKeyDown(Keys.Q)) ? -moveAmount : 0);
-			plrMovement += cam.Up * movement;
-			player.RootPosition += plrMovement;
-			// player.RootModel = Matrix4.CreateRotationX(player.RootRotation.X) * Matrix4.CreateRotationY(player.RootRotation.Y) * Matrix4.CreateRotationZ(player.RootRotation.Z) * Matrix4.CreateScale(player.RootScale) * Matrix4.CreateTranslation(player.RootPosition);
-			bool silly = (frameCount & 256) == 0;(float ax, float ay, float az) = player.RootRotation;
-			if (silly)
-			{
-				ax += MathF.Sin(frameCount * .009f)*5;
-				ay += MathF.Sin(frameCount * .012f)*5;
-				az += MathF.Sin(frameCount * .006f)*5;
-			}
-			// float x,y,z,w,x2,y2,z2,w2,x3,y3,z3,w3,x4,y4,z4,w4,x5,y5,z5,w5,x6,y6,z6,w6,x7,y7,z7,w7,x8,y8,z8,w8;
-			// float x9,y9,z9,w9,x10,y10,z10,w10,x11,y11,z11,w11,x12,y12,z12,w12;
-			float num = MathF.Cos(ax),
-			num2 = MathF.Sin(ax),
-			num3 = MathF.Cos(ay),
-			num4 = MathF.Sin(ay),
-			num5 = MathF.Cos(az),
-			num6 = MathF.Sin(az),
-			x2 = num2 * num4,x3 = num * num4;
-			(float sX, float sY, float sZ) = player.RootScale;
-			(float tX, float tY, float tZ) = player.RootPosition;
-			if (silly) {
-				sX += MathF.Sin(frameCount * 0.0017f)*1.5f;
-				sY += MathF.Sin(frameCount * 0.0022f)*1.5f;
-				sZ += MathF.Sin(frameCount * 0.0031f)*1.5f;
-				tX += MathF.Sin(frameCount * 0.0012f);
-				tY += MathF.Sin(frameCount * 0.00133f);
-				tZ += MathF.Sin(frameCount * 0.00162f);
-			}
-			player.RootModel = new(sX * num3 * num5,sX * num3 * num6,-sX * num4,0,
-			sY * (x2 * num5 - num * num6),sY * (x2 * num6 + num * num5),sY * num2 * num3,0,
-			sZ * (x3 * num5 + num2 * num6),sZ * (x3 * num6 - num2 * num5),sZ * num * num3,0,
-			tX,tY,tZ,1);
-			player.UpdateLimbs();
-		}];
-
+		};
+		public Action<Game> FlyBehavior;
 		public List<Announcement> _announcementsThing;
 
 
@@ -162,24 +116,20 @@ namespace GameEngineThing {
 			string OpenData = "";
 			while (Opening) {
 				Opening = false;
-				using (Game game = new(800, 600, "GameEngineThingy :3")) {
-					game.VSync = VSyncMode.On;
-					game.OpenData = OpenData;
-					game.Run();
-					Opening = game.WillReopen;
-					OpenData = game.ReopenData; } }
+				using Game game = new(800, 600, "GameEngineThingy :3");
+				game.VSync = VSyncMode.On;
+				game.OpenData = OpenData;
+				game.Run();
+				Opening = game.WillReopen;
+				OpenData = game.ReopenData; }
 			Console.WriteLine("game has closed.");
 			debuggingThingClass.someDebugThing(debuggingThingClass.IsDebugging); }
 		protected override void OnLoad() {
 			base.OnLoad();
-			GL.ClearColor(.2f, .3f, .3f, 1f);
+			GL.ClearColor(.3f, .6f, .5f, 1f);
 
 			// Ensure text EBO is created with no mesh VAO bound
-			Text.Initialize();
-
-			_tetrahedron = new ObjectMesh(new Vector3(0f, 10f, 0f), Vector3.Zero, Vector3.One, DataStuff.TetrahedronV, DataStuff.TetrahedronI);
-			_cube = new ObjectMesh((2,0,0), Vector3.Zero, Vector3.One, DataStuff.CubeV, DataStuff.CubeI);
-			_plane = new ObjectMesh(Vector3.Zero, Vector3.Zero, Vector3.One, DataStuff.PlaneV, DataStuff.PlaneI);
+			Text.OnLoad();
 
 			_playerTorsoMesh = new ObjectMesh(Vector3.Zero, Vector3.Zero, Vector3.One, DataStuff.PlrTorsoV, DataStuff.PlrTorsoI);
 			_playerArmMesh = new ObjectMesh(Vector3.Zero, Vector3.Zero, Vector3.One, DataStuff.PlrArmV, DataStuff.PlrArmI);
@@ -231,52 +181,52 @@ namespace GameEngineThing {
 			Console.WriteLine("Max vertices: " + GL.GetInteger(GetPName.MaxElementsVertices));
 			Console.WriteLine("Max indices: " + GL.GetInteger(GetPName.MaxElementsIndices));
 
-			Console.WriteLine("FontCharacterData info: FontCharDeeta has " + FontCharFillerThing.FontCharDeeta.Chars.Count + " normal characters, and " + FontCharFillerThing.FontCharDeeta.SChars.Count + " special characters.");
-			const float _lineHeight = 10f;
-			GameEngineFlyBehavior = 0;
+			// Console.WriteLine("FontCharacterData info: FontCharDeeta has " + FontCharFillerThing.FontCharDeeta.Chars.Count + " normal characters, and " + FontCharFillerThing.FontCharDeeta.SChars.Count + " special characters.");
+			// foreach (var a in FontCharFillerThing.FontCharDeeta.Chars) {
+			// 	Console.Write("key:"+a.Key+";value:sizeX:"+a.Value.sizeX+",Y:"+a.Value.sizeY+",advX:"+a.Value.advanceX+",Y:"+a.Value.advanceY+",bX:"+a.Value.bearingX+",Y:"+a.Value.bearingY+",tsX:"+a.Value.tStartX+",Y:"+a.Value.tStartY+",teX:"+a.Value.tEndX+",Y:"+a.Value.tEndY+'\n');
+			// }
+			// foreach (var a in FontCharFillerThing.FontCharDeeta.SChars) {
+			// 	Console.Write("key:"+a.Key+";value:sizeX:"+a.Value.sizeX+",Y:"+a.Value.sizeY+",advX:"+a.Value.advanceX+",Y:"+a.Value.advanceY+",bX:"+a.Value.bearingX+",Y:"+a.Value.bearingY+",tsX:"+a.Value.tStartX+",Y:"+a.Value.tStartY+",teX:"+a.Value.tEndX+",Y:"+a.Value.tEndY+'\n');
+			// }
+			// GameEngineFlyBehavior = 0;
 
 			_announcementsThing = [new("testing testing", Stopwatch.GetTimestamp() + Stopwatch.Frequency*12, (.8f, .2f, .8f), (.1f, .1f, .1f), .8f, fot:4),new("tst test2 dsfsdfsdds", Stopwatch.GetTimestamp() + Stopwatch.Frequency*30,(.3f,.5f,.3f),(.5f,.5f,.5f),.5f, fot:0)];
 
-			// _textRenderer.NewTxtThing(new TxtOptions(posOffset, posScale, textScale, color, lineHeight, windowSize, fontCharData, useSpecialChar));
-			_textRenderer.TextThingies.Add(new TxtOptions(Vector2i.Zero, new(-.9f, .9f), new(5), Vector3.One, _lineHeight, FontCharFillerThing.FontCharDeeta, true));
-			_textRenderer.TextThingies.Add(new TxtOptions(Vector2i.Zero, new(-.5f, .9f), new(5), Vector3.One, _lineHeight, FontCharFillerThing.FontCharDeeta, true));
-			_textRenderer.TextThingies.Add(new TxtOptions(Vector2i.Zero, new(-.9f, .9f), new(2), Vector3.One, _lineHeight, FontCharFillerThing.FontCharDeeta, true));
-			_textRenderer.TextThingies.Add(new TxtOptions(Vector2i.Zero, new(-.9f, .9f), new(1), Vector3.One, _lineHeight, FontCharFillerThing.FontCharDeeta, true));
-			_textRenderer.TextThingies.Add(new TxtOptions(Vector2i.Zero, new(-.9f, -.9f), new(10), new(1f, .5f, 1f), _lineHeight, FontCharFillerThing.FontCharDeeta, true));
-			_textRenderer.TextThingies.Add(new TxtOptions(Vector2i.Zero, new(-.9f, -.4f), new(10), new(1f, .5f, 1f), _lineHeight, FontCharFillerThing.FontCharDeeta, true));
-			_textRenderer.TextThingies.Add(new TxtOptions(Vector2i.Zero, new(-.9f, -.6f), new(1), new(1f, .5f, 1f), _lineHeight, FontCharFillerThing.FontCharDeeta, true));
-
-			_textRenderer.TextThingies.Add(new TxtOptions(Vector2i.Zero, new(-.96f + (float)Math.Sin(_gameTime) * .05f, -.5f), Vector2.Zero, new(Random.Shared.Next(0, 100) / 100f), _lineHeight, FontCharFillerThing.FontCharDeeta, true));
-			switch (OpenData.ToLower()) {
-				case "pong":
-					_currentMinigames = [new Pong(new Vector3(10f, 0f, 10f), new Vector3(1f), new Vector3(270f, 0f, 0f))];
-					_gameModes = ["pong"];
-					break;
-				case "fnf": // do something else but rn the something else doesn't exist
-				case "mania": // also do something else but the something else also doesn't exist
-					_currentMinigames = [new ManiaRG(_textRenderer)];
-					_gameModes = ["mania"];
-					break;
-				case "1k fnf" or "1kfnf" or "fnf 1k" or "fnf1k" or
-					"v1k" or "verticalonekey" or "vertical one key":
-					_currentMinigames = [new VerticalOneKey(_textRenderer, DataStuff.BuiltInV1KCharts[0])];
-					_gameModes = ["v1k"];
-					break;
-				case "v1k2":
-					_currentMinigames = [new VerticalOneKey(_textRenderer, DataStuff.BuiltInV1KCharts[1])];
-					_gameModes = ["v1k"];
-					break;
-				case "miner": // also do something else but the something else also doesn't exist
-					_currentMinigames = [new MiningGame()];
-					_gameModes = ["miner"];
-					break;
-				default:
-					_currentMinigames = [new DefaultGameBehavior()];
-					_gameModes = ["DEFAULT_BEHAVIOR"];
-					break;
-			}
-			foreach (IMinigame minigame in _currentMinigames)
-			minigame.OnLoad(this);
+			// switch (OpenData.ToLower()) {
+			// 	case "pong":
+			// 		_currentMinigames = [new Pong(new Vector3(10f, 0f, 10f), new Vector3(1f), new Vector3(270f, 0f, 0f))];
+			// 		_gameModes = ["pong"];
+			// 		break;
+			// 	case "fnf": // do something else but rn the something else doesn't exist
+			// 	case "mania": // also do something else but the something else also doesn't exist
+			// 		_currentMinigames = [new ManiaRG(_textRenderer)];
+			// 		_gameModes = ["mania"];
+			// 		break;
+			// 	case "1k fnf" or "1kfnf" or "fnf 1k" or "fnf1k" or
+			// 		"v1k" or "verticalonekey" or "vertical one key":
+			// 		_currentMinigames = [new VerticalOneKey(_textRenderer, DataStuff.BuiltInV1KCharts[0])];
+			// 		_gameModes = ["v1k"];
+			// 		break;
+			// 	case "v1k2":
+			// 		_currentMinigames = [new VerticalOneKey(_textRenderer, DataStuff.BuiltInV1KCharts[1])];
+			// 		_gameModes = ["v1k"];
+			// 		break;
+			// 	case "miner": // also do something else but the something else also doesn't exist
+			// 		_currentMinigames = [new MiningGame()];
+			// 		_gameModes = ["miner"];
+			// 		break;
+			// 	case "animate":
+			// 		_currentMinigames = [new Animate()];
+			// 		_gameModes = ["animate"];
+			// 		break;
+			// 	default:
+			// 		_currentMinigames = [new DefaultGameBehavior()];
+			// 		_gameModes = ["DEFAULT_BEHAVIOR"];
+			// 		break;
+			// }
+			FlyBehavior = DefaultFlyBehavior;
+			if (DataStuff.MinigameInitializers.TryGetValue(OpenData, out Action<Game> v)) v(this); else DataStuff.MinigameInitializers["DEFAULT_BEHAVIOR"](this);
+			foreach (IMinigame minigame in _currentMinigames) minigame.OnLoad(this);
 
 			_stopwatch.Start();}
 		protected override void OnRenderFrame(FrameEventArgs e) {
@@ -299,33 +249,12 @@ namespace GameEngineThing {
 			// UI time!! :3
 			// remember that this renderer is pretty weird or smth and if you render in the wrong order the game may not render properly.
 			bool debugText = _debugFlags.HasFlag(DebugFlags.debugText);
-			if (debugText) {
-				_textRenderer.Render(0, this, $"FPS: {1 / _dT:N4}");
-				_textRenderer.Render(1, this, "FPS: {1 / _dT:N4}");
-				_textRenderer.Render(2, this, "FPS: " + (1 / _dT));
-				_textRenderer.Render(3, this, $"FPS: {1 / _dT:N4}");
-				_textRenderer.Render(4, this, "abcdefghijklmnopqrstuvwxyz a b      d!? b");
-				TxtOptions txtOptions = _textRenderer.TextThingies[4];
-				txtOptions.posScaleX = (float)Math.Sin(_gameTime);
-				_textRenderer.Render(txtOptions, this, "abcdefghijklmnopqrstuvwxyz a b      d!? b");
-				_textRenderer.Render(5, this, "FPS");
-				_textRenderer.Render(6, this, "The FitnessGram(TM) Pacer Test is an aerobic capacity test that progressively gets harder as it continues.\nThe thirty meter pacer test begins in 20 seconds.\nWhen you hear this signal a lap is completed if you don't complete the lap in time you get a strike if you get two strikes you are out\nblah blah when you hear this sound it starts on your mark get ready start\nthe quick brown fox jumped over the lazy dog THE QUICK BROWN FOX JUMPED OVER THE LAZY DOG 0123456789\n?!?!?![]{}-=_+`~!@#$%^&*();':\",.<>/\\|        cabbage");
-				txtOptions = _textRenderer.TextThingies[7];
-				for (int i = 20; i > 0; i--) {
-					if (i == 15) { i -= 4; continue; }
-					txtOptions.posScaleX = (float)Math.Sin(_gameTime) * .05f - .96f;
-					txtOptions.posScaleY = i * .05f - .5f;
-					txtOptions.textScaleX = i * .5f;
-					txtOptions.textScaleY = i * .5f;
-					txtOptions.color = new(Random.Shared.Next(0, 100) / 100f);
-					_textRenderer.Render(txtOptions, this, i + "FPS: " + 1 / _dT);}}
 			if (_isChatting) {
 				string chatTxt = "> " + _chattingText;
 				if (_chattingBlinker < 128) chatTxt += "\\blinker|";
 				Vector2i posOffset = new(0, (int)(_chattingTextLines * _chattingTextLineHeight * _chattingTextSize.Y));
-				_textRenderer.RenderText(this, _textShader, chatTxt, posOffset, new(-1), _chattingTextSize, new(1), _chattingTextLineHeight, _clientSize, FontCharFillerThing.FontCharDeeta, true);
+				_textRenderer.RenderText(this, _textShader, chatTxt, posOffset, new(-.5f), _chattingTextSize, new(1), _chattingTextLineHeight, _clientSize, FontCharFillerThing.FontCharDeeta, true);
 				if (debugText) _textRenderer.RenderText(this, _textShader, chatTxt, posOffset, new(-1, -.8f), _chattingTextSize, new(.7f), _chattingTextLineHeight, _clientSize, FontCharFillerThing.FontCharDeeta, false);}
-			if (_gameModes[0] == "DEFAULT_BEHAVIOR") _textRenderer.AnnouncementsRender(_announcementsThing, this, _textShader, 10f, _clientSize);
 			// _videoRecorder?.CaptureFrame(this.ClientSize, VSync == VSyncMode.On);
 			long timestampNow = Stopwatch.GetTimestamp();
 			profilerFrameTimes[profilerIndex] = (timestampNow - previousFrameTimestamp) / (double)Stopwatch.Frequency * 1000;
@@ -344,16 +273,16 @@ namespace GameEngineThing {
 				_DTOverTime = _dT;}
 			else _DTOverTime += _dT;
 
+			foreach (IMinigame minigame in _currentMinigames)
+			minigame.OnUpdateFrame(this, _dT);
+
 			if (IsFocused) {
 				if (_isChatting) {_chattingBlinker=(_chattingBlinker+3)&255;}
 				else {
-					_cube.Update(0, (2,0,0), new Vector3(0f, (float)_gameTime, (float)Math.Sin(_gameTime) * 2f), Vector3.One);
-					_tetrahedron.Update(0, new Vector3(0f, 3f, 0f), new Vector3(0f, (float)_gameTime, (float)Math.Sin(_gameTime) * 2f), Vector3.One);
-					float TickSpeedInv = 1f / _gameTickSpeed;
-					if (MouseState.ScrollDelta.Y != 0) { // (3f * TickSpeedInv + 1)
+					if (MouseState.ScrollDelta.Y != 0) { // (3f * _tickSpeedInv + 1)
 						_camera.CamSpeed = Math.Max(.1f, Math.Min(1024f, _camera.CamSpeed * (MouseState.ScrollDelta.Y * 0.1f + 1)));
 						if (_debugFlags.HasFlag(DebugFlags.debugLogging)) Console.WriteLine("scroll speed changed; new speed: " + _camera.CamSpeed);}
-					bool IsNotEngineTick = _semiRealTime < TickSpeedInv; if (MouseState[MouseButton.Right] || MouseState[MouseButton.Middle]){
+					bool IsNotEngineTick = _semiRealTime < _tickSpeedInv; if (MouseState[MouseButton.Right] || MouseState[MouseButton.Middle]){
 						// float deltaX = MouseState.X - MouseState.PreviousX;
 						// float deltaY = MouseState.Y - MouseState.PreviousY;
 						(float deltaX, float deltaY) = MouseState.Position - MouseState.PreviousPosition;
@@ -375,23 +304,23 @@ namespace GameEngineThing {
 					if (IsNotEngineTick) return; // if this frame is too early to go to the next game tick
 					// increment game tick and update game time
 					_gameTick++;
-					_gameTime = _gameTick * TickSpeedInv;
+					_gameTime = _gameTick * _tickSpeedInv;
 					// update semi real time; this is a fake time that is used to make the game run at a constant speed
-					_semiRealTime -= TickSpeedInv;
-					if (_semiRealTime > _gameTickLagCompensationAmount * TickSpeedInv) _semiRealTime = _gameTickLagCompensationAmount * TickSpeedInv;
+					_semiRealTime -= _tickSpeedInv;
+					if (_semiRealTime > _gameTickLagCompensationAmount * _tickSpeedInv) _semiRealTime = _gameTickLagCompensationAmount * _tickSpeedInv;
 					// ^ prevents the semi real time from getting too big; If this wasn't here, then for example, if a big lag spike happens, the semi real time will get really big and the game will run as fast as possible for a while, and that would feel really weird, and people might rage or something idk :p
 					foreach (IMinigame minigame in _currentMinigames)
-					minigame.OnEngineTick(this, TickSpeedInv);
+					minigame.OnEngineTick(this, _tickSpeedInv);
 					// camera zoom n stuff
 					if (KeyboardState.IsKeyDown(Keys.I)) _camera.CameraDistFromTarget = Math.Max(_camera.MinDist, _camera.CameraDistFromTarget * (_gameTickSpeed / (_gameTickSpeed + 3f)));
-					if (KeyboardState.IsKeyDown(Keys.O)) _camera.CameraDistFromTarget = Math.Min(_camera.MaxDist, _camera.CameraDistFromTarget * (3f * TickSpeedInv + 1));
-					if (_debugFlags.HasFlag(DebugFlags.debugLogging) && _gameTick % (long)(_gameTickSpeed * 2) == 0) Console.WriteLine("Time: " + _stopwatch.Elapsed.TotalSeconds); // print time every 2 seconds
+					if (KeyboardState.IsKeyDown(Keys.O)) _camera.CameraDistFromTarget = Math.Min(_camera.MaxDist, _camera.CameraDistFromTarget * (3f * _tickSpeedInv + 1));
 
 					// movement
 					if (_camera.IsFlying) {
-						GameEngineFlyBehaviorsThing[GameEngineFlyBehavior](this);
+						// GameEngineFlyBehaviorsThing[GameEngineFlyBehavior](this);
+						FlyBehavior(this);
 					} else {
-						float moveAmount = _camera.CamSpeed * TickSpeedInv;
+						float moveAmount = _camera.CamSpeed * _tickSpeedInv;
 						// if (KeyboardState.IsKeyDown(Keys.W)) _player.RootPosition -= Vector3.Normalize(new Vector3(_camera.Direction.X, 0f, _camera.Direction.Z)) * moveAmount;
 						// if (KeyboardState.IsKeyDown(Keys.S)) _player.RootPosition += Vector3.Normalize(new Vector3(_camera.Direction.X, 0f, _camera.Direction.Z)) * moveAmount;
 						// if (KeyboardState.IsKeyDown(Keys.A)) _player.RootPosition -= Vector3.Normalize(new Vector3(_camera.Right.X, 0f, _camera.Right.Z)) * moveAmount;
@@ -411,18 +340,15 @@ namespace GameEngineThing {
 						}
 						_player.RootPosition += plrMovement;
 						if (KeyboardState.IsKeyDown(Keys.Space) && _player.IsGrounded) _player.Jump();
-						_player.StepPhysics(TickSpeedInv);}
+						_player.StepPhysics(_tickSpeedInv);}
 					_camera.Target = _player.RootPosition;
-					_camera.UpdateVectors(); // update cam
-
-					foreach (IMinigame minigame in _currentMinigames)
-					minigame.OnUpdateFrame(this, _dT);}}
-			else {/* window is not focused */}}
+					_camera.UpdateVectors(); /* update cam */ }} else {/* window is not focused */}}
 		protected override void OnResize(ResizeEventArgs e) {
 			base.OnResize(e);
 			_clientSize = ClientSize;
 			GL.Viewport(0, 0, _clientSize.X, _clientSize.Y);
-			_camera.Projection = Matrix4.CreatePerspectiveFieldOfView(MathHelper.DegreesToRadians(45f), _clientSize.X / (float)_clientSize.Y, .1f, 10000f);}
+			_camera.Projection = Matrix4.CreatePerspectiveFieldOfView(MathHelper.DegreesToRadians(45f), _clientSize.X / (float)_clientSize.Y, .1f, 10000f);
+			foreach (IMinigame minigame in _currentMinigames) minigame.OnResize(e);}
 		protected override void OnTextInput(TextInputEventArgs e) {
 			base.OnTextInput(e);
 			string s = e.AsString;
@@ -452,25 +378,31 @@ namespace GameEngineThing {
 							string lowercaseChatTxt = _chattingText.ToLower();
 							bool debug = _debugFlags.HasFlag(DebugFlags.debugLogging);
 							if (debug) Console.WriteLine("chattxt: " + _chattingText + "; lower: " + lowercaseChatTxt);
-							bool continueAfter = true;
-							if (DataStuff.noInputChatCommands.TryGetValue(lowercaseChatTxt, out (Action<Game> action, bool breakOut) noInputCmd)) {
-								if (debug) Console.WriteLine("Found a no-input command for " + lowercaseChatTxt + "; breakOut: " + noInputCmd.breakOut);
-								noInputCmd.action(this); continueAfter = !noInputCmd.breakOut; }
-							else if (debug) Console.WriteLine("Did not find a no-input command for " + lowercaseChatTxt + ".");
-							if (continueAfter) {
-								if (debug) Console.WriteLine("Searching for input commands...");
-								if (DataStuff.chatCommands.TryGetValue(lowercaseChatTxt, out (Action<Game, string> action, bool breakOut) inputCmd))
-								{
-									if (debug) Console.WriteLine("Found command " + lowercaseChatTxt + ". breakOut: " + inputCmd.breakOut);
-									inputCmd.action(this, "");
-									if (inputCmd.breakOut) break;
+							if (DataStuff.noInputChatCommands.TryGetValue(lowercaseChatTxt, out Action<Game> noInputCmd)) {
+								if (debug) Console.WriteLine("Found a no-input command for " + lowercaseChatTxt);
+								noInputCmd(this); }
+							else {
+								if (debug) Console.WriteLine("Did not find a no-input command for " + lowercaseChatTxt + ".\nSearching for input commands...");
+								if (DataStuff.chatCommands.TryGetValue(lowercaseChatTxt, out Action<Game, string> inputCmd)) {
+									if (debug) Console.WriteLine("Found command " + lowercaseChatTxt + ".");
+									inputCmd(this, "");
+									break;
 								} else if (debug) Console.WriteLine(lowercaseChatTxt + " is not a valid input command...");
-								for (int i = lowercaseChatTxt.Length-1; i > 0; i--) {
-									string s = lowercaseChatTxt[..i];
-									if (DataStuff.chatCommands.TryGetValue(s, out inputCmd)) {
-										if (debug) Console.WriteLine("Found command " + s + ". breakOut: " + inputCmd.breakOut);
-										inputCmd.action(this, lowercaseChatTxt[i..]);
-										if (inputCmd.breakOut) break; } else if (debug) Console.WriteLine(s + " is not a valid input command..."); } }
+								if (debug) {
+									for (int i = lowercaseChatTxt.Length-1; i > 0; i--) {
+										string s = lowercaseChatTxt[..i];
+										if (DataStuff.chatCommands.TryGetValue(s, out inputCmd)) {
+											Console.WriteLine("Found command " + s + ".");
+											inputCmd(this, lowercaseChatTxt[i..]);
+											break; } else Console.WriteLine(s + " is not a valid input command..."); }
+								} else {
+									for (int i = lowercaseChatTxt.Length-1; i > 0; i--) {
+										string s = lowercaseChatTxt[..i];
+										if (DataStuff.chatCommands.TryGetValue(s, out inputCmd)) {
+											inputCmd(this, lowercaseChatTxt[i..]);
+											break; } }
+								}
+							}
 							if (debug) Console.WriteLine("finalizing or smth idk");
 							_chattingText = "";
 							_chattingTextLines = 1;
@@ -533,9 +465,6 @@ namespace GameEngineThing {
 				double t0 = Stopwatch.GetElapsedTime(ts1).TotalMilliseconds;
 				long ts2 = Stopwatch.GetTimestamp();
 				_textRenderer?.Dispose();
-				_cube?.Dispose();
-				_tetrahedron?.Dispose();
-				_plane?.Dispose();
 				_playerTorsoMesh?.Dispose();
 				_playerHeadMesh?.Dispose();
 				_playerArmMesh?.Dispose();
@@ -550,9 +479,6 @@ namespace GameEngineThing {
 			} else {
 				foreach (IMinigame minigame in _currentMinigames) minigame.OnClosing(e);
 				_textRenderer?.Dispose();
-				_cube?.Dispose();
-				_tetrahedron?.Dispose();
-				_plane?.Dispose();
 				_playerTorsoMesh?.Dispose();
 				_playerHeadMesh?.Dispose();
 				_playerArmMesh?.Dispose();
@@ -565,6 +491,8 @@ namespace GameEngineThing {
 			_videoRecorder = new VideoRecorder(_clientSize.X, _clientSize.Y, fps, output, speed); }
 		public void StartRecording(string output, float resfps, float inpfps) {
 			_videoRecorder = new VideoRecorder(_clientSize.X, _clientSize.Y, resfps, output, inpfps); }
+		public void StartRecording(string output, float resfps, float inpfps, string parameters) {
+			_videoRecorder = new VideoRecorder(_clientSize.X, _clientSize.Y, output, resfps, inpfps, parameters); }
 		public void StopRecording() {
 			// _videoRecorder?.Stop();
 			_videoRecorder?.Dispose();
@@ -678,34 +606,34 @@ namespace GameEngineThing {
 		public void Dispose() {
 			GL.DeleteTexture(Handle);}}
 	public class Camera {
-		public float CamSpeed { get; set; } = 3f;
-		public Vector3 CameraToTargetOffset { get; set; } = new Vector3(0f, 0f, -1f);
-		public float CameraDistFromTarget { get; set; } = 3f;
+		public float CamSpeed = 3f;
+		public Vector3 CameraToTargetOffset = new Vector3(1f/MathF.Sqrt(3f), 1f/MathF.Sqrt(3f), -1f/MathF.Sqrt(3f));
+		public float CameraDistFromTarget = 8f;
 		// public Vector3 CameraFront { get; set; } = new Vector3(0f, 0f, -1f);
 		public float MinDist = .05f;
 		public float MaxDist = 128f;
-		public Vector3 Target { get; set; } = Vector3.Zero;
-		public Vector3 Position { get; set; } = new Vector3(0f, 0f, 3f);
-		public Vector3 Up { get; } = Vector3.UnitY;
-		public Vector3 Direction { get; set; }
-		public Vector3 Right { get; set; }
+		public Vector3 Target = Vector3.Zero;
+		public Vector3 Position = new Vector3(0f, 0f, 3f);
+		public readonly Vector3 Up = Vector3.UnitY;
+		public Vector3 Direction;
+		public Vector3 Right;
 		/// <summary>
 		/// The matrix to project objects to the screen. It is the view but also multiplied by the projection matrix. idk if it helps but yeah.
 		/// </summary>
-		public Matrix4 View { get; set; }
+		public Matrix4 View;
 
-		public float Pitch { get; set; }
-		public float Yaw { get; set; }
-		public float MouseSensitivity { get; set; } = .005f;
+		public float Pitch;
+		public float Yaw;
+		public float MouseSensitivity = .005f;
 
 		// public float PlayerSpeed { get; set; } = 5f;
-		public bool IsFlying { get; set; } = false;
+		public bool IsFlying = false;
 		// public float JumpPower { get; set; } = 5f;
 		// public Vector3 Gravity { get; set; } = new Vector3(0f, -9.81f, 0f);
 		// public Vector3 PlayerVelocity { get; set; } = Vector3.Zero;
 		// public bool IsFalling { get; set; } = false;
 		// public bool IsGrounded { get; set; } = true;
-		public Matrix4 Projection { get; set; }
+		public Matrix4 Projection;
 
 		public Camera(Vector3 position, Vector3 target, Vector3 up) {
 			Direction = Vector3.Normalize(position - target);
@@ -869,16 +797,24 @@ namespace GameEngineThing {
 			LimbScales = limbScales;
 			for (int i = 0; i < Limbs.Length; i++) {
 				Limbs[i].Update(LimbPositions[i] + RootPosition, LimbRotations[i] + RootRotation, LimbScales[i] * RootScale);}}
-		public void UpdateLimb(int index) {
-			Limbs[index].UpdateModel(
-				Matrix4.CreateRotationX(LimbRotations[index].X) *
-				Matrix4.CreateRotationY(LimbRotations[index].Y) *
-				Matrix4.CreateRotationZ(LimbRotations[index].Z) *
-				Matrix4.CreateScale(LimbScales[index] * RootScale) *
-				Matrix4.CreateTranslation(LimbPositions[index]) *
-				RootModel
-			);}
-		public void UpdateLimbs() { for (int i = 0; i < Limbs.Length; i++) { UpdateLimb(i); } }
+		// public void UpdateLimb(int index) {
+		// 	Limbs[index].UpdateModel(
+		// 		Matrix4.CreateRotationX(LimbRotations[index].X) *
+		// 		Matrix4.CreateRotationY(LimbRotations[index].Y) *
+		// 		Matrix4.CreateRotationZ(LimbRotations[index].Z) *
+		// 		Matrix4.CreateScale(LimbScales[index] * RootScale) *
+		// 		Matrix4.CreateTranslation(LimbPositions[index]) *
+		// 		RootModel
+		// 	);}
+		// public void UpdateLimbs() { for (int i = 0; i < Limbs.Length; i++) { UpdateLimb(i); } }
+		public void UpdateLimbs() { for (int i = 0; i < Limbs.Length; i++) {
+				Limbs[i].UpdateModel(/*Matrix4.CreateRotationX(LimbRotations[i].X) *
+				Matrix4.CreateRotationY(LimbRotations[i].Y) *
+				Matrix4.CreateRotationZ(LimbRotations[i].Z) **/
+				DataStuff.CreateRotationXYZ(LimbRotations[i]) *
+				Matrix4.CreateScale(LimbScales[i] * RootScale) *
+				Matrix4.CreateTranslation(LimbPositions[i]) *
+				RootModel);} }
 		public void StepPhysics(float deltaTime) {
 			if (!IsGrounded) {
 				Velocity += Gravity * deltaTime;}
@@ -887,7 +823,8 @@ namespace GameEngineThing {
 				RootPosition = new Vector3(RootPosition.X, Game._groundHeight, RootPosition.Z);
 				Velocity = new Vector3(Velocity.X, 0f, Velocity.Z);
 				IsGrounded = true;}
-			RootModel = Matrix4.CreateRotationX(RootRotation.X) * Matrix4.CreateRotationY(RootRotation.Y) * Matrix4.CreateRotationZ(RootRotation.Z) * Matrix4.CreateScale(RootScale) * Matrix4.CreateTranslation(RootPosition);
+			// RootModel = Matrix4.CreateRotationX(RootRotation.X) * Matrix4.CreateRotationY(RootRotation.Y) * Matrix4.CreateRotationZ(RootRotation.Z) * Matrix4.CreateScale(RootScale) * Matrix4.CreateTranslation(RootPosition);
+			RootModel = DataStuff.CreateRotationXYZ(RootRotation) * Matrix4.CreateScale(RootScale) * Matrix4.CreateTranslation(RootPosition);
 			UpdateLimbs();}
 		public void Render(Shader shader) {
 			Torso.Draw(shader, true);
@@ -970,6 +907,27 @@ namespace GameEngineThing {
 				StartInfo = new ProcessStartInfo {
 					FileName = "ffmpeg",
 					Arguments = args.ToString(),
+					RedirectStandardInput=true,
+					RedirectStandardOutput=true,
+					RedirectStandardError=true,
+					UseShellExecute=false,
+					CreateNoWindow=true}};
+			_ffmpeg.Start();
+			Console.WriteLine("argument thingy for ffmpeg is "+_ffmpeg.StartInfo.Arguments);
+			if (_ffmpeg.HasExited) throw new InvalidOperationException("oops my ffmpeg crashed. I lost my data, but I had an antivirus. code: "+_ffmpeg.ExitCode);
+			_stdin = _ffmpeg.StandardInput.BaseStream;
+			_recording = true;
+			_ffmpeg.BeginErrorReadLine();
+			_ffmpeg.ErrorDataReceived += (sender, e) => Console.WriteLine("FFmpeg: "+e.Data);
+			_nextTickNs = Stopwatch.GetTimestamp()*1000000000L/Stopwatch.Frequency; }
+		public VideoRecorder(int w, int h, string p, float resfps, float inpfps, string parameters) {
+			_w = w; _h = h; _recAllFrames = resfps < 0;
+			_fBuffer = new byte[w*h<<2];
+			_tickStepNs = (long)(1000000000d/inpfps);
+			_ffmpeg = new Process {
+				StartInfo = new ProcessStartInfo {
+					FileName = "ffmpeg",
+					Arguments = parameters,
 					RedirectStandardInput=true,
 					RedirectStandardOutput=true,
 					RedirectStandardError=true,

@@ -10,5 +10,5 @@ uniform mat4 view;
 void main()
 {
 	gl_Position = vec4((aPos + vec3(aOffset.x,-aOffset.y,aOffset.z)) * 4, 1.0) * view;
-	texCoord = vec2(aTexCoord.x*.015625,aTexCoord.y*.0625+.9375);
+	texCoord = vec2(aTexCoord.x,aTexCoord.y);
 }

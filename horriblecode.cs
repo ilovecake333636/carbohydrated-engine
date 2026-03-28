@@ -1,6 +1,8 @@
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.IO;
+using System.Text;
 using OpenTK.Mathematics;
 using OpenTK.Windowing.Common;
 
@@ -8,25 +10,84 @@ namespace GameEngineThing
 {
 	public struct GlyphData
 	{
-		public Vector2i textureStart;
-		public Vector2i textureSize;
-		public Vector2 bearing;
-		public Vector2 size;
-		public Vector2 advance;
-		public GlyphData(GlyphAdvType advType, Vector2i textureStart, Vector2i textureSize, Vector2 adv, Vector2? bearing)
+		// public Vector2i textureStart;
+		// public Vector2i textureSize;
+		// public Vector2 bearing;
+		// public Vector2 size;
+		// public Vector2 advance;
+		public float tStartX, tStartY,
+		// tSizeX, tSizeY,
+		tEndX, tEndY,
+		bearingX, bearingY,
+		sizeX, sizeY,
+		spbX, spbY,
+		advanceX, advanceY;
+		public GlyphData(GlyphAdvType advType, Vector2 textureStart, Vector2 textureSize, Vector2 adv, Vector2 bearing)
 		{
-			if (bearing.HasValue) this.bearing = (Vector2)bearing; // cursor keeps screaming when i dont cast this and the compiler doesnt compile for some reason idk why
-			else this.bearing = Vector2.Zero;
-			size = new(Math.Abs(textureSize.X), Math.Abs(textureSize.Y));
-			advance = advType switch
-			{
-				GlyphAdvType.SizeXPlusA => new(adv.X + size.X, adv.Y),
-				GlyphAdvType.SizeYPlusA => new(adv.X, size.Y + adv.Y),
-				GlyphAdvType.SizeXYPlusA => size + adv,
-				_ => adv,
+			bearingX = bearing.X; bearingY = bearing.Y;
+			sizeX = Math.Abs(textureSize.X); sizeY = Math.Abs(textureSize.Y);
+			spbX = sizeX+bearingX; spbY = sizeY+bearingY;
+			switch (advType) {
+				case GlyphAdvType.SizeXPlusA: advanceX = adv.X + sizeX; advanceY = adv.Y; break;
+				case GlyphAdvType.SizeYPlusA: advanceX = adv.X; advanceY = sizeY + adv.Y; break;
+				case GlyphAdvType.SizeXYPlusA: advanceX = sizeX + adv.X; advanceY = sizeY + adv.Y; break;
+				default: advanceX = adv.X; advanceY = adv.Y; break;
 			};
-			this.textureStart = textureStart;
-			this.textureSize = textureSize;
+			tStartX = textureStart.X; tStartY = textureStart.Y;
+			// tSizeX = textureSize.X; tSizeY = textureSize.Y;
+			tEndX = tStartX+textureSize.X; tEndY = tStartY+textureSize.Y;
+		}
+		public GlyphData(GlyphAdvType advType, Vector2 textureStart, Vector2 textureSize, Vector2 adv)
+		{
+			bearingX = 0; bearingY = 0;
+			sizeX = Math.Abs(textureSize.X); sizeY = Math.Abs(textureSize.Y);
+			spbX = sizeX+bearingX; spbY = sizeY+bearingY;
+			switch (advType) {
+				case GlyphAdvType.SizeXPlusA: advanceX = adv.X + sizeX; advanceY = adv.Y; break;
+				case GlyphAdvType.SizeYPlusA: advanceX = adv.X; advanceY = sizeY + adv.Y; break;
+				case GlyphAdvType.SizeXYPlusA: advanceX = sizeX + adv.X; advanceY = sizeY + adv.Y; break;
+				default: advanceX = adv.X; advanceY = adv.Y; break;
+			};
+			tStartX = textureStart.X; tStartY = textureStart.Y;
+			// tSizeX = textureSize.X; tSizeY = textureSize.Y;
+			tEndX = tStartX + textureSize.X; tEndY = tStartY + textureSize.Y;
+		}
+		public GlyphData(GlyphAdvType advType, float tStX, float tStY, float tSzX, float tSzY, float advX, float advY, float bearingX, float bearingY)
+		{
+			this.bearingX = bearingX; this.bearingY = bearingY;
+			sizeX = Math.Abs(tSzX); sizeY = Math.Abs(tSzY);
+			spbX = sizeX+bearingX; spbY = sizeY+bearingY;
+			switch (advType) {
+				case GlyphAdvType.SizeXPlusA: advanceX = advX + sizeX; advanceY = advY; break;
+				case GlyphAdvType.SizeYPlusA: advanceX = advX; advanceY = sizeY + advY; break;
+				case GlyphAdvType.SizeXYPlusA: advanceX = sizeX + advX; advanceY = sizeY + advY; break;
+				default: advanceX = advX; advanceY = advY; break;
+			};
+			tStartX = tStX; tStartY = tStY;
+			// tSizeX = tSzX; tSizeY = tSzY;
+			tEndX = tStX+tSzX; tEndY = tStY+tSzY;
+		}
+		public GlyphData(GlyphAdvType advType, float tStX, float tStY, float tSzX, float tSzY, float advX, float advY)
+		{
+			bearingX = bearingY = 0;
+			sizeX = spbX = Math.Abs(tSzX); sizeY = spbY = Math.Abs(tSzY);
+			switch (advType) {
+				case GlyphAdvType.SizeXPlusA: advanceX = advX + sizeX; advanceY = advY; break;
+				case GlyphAdvType.SizeYPlusA: advanceX = advX; advanceY = sizeY + advY; break;
+				case GlyphAdvType.SizeXYPlusA: advanceX = sizeX + advX; advanceY = sizeY + advY; break;
+				default: advanceX = advX; advanceY = advY; break;
+			};
+			tStartX = tStX; tStartY = tStY;
+			// tSizeX = tSzX; tSizeY = tSzY;
+			tEndX = tStX+tSzX; tEndY = tStY+tSzY;
+		}
+		public GlyphData(float sX, float sY, float tStX, float tStY, float tEnX, float tEnY, float advX, float advY, float bX, float bY)
+		{
+			sizeX = sX; bearingX = bX; spbX = bX+sX;
+			sizeY = sY; bearingY = bY; spbY = bY+sY;
+			tStartX = tStX; tStartY = tStY;
+			tEndX = tEnX; tEndY = tEnY;
+			advanceX = advX; advanceY = advY;
 		}
 	}
 	public enum GlyphAdvType
@@ -39,7 +100,9 @@ namespace GameEngineThing
 	public static class FontCharFillerThing
 	{
 		private static readonly GlyphAdvType XPA = GlyphAdvType.SizeXPlusA;
-		private static readonly Vector2 Adv = new(1f, 0f);
+		// private static readonly Vector2 Adv = new(1f, 0f);
+		// private static readonly float AdvX = 1f;
+		// private static readonly float AdvY = 0f;
 		public static FontCharacterData FontCharDeeta = new();
 		static FontCharFillerThing()
 		{
@@ -47,159 +110,159 @@ namespace GameEngineThing
 			foreach (KeyValuePair<string, string> item in SCharsDuplicates) { SChars[item.Key] = SChars[item.Value]; }
 
 			// now some more things like this
-			FillFontChar(FontCharDeeta);
+			FillFontChar(FontCharDeeta, 1f/1024, 1f/1024);
 		}
 		private static readonly Dictionary<char, GlyphData> Chars = new()
 		{
-			['a'] = new(XPA, new(0, 0), new(5, 7), Adv, null),
-			['b'] = new(XPA, new(7, 0), new(4, 7), Adv, null),
-			['c'] = new(XPA, new(0, 0), new(3, 4), Adv, null),
-			['d'] = new(XPA, new(11, 0), new(-4, 7), Adv, null),
-			['e'] = new(XPA, new(11, 0), new(4, 5), Adv, null),
-			['f'] = new(XPA, new(16, 0), new(4, 7), Adv, null),
-			['g'] = new(XPA, new(20, 0), new(4, 7), Adv, new(0f, -3f)),
-			['h'] = new(XPA, new(24, 0), new(4, 7), Adv, null),
-			['i'] = new(XPA, new(31, 1), new(1, 6), Adv, null),
-			['j'] = new(XPA, new(28, 0), new(4, 7), Adv, new(0f, -3f)),
-			['k'] = new(XPA, new(32, 0), new(3, 7), Adv, null),
-			['l'] = new(XPA, new(35, 0), new(2, 7), Adv, null),
-			['m'] = new(XPA, new(37, 0), new(5, 4), Adv, null),
-			['n'] = new(XPA, new(42, 0), new(4, 4), Adv, null),
-			['o'] = new(XPA, new(46, 0), new(4, 4), Adv, null),
-			['p'] = new(XPA, new(7, 7), new(4, -7), Adv, new(0f, -3f)),
-			['q'] = new(XPA, new(11, 7), new(-6, -7), Adv, new(0f, -3f)),
-			['r'] = new(XPA, new(50, 0), new(4, 4), Adv, null),
-			['s'] = new(XPA, new(54, 0), new(4, 5), Adv, null),
-			['t'] = new(XPA, new(58, 0), new(3, 7), Adv, null),
-			['u'] = new(XPA, new(61, 0), new(4, 4), Adv, null),
-			['v'] = new(XPA, new(49, 3), new(3, 3), Adv, null),
-			['w'] = new(XPA, new(49, 3), new(5, 3), Adv, null),
-			['x'] = new(XPA, new(51, 2), new(3, 3), Adv, null),
-			['y'] = new(XPA, new(65, 0), new(4, 5), Adv, new(0f, -3f)),
-			['z'] = new(XPA, new(69, 0), new(4, 5), Adv, null),
+			['a'] = new(XPA, 0, 0, 5f, 7f, 1f, 0f),
+			['b'] = new(XPA, 7, 0, 4f, 7f, 1f, 0f),
+			['c'] = new(XPA, 0, 0, 3f, 4f, 1f, 0f),
+			['d'] = new(XPA, 11, 0, -4f, 7f, 1f, 0f),
+			['e'] = new(XPA, 11, 0, 4f, 5f, 1f, 0f),
+			['f'] = new(XPA, 16, 0, 4f, 7f, 1f, 0f),
+			['g'] = new(XPA, 20, 0, 4f, 7f, 1f, 0f, 0f, -3f),
+			['h'] = new(XPA, 24, 0, 4f, 7f, 1f, 0f),
+			['i'] = new(XPA, 31, 1, 1f, 6f, 1f, 0f),
+			['j'] = new(XPA, 28, 0, 4f, 7f, 1f, 0f, 0f, -3f),
+			['k'] = new(XPA, 32, 0, 3f, 7f, 1f, 0f),
+			['l'] = new(XPA, 35, 0, 2f, 7f, 1f, 0f),
+			['m'] = new(XPA, 37, 0, 5f, 4f, 1f, 0f),
+			['n'] = new(XPA, 42, 0, 4f, 4f, 1f, 0f),
+			['o'] = new(XPA, 46, 0, 4f, 4f, 1f, 0f),
+			['p'] = new(XPA, 7, 7, 4f, -7f, 1f, 0f, 0f, -3f),
+			['q'] = new(XPA, 11, 7, -6f, -7f, 1f, 0f, 0f, -3f),
+			['r'] = new(XPA, 50, 0, 4f, 4f, 1f, 0f),
+			['s'] = new(XPA, 54, 0, 4f, 5f, 1f, 0f),
+			['t'] = new(XPA, 58, 0, 3f, 7f, 1f, 0f),
+			['u'] = new(XPA, 61, 0, 4f, 4f, 1f, 0f),
+			['v'] = new(XPA, 49, 3, 3f, 3f, 1f, 0f),
+			['w'] = new(XPA, 49, 3, 5f, 3f, 1f, 0f),
+			['x'] = new(XPA, 51, 2, 3f, 3f, 1f, 0f),
+			['y'] = new(XPA, 65, 0, 4f, 5f, 1f, 0f, 0f, -3f),
+			['z'] = new(XPA, 69, 0, 4f, 5f, 1f, 0f),
 
-			['A'] = new(XPA, new(0, 7), new(4, 7), Adv, null),
-			['B'] = new(XPA, new(11, 7), new(4, 7), Adv, null),
-			['C'] = new(XPA, new(4, 7), new(4, 7), Adv, null),
-			['D'] = new(XPA, new(12, 7), new(-4, 7), Adv, null),
-			['E'] = new(XPA, new(18, 7), new(4, 7), Adv, null),
-			['F'] = new(XPA, new(19, 7), new(-4, 7), Adv, null),
-			['G'] = new(XPA, new(22, 7), new(5, 7), Adv, null),
-			['H'] = new(XPA, new(27, 7), new(5, 7), Adv, null),
-			['I'] = new(XPA, new(32, 7), new(4, 7), Adv, null),
-			['J'] = new(XPA, new(35, 7), new(6, 7), Adv, new(0f, -1f)),
-			['K'] = new(XPA, new(52, 7), new(5, 7), Adv, null),
-			['L'] = new(XPA, new(43, 14), new(-4, -7), Adv, null),
-			['M'] = new(XPA, new(42, 7), new(7, 7), Adv, null),
-			['N'] = new(XPA, new(48, 7), new(5, 7), Adv, null),
-			['O'] = new(XPA, new(4, 7), new(5, 7), Adv, null),
-			['P'] = new(XPA, new(7, 7), new(4, -7), Adv, null),
-			['Q'] = new(XPA, new(57, 7), new(7, 7), Adv, null),
-			['R'] = new(XPA, new(64, 7), new(5, 7), Adv, null),
-			['S'] = new(XPA, new(68, 7), new(5, 7), Adv, null),
-			['T'] = new(XPA, new(9, 20), new(5, -7), Adv, null),
-			['U'] = new(XPA, new(73, 7), new(5, 7), Adv, null),
-			['V'] = new(XPA, new(78, 7), new(5, 7), Adv, null),
-			['W'] = new(XPA, new(42, 14), new(7, -7), Adv, null),
-			['X'] = new(XPA, new(83, 7), new(5, 7), Adv, null),
-			['Y'] = new(XPA, new(88, 7), new(5, 7), Adv, null),
-			['Z'] = new(XPA, new(93, 7), new(5, 7), Adv, null),
+			['A'] = new(XPA, 0, 7, 4f, 7f, 1f, 0f),
+			['B'] = new(XPA, 11, 7, 4f, 7f, 1f, 0f),
+			['C'] = new(XPA, 4, 7, 4f, 7f, 1f, 0f),
+			['D'] = new(XPA, 12, 7, -4f, 7f, 1f, 0f),
+			['E'] = new(XPA, 18, 7, 4f, 7f, 1f, 0f),
+			['F'] = new(XPA, 19, 7, -4f, 7f, 1f, 0f),
+			['G'] = new(XPA, 22, 7, 5f, 7f, 1f, 0f),
+			['H'] = new(XPA, 27, 7, 5f, 7f, 1f, 0f),
+			['I'] = new(XPA, 32, 7, 4f, 7f, 1f, 0f),
+			['J'] = new(XPA, 35, 7, 6f, 7f, 1f, 0f, 0f, -1f),
+			['K'] = new(XPA, 52, 7, 5f, 7f, 1f, 0f),
+			['L'] = new(XPA, 43, 14, -4f, -7f, 1f, 0f),
+			['M'] = new(XPA, 42, 7, 7f, 7f, 1f, 0f),
+			['N'] = new(XPA, 48, 7, 5f, 7f, 1f, 0f),
+			['O'] = new(XPA, 4, 7, 5f, 7f, 1f, 0f),
+			['P'] = new(XPA, 7, 7, 4f, -7f, 1f, 0f),
+			['Q'] = new(XPA, 57, 7, 7f, 7f, 1f, 0f),
+			['R'] = new(XPA, 64, 7, 5f, 7f, 1f, 0f),
+			['S'] = new(XPA, 68, 7, 5f, 7f, 1f, 0f),
+			['T'] = new(XPA, 9, 20, 5f, -7f, 1f, 0f),
+			['U'] = new(XPA, 73, 7, 5f, 7f, 1f, 0f),
+			['V'] = new(XPA, 78, 7, 5f, 7f, 1f, 0f),
+			['W'] = new(XPA, 42, 14, 7f, -7f, 1f, 0f),
+			['X'] = new(XPA, 83, 7, 5f, 7f, 1f, 0f),
+			['Y'] = new(XPA, 88, 7, 5f, 7f, 1f, 0f),
+			['Z'] = new(XPA, 93, 7, 5f, 7f, 1f, 0f),
 
 			// [' '] = new(XPA, Vec2Z,    new(1f, 0f), new(0, 0), new(0, 0)),
-			['?'] = new(XPA, new(73, 0), new(2, 6), Adv, null),
-			['!'] = new(XPA, new(31, 7), new(1, -6), Adv, null),
+			['?'] = new(XPA, 73, 0, 2f, 6f, 1f, 0f),
+			['!'] = new(XPA, 31, 7, 1f, -6f, 1f, 0f),
 
-			['0'] = new(XPA, new(100, 0), new(4, 7), Adv, null), //[Vec2Z,new(2f, 0f),new(103,0),new(4,7)]
-			['1'] = new(XPA, new(75, 0), new(4, 7), Adv, null),
-			['2'] = new(XPA, new(79, 0), new(4, 7), Adv, null),
-			['3'] = new(XPA, new(83, 0), new(4, 7), Adv, null),
-			['4'] = new(XPA, new(90, 0), new(4, 7), Adv, null),
-			['5'] = new(XPA, new(96, 0), new(4, 7), Adv, null),
-			['6'] = new(XPA, new(106, 0), new(4, 7), Adv, null),
-			['7'] = new(XPA, new(110, 0), new(4, 7), Adv, null),
-			['8'] = new(XPA, new(86, 0), new(4, 7), Adv, null),
-			['9'] = new(XPA, new(114, 0), new(4, 7), Adv, null),
-			['.'] = new(XPA, new(0, 1), new(1, 1), Adv, null),
-			[','] = new(XPA, new(5, 0), new(-2, 3), Adv, new(0, -2)),
-			['<'] = new(XPA, new(53, 8), new(3, 5), Adv, null),
-			['>'] = new(XPA, new(56, 8), new(-3, 5), Adv, null),
-			['/'] = new(XPA, new(111, 0), new(3, 6), Adv, null),
-			[':'] = new(XPA, new(0, 5), new(1, 3), Adv, new(0, 2)),
-			[';'] = new(XPA, new(4, 9), new(2, -4), Adv, null),
-			['\''] = new(XPA, new(0, 1), new(1, 2), Adv, null),
-			['"'] = new(XPA, new(49, 4), new(3, 2), Adv, null),
-			['\\'] = new(XPA, new(114, 0), new(-3, 6), Adv, null),
-			['|'] = new(XPA, new(7, 0), new(1, 8), Adv, new(0f, -.5f)),
-			['['] = new(XPA, new(93, 1), new(3, 7), Adv, null),
-			[']'] = new(XPA, new(96, 1), new(-3, 7), Adv, null),
-			['{'] = new(XPA, new(118, 0), new(3, 7), Adv, null),
-			['}'] = new(XPA, new(121, 0), new(-3, 7), Adv, null),
-			['-'] = new(XPA, new(1, 0), new(2, 1), Adv, new(0f, 4f)),
-			['_'] = new(XPA, new(0, 10), new(4, 1), Adv, null),
-			['+'] = new(XPA, new(17, 9), new(3, 3), Adv, new(0f, 2f)),
-			['='] = new(XPA, new(66, 0), new(2, 3), Adv, null),
-			['@'] = new(XPA, new(121, 0), new(8, 8), Adv, null),
-			['#'] = new(XPA, new(129, 0), new(5, 5), Adv, null),
-			['$'] = new(XPA, new(134, 0), new(5, 9), Adv, null),//[Vec2Z,new(2f,0f),new(143,0),new(7,11)],[Vec2Z,new(2f, 0f),new(143,0),new(-5,9)]
-			['%'] = new(XPA, new(150, 0), new(7, 7), Adv, null),
-			['^'] = new(XPA, new(0, 2), new(3, 2), Adv, new(0f, 4f)),
-			['&'] = new(XPA, new(157, 0), new(7, 9), Adv, null),
-			['*'] = new(XPA, new(164, 0), new(4, 3), Adv, null),
-			['('] = new(XPA, new(4, 7), new(2, 7), Adv, null),
-			[')'] = new(XPA, new(6, 7), new(-2, 7), Adv, null),
-			['`'] = new(XPA, new(49, 3), new(2, 2), Adv, null),
-			['~'] = new(XPA, new(50, 3), new(4, 2), Adv, null),
+			['0'] = new(XPA, 100, 0, 4f, 7f, 1f, 0f), //[Vec2Z,new(2f, 0f),new(103,0),new(4,7)]
+			['1'] = new(XPA, 75, 0, 4f, 7f, 1f, 0f),
+			['2'] = new(XPA, 79, 0, 4f, 7f, 1f, 0f),
+			['3'] = new(XPA, 83, 0, 4f, 7f, 1f, 0f),
+			['4'] = new(XPA, 90, 0, 4f, 7f, 1f, 0f),
+			['5'] = new(XPA, 96, 0, 4f, 7f, 1f, 0f),
+			['6'] = new(XPA, 106, 0, 4f, 7f, 1f, 0f),
+			['7'] = new(XPA, 110, 0, 4f, 7f, 1f, 0f),
+			['8'] = new(XPA, 86, 0, 4f, 7f, 1f, 0f),
+			['9'] = new(XPA, 114, 0, 4f, 7f, 1f, 0f),
+			['.'] = new(XPA, 0, 1, 1f, 1f, 1f, 0f),
+			[','] = new(XPA, 5, 0, -2f, 3f, 1f, 0f, 0, -2),
+			['<'] = new(XPA, 53, 8, 3f, 5f, 1f, 0f),
+			['>'] = new(XPA, 56, 8, -3f, 5f, 1f, 0f),
+			['/'] = new(XPA, 111, 0, 3f, 6f, 1f, 0f),
+			[':'] = new(XPA, 0, 5, 1f, 3f, 1f, 0f, 0, 2),
+			[';'] = new(XPA, 4, 9, 2f, -4f, 1f, 0f),
+			['\''] = new(XPA, 0, 1, 1f, 2f, 1f, 0f),
+			['"'] = new(XPA, 49, 4, 3f, 2f, 1f, 0f),
+			['\\'] = new(XPA, 114, 0, -3f, 6f, 1f, 0f),
+			['|'] = new(XPA, 7, 0, 1f, 8f, 1f, 0f, 0f, -.5f),
+			['['] = new(XPA, 93, 1, 3f, 7f, 1f, 0f),
+			[']'] = new(XPA, 96, 1, -3f, 7f, 1f, 0f),
+			['{'] = new(XPA, 118, 0, 3f, 7f, 1f, 0f),
+			['}'] = new(XPA, 121, 0, -3f, 7f, 1f, 0f),
+			['-'] = new(XPA, 1, 0, 2f, 1f, 1f, 0f, 0f, 4f),
+			['_'] = new(XPA, 0, 10, 4f, 1f, 1f, 0f),
+			['+'] = new(XPA, 17, 9, 3f, 3f, 1f, 0f, 0f, 2f),
+			['='] = new(XPA, 66, 0, 2f, 3f, 1f, 0f),
+			['@'] = new(XPA, 121, 0, 8f, 8f, 1f, 0f),
+			['#'] = new(XPA, 129, 0, 5f, 5f, 1f, 0f),
+			['$'] = new(XPA, 134, 0, 5f, 9f, 1f, 0f),//[Vec2Z,new(2f,0f),new(143,0),new(7,11)],[Vec2Z,new(2f, 0f),new(143,0),new(-5,9)]
+			['%'] = new(XPA, 150, 0, 7f, 7f, 1f, 0f),
+			['^'] = new(XPA, 0, 2, 3f, 2f, 1f, 0f, 0f, 4f),
+			['&'] = new(XPA, 157, 0, 7f, 9f, 1f, 0f),
+			['*'] = new(XPA, 164, 0, 4f, 3f, 1f, 0f),
+			['('] = new(XPA, 4, 7, 2f, 7f, 1f, 0f),
+			[')'] = new(XPA, 6, 7, -2f, 7f, 1f, 0f),
+			['`'] = new(XPA, 49, 3, 2f, 2f, 1f, 0f),
+			['~'] = new(XPA, 50, 3, 4f, 2f, 1f, 0f),
 
-			['零'] = new(XPA, new(512, 31), new(11, 18), Adv, null),
-			['一'] = new(XPA, new(512, 20), new(7, 1), Adv, new(0f, 3f)),
-			['二'] = new(XPA, new(512, 20), new(7, 3), Adv, new(0f, 2f)),
-			['三'] = new(XPA, new(512, 16), new(7, 5), Adv, new(0f, 1f)),
-			['四'] = new(XPA, new(512, 10), new(7, 7), Adv, null),
-			['五'] = new(XPA, new(512, 4), new(7, 7), Adv, null),
-			['六'] = new(XPA, new(512 + 6, 1), new(7, 7), Adv, null),
-			['七'] = new(XPA, new(512 + 7, 8), new(7, 7), Adv, null),
-			['八'] = new(XPA, new(512 + 13, 9), new(7, 7), Adv, new(1f, 2f)),
-			['九'] = new(XPA, new(512, 0), new(7, 7), Adv, null),
-			['十'] = new(XPA, new(512, 0), new(7, 7), Adv, null),
-			['百'] = new(XPA, new(512, 0), new(7, 7), Adv, null),
-			['千'] = new(XPA, new(512, 0), new(7, 7), Adv, null),
-			['万'] = new(XPA, new(512, 0), new(7, 7), Adv, null),
-			['亿'] = new(XPA, new(512, 0), new(7, 7), Adv, null),
-			['白'] = new(XPA, new(512, 0), new(7, 7), Adv, null),
-			['上'] = new(XPA, new(512, 0), new(7, 7), Adv, null),
-			['下'] = new(XPA, new(512, 0), new(7, 7), Adv, null),
-			['中'] = new(XPA, new(512, 0), new(7, 7), Adv, null),
-			['国'] = new(XPA, new(512, 0), new(7, 7), Adv, null),
-			['文'] = new(XPA, new(512, 0), new(7, 7), Adv, null),
-			['口'] = new(XPA, new(512, 0), new(7, 7), Adv, null),
-			['回'] = new(XPA, new(512, 0), new(7, 7), Adv, null),
-			['日'] = new(XPA, new(512, 0), new(7, 7), Adv, null),
-			['自'] = new(XPA, new(512, 0), new(7, 7), Adv, null),
-			['己'] = new(XPA, new(512, 0), new(7, 7), Adv, null),
-			['早'] = new(XPA, new(512, 0), new(7, 7), Adv, null),
-			['午'] = new(XPA, new(512, 0), new(7, 7), Adv, null),
-			['晚'] = new(XPA, new(512, 0), new(7, 7), Adv, null),
-			['凌'] = new(XPA, new(512, 0), new(7, 7), Adv, null),
-			['晨'] = new(XPA, new(512, 0), new(7, 7), Adv, null),
-			['我'] = new(XPA, new(512, 0), new(7, 7), Adv, null),
-			['的'] = new(XPA, new(512, 0), new(7, 7), Adv, null),
-			['你'] = new(XPA, new(512, 0), new(7, 7), Adv, null),
-			['他'] = new(XPA, new(512, 0), new(7, 7), Adv, null),
-			['她'] = new(XPA, new(512, 0), new(7, 7), Adv, null),
-			['它'] = new(XPA, new(512, 0), new(7, 7), Adv, null),
+			['零'] = new(XPA, 512, 31, 11f, 18f, 1f, 0f),
+			['一'] = new(XPA, 512, 20, 7f, 1f, 1f, 0f, 0f, 3f),
+			['二'] = new(XPA, 512, 20, 7f, 3f, 1f, 0f, 0f, 2f),
+			['三'] = new(XPA, 512, 16, 7f, 5f, 1f, 0f, 0f, 1f),
+			['四'] = new(XPA, 512, 10, 7f, 7f, 1f, 0f),
+			['五'] = new(XPA, 512, 4, 7f, 7f, 1f, 0f),
+			['六'] = new(XPA, 512 + 6, 1, 7f, 7f, 1f, 0f),
+			['七'] = new(XPA, 512 + 7, 8, 7f, 7f, 1f, 0f),
+			['八'] = new(XPA, 512 + 13, 9, 7f, 7f, 1f, 0f, 1f, 2f),
+			['九'] = new(XPA, 512, 0, 7f, 7f, 1f, 0f),
+			['十'] = new(XPA, 512, 0, 7f, 7f, 1f, 0f),
+			['百'] = new(XPA, 512, 0, 7f, 7f, 1f, 0f),
+			['千'] = new(XPA, 512, 0, 7f, 7f, 1f, 0f),
+			['万'] = new(XPA, 512, 0, 7f, 7f, 1f, 0f),
+			['亿'] = new(XPA, 512, 0, 7f, 7f, 1f, 0f),
+			['白'] = new(XPA, 512, 0, 7f, 7f, 1f, 0f),
+			['上'] = new(XPA, 512, 0, 7f, 7f, 1f, 0f),
+			['下'] = new(XPA, 512, 0, 7f, 7f, 1f, 0f),
+			['中'] = new(XPA, 512, 0, 7f, 7f, 1f, 0f),
+			['国'] = new(XPA, 512, 0, 7f, 7f, 1f, 0f),
+			['文'] = new(XPA, 512, 0, 7f, 7f, 1f, 0f),
+			['口'] = new(XPA, 512, 0, 7f, 7f, 1f, 0f),
+			['回'] = new(XPA, 512, 0, 7f, 7f, 1f, 0f),
+			['日'] = new(XPA, 512, 0, 7f, 7f, 1f, 0f),
+			['自'] = new(XPA, 512, 0, 7f, 7f, 1f, 0f),
+			['己'] = new(XPA, 512, 0, 7f, 7f, 1f, 0f),
+			['早'] = new(XPA, 512, 0, 7f, 7f, 1f, 0f),
+			['午'] = new(XPA, 512, 0, 7f, 7f, 1f, 0f),
+			['晚'] = new(XPA, 512, 0, 7f, 7f, 1f, 0f),
+			['凌'] = new(XPA, 512, 0, 7f, 7f, 1f, 0f),
+			['晨'] = new(XPA, 512, 0, 7f, 7f, 1f, 0f),
+			['我'] = new(XPA, 512, 0, 7f, 7f, 1f, 0f),
+			['的'] = new(XPA, 512, 0, 7f, 7f, 1f, 0f),
+			['你'] = new(XPA, 512, 0, 7f, 7f, 1f, 0f),
+			['他'] = new(XPA, 512, 0, 7f, 7f, 1f, 0f),
+			['她'] = new(XPA, 512, 0, 7f, 7f, 1f, 0f),
+			['它'] = new(XPA, 512, 0, 7f, 7f, 1f, 0f),
 		};
 		private static readonly Dictionary<string, GlyphData> SChars = new()
 		{
-			["blinker"] = new(XPA, new(164, 3), new(4, 7), Adv, null),
-			["loaf"] = new(XPA, new(256, 10), new(11, 10), Adv, null),
-			["loaf2"] = new(XPA, new(256, 11), new(11, -11), Adv, null),
-			["loafBIG"] = new(XPA, new(295, 0), new(46, 42), Adv, null),
-			["loafLegacy"] = new(XPA, new(267, 0), new(11, 9), Adv, null),
-			["loafLegacyNoR"] = new(XPA, new(277, 0), new(10, 9), new(2f, 0f), null),
-			["loafLegacyNoL"] = new(XPA, new(287, 0), new(-10, 9), Adv, new(1f, 0f)),
-			["loafLegacyNoLR"] = new(XPA, new(286, 0), new(9, 8), new(2f, 0f), new(1f, 0f)),
-			["unknown"] = new(XPA, new(0, 32), new(16, 16), new(0, 1), null),
-			["note"] = new(XPA, new(16, 32), new(16, 16), new(0, 1), null),
+			["blinker"] = new(XPA, 164, 3, 4f, 7f, 1f, 0f),
+			["loaf"] = new(XPA, 256, 10, 11f, 10f, 1f, 0f),
+			["loaf2"] = new(XPA, 256, 11, 11f, -11f, 1f, 0f),
+			["loafBIG"] = new(XPA, 295, 0, 46f, 42f, 1f, 0f),
+			["loafLegacy"] = new(XPA, 267, 0, 11f, 9f, 1f, 0f),
+			["loafLegacyNoR"] = new(XPA, 277, 0, 10f, 9f, 2f, 0f),
+			["loafLegacyNoL"] = new(XPA, 287, 0, -10f, 9f, 1f, 0f, 1f, 0f),
+			["loafLegacyNoLR"] = new(XPA, 286, 0, 9f, 8f, 2f, 0f, 1f, 0f),
+			["unknown"] = new(XPA, 0, 32, 16f, 16f, 0, 1),
+			["note"] = new(XPA, 16, 32, 16f, 16f, 0, 1),
 		};
 		private static readonly Dictionary<string, string> SCharsDuplicates = new()
 		{
@@ -211,12 +274,26 @@ namespace GameEngineThing
 			foreach (KeyValuePair<char, GlyphData> Deeta in Chars) FontChrDeeta.Chars[Deeta.Key] = Deeta.Value;
 			foreach (KeyValuePair<string, GlyphData> Deeta in SChars) FontChrDeeta.SChars[Deeta.Key] = Deeta.Value;
 		}
+		public static void FillFontChar(FontCharacterData FontChrDeeta, float scaleX, float scaleY)
+		{
+			GlyphData d;
+			foreach (KeyValuePair<char, GlyphData> Deeta in Chars) {
+				d = Deeta.Value;
+				FontChrDeeta.Chars[Deeta.Key] = new(d.sizeX,d.sizeY,d.tStartX*scaleX,d.tStartY*scaleY,d.tEndX*scaleX,d.tEndY*scaleY,d.advanceX,d.advanceY,d.bearingX,d.bearingY);
+			}
+			foreach (KeyValuePair<string, GlyphData> Deeta in SChars) {
+				d = Deeta.Value;
+				FontChrDeeta.SChars[Deeta.Key] = new(d.sizeX,d.sizeY,d.tStartX*scaleX,d.tStartY*scaleY,d.tEndX*scaleX,d.tEndY*scaleY,d.advanceX,d.advanceY,d.bearingX,d.bearingY);
+			}
+		}
 	}
 	/// <summary>
 	/// this is probably not the correct way to store this data but idk what the correct way is. :p
 	/// </summary>
 	public static class DataStuff
 	{
+        public const float D2RConst = (float)(Math.PI / 180d);
+        public const float R2DConst = (float)(180d / Math.PI);
 		public static readonly float[] CubeV = [
 		//   positions            texture coords
 			// first 3 faces            btm -> bottom, top -> top, r -> right, l -> left, bk -> back, fr -> front
@@ -258,32 +335,32 @@ namespace GameEngineThing
 		];
 		public static readonly uint[] TetrahedronI = [0, 1, 2, 0, 1, 3, 0, 2, 3, 1, 2, 3];
 		public static readonly float[] PlrTorsoV = [
-			-.5f, -.5f, -.5f,   60/1024f, 128/256f, -.5f, -.3f, -.5f,   64/1024f, 128/256f,
-			 .5f, -.5f, -.5f,   60/1024f, 148/256f,  .5f, -.3f, -.5f,   64/1024f, 148/256f,
-			 .5f, -.5f,  .5f,   60/1024f, 128/256f,  .5f, -.3f,  .5f,   64/1024f, 128/256f,
-			-.5f, -.5f,  .5f,   60/1024f, 148/256f, -.5f, -.3f,  .5f,   64/1024f, 148/256f,
+			-.5f, -.5f, -.5f,   60/2048f, 128/2048f, -.5f, -.3f, -.5f,   64/2048f, 128/2048f,
+			 .5f, -.5f, -.5f,   60/2048f, 148/2048f,  .5f, -.3f, -.5f,   64/2048f, 148/2048f,
+			 .5f, -.5f,  .5f,   60/2048f, 128/2048f,  .5f, -.3f,  .5f,   64/2048f, 128/2048f,
+			-.5f, -.5f,  .5f,   60/2048f, 148/2048f, -.5f, -.3f,  .5f,   64/2048f, 148/2048f,
 
-			-.5f, -.5f, -.5f,   40/1024f, 128/256f,  .5f, -.5f, -.5f,   60/1024f, 128/256f,
-			 .5f, -.5f,  .5f,   60/1024f, 148/256f, -.5f, -.5f,  .5f,   40/1024f, 148/256f,
-			-.5f, -.3f, -.5f,   40/1024f, 128/256f,  .5f, -.3f, -.5f,   60/1024f, 128/256f,
-			 .5f, -.3f,  .5f,   60/1024f, 148/256f, -.5f, -.3f,  .5f,   40/1024f, 148/256f,
-
-
-			-.5f,  .5f, -.5f,   60/1024f, 128/256f, -.5f,  .3f, -.5f,   64/1024f, 128/256f,
-			 .5f,  .5f, -.5f,   60/1024f, 148/256f,  .5f,  .3f, -.5f,   64/1024f, 148/256f,
-			 .5f,  .5f,  .5f,   60/1024f, 128/256f,  .5f,  .3f,  .5f,   64/1024f, 128/256f,
-			-.5f,  .5f,  .5f,   60/1024f, 148/256f, -.5f,  .3f,  .5f,   64/1024f, 148/256f,
-
-			-.5f,  .5f, -.5f,   40/1024f, 128/256f,  .5f,  .5f, -.5f,   60/1024f, 128/256f,
-			 .5f,  .5f,  .5f,   60/1024f, 148/256f, -.5f,  .5f,  .5f,   40/1024f, 148/256f,
-			-.5f,  .3f, -.5f,   40/1024f, 128/256f,  .5f,  .3f, -.5f,   60/1024f, 128/256f,
-			 .5f,  .3f,  .5f,   60/1024f, 148/256f, -.5f,  .3f,  .5f,   40/1024f, 148/256f,
+			-.5f, -.5f, -.5f,   40/2048f, 128/2048f,  .5f, -.5f, -.5f,   60/2048f, 128/2048f,
+			 .5f, -.5f,  .5f,   60/2048f, 148/2048f, -.5f, -.5f,  .5f,   40/2048f, 148/2048f,
+			-.5f, -.3f, -.5f,   40/2048f, 128/2048f,  .5f, -.3f, -.5f,   60/2048f, 128/2048f,
+			 .5f, -.3f,  .5f,   60/2048f, 148/2048f, -.5f, -.3f,  .5f,   40/2048f, 148/2048f,
 
 
-			-.375f, -.35f, -.375f,   64/1024f, 128/256f, -.375f,  .35f, -.375f,   64/1024f, 142/256f,
-			 .375f, -.35f, -.375f,   79/1024f, 128/256f,  .375f,  .35f, -.375f,   79/1024f, 142/256f,
-			 .375f, -.35f,  .375f,   64/1024f, 128/256f,  .375f,  .35f,  .375f,   64/1024f, 142/256f,
-			-.375f, -.35f,  .375f,   79/1024f, 128/256f, -.375f,  .35f,  .375f,   79/1024f, 142/256f,
+			-.5f,  .5f, -.5f,   60/2048f, 128/2048f, -.5f,  .3f, -.5f,   64/2048f, 128/2048f,
+			 .5f,  .5f, -.5f,   60/2048f, 148/2048f,  .5f,  .3f, -.5f,   64/2048f, 148/2048f,
+			 .5f,  .5f,  .5f,   60/2048f, 128/2048f,  .5f,  .3f,  .5f,   64/2048f, 128/2048f,
+			-.5f,  .5f,  .5f,   60/2048f, 148/2048f, -.5f,  .3f,  .5f,   64/2048f, 148/2048f,
+
+			-.5f,  .5f, -.5f,   40/2048f, 128/2048f,  .5f,  .5f, -.5f,   60/2048f, 128/2048f,
+			 .5f,  .5f,  .5f,   60/2048f, 148/2048f, -.5f,  .5f,  .5f,   40/2048f, 148/2048f,
+			-.5f,  .3f, -.5f,   40/2048f, 128/2048f,  .5f,  .3f, -.5f,   60/2048f, 128/2048f,
+			 .5f,  .3f,  .5f,   60/2048f, 148/2048f, -.5f,  .3f,  .5f,   40/2048f, 148/2048f,
+
+
+			-.375f, -.35f, -.375f,   64/2048f, 128/2048f, -.375f,  .35f, -.375f,   64/2048f, 142/2048f,
+			 .375f, -.35f, -.375f,   79/2048f, 128/2048f,  .375f,  .35f, -.375f,   79/2048f, 142/2048f,
+			 .375f, -.35f,  .375f,   64/2048f, 128/2048f,  .375f,  .35f,  .375f,   64/2048f, 142/2048f,
+			-.375f, -.35f,  .375f,   79/2048f, 128/2048f, -.375f,  .35f,  .375f,   79/2048f, 142/2048f,
 		];
 		public static readonly uint[] PlrTorsoI = [
 			0,1,2, 1,2,3,  2,3,4, 3,4,5,  4,5,6, 5,6,7,  6,7,0, 7,0,1,
@@ -293,29 +370,29 @@ namespace GameEngineThing
 			32,33,34, 33,34,35,  34,35,36, 35,36,37,  36,37,38, 37,38,39,  38,39,32, 39,32,33,
 		];
 		public static readonly float[] PlrArmV = [
-			-.25f,  .2f, -.25f,   40/1024f, 188/256f,   -.25f, -1f, -.25f,   40/1024f, 148/256f,
-			 .25f,  .2f, -.25f,   60/1024f, 188/256f,    .25f, -1f, -.25f,   60/1024f, 148/256f,
-			 .25f,  .2f,  .25f,   40/1024f, 188/256f,    .25f, -1f,  .25f,   40/1024f, 148/256f,
-			-.25f,  .2f,  .25f,    0/1024f, 188/256f,   -.25f, -1f,  .25f,    0/1024f, 148/256f,
-			-.25f,  .2f,  .25f,   60/1024f, 188/256f,   -.25f, -1f,  .25f,   60/1024f, 148/256f,
+			-.25f,  .2f, -.25f,   40/2048f, 188/2048f,   -.25f, -1f, -.25f,   40/2048f, 148/2048f,
+			 .25f,  .2f, -.25f,   60/2048f, 188/2048f,    .25f, -1f, -.25f,   60/2048f, 148/2048f,
+			 .25f,  .2f,  .25f,   40/2048f, 188/2048f,    .25f, -1f,  .25f,   40/2048f, 148/2048f,
+			-.25f,  .2f,  .25f,    0/2048f, 188/2048f,   -.25f, -1f,  .25f,    0/2048f, 148/2048f,
+			-.25f,  .2f,  .25f,   60/2048f, 188/2048f,   -.25f, -1f,  .25f,   60/2048f, 148/2048f,
 
-			-.25f,  .2f, -.25f,   20/1024f, 128/256f,    .25f,  .2f, -.25f,   40/1024f, 128/256f,
-			 .25f,  .2f,  .25f,   40/1024f, 148/256f,   -.25f,  .2f,  .25f,   20/1024f, 148/256f,
-			-.25f, -1f, -.25f,    0/1024f, 128/256f,    .25f, -1f, -.25f,   20/1024f, 128/256f,
-			 .25f, -1f,  .25f,   20/1024f, 148/256f,   -.25f, -1f,  .25f,    0/1024f, 148/256f,
+			-.25f,  .2f, -.25f,   20/2048f, 128/2048f,    .25f,  .2f, -.25f,   40/2048f, 128/2048f,
+			 .25f,  .2f,  .25f,   40/2048f, 148/2048f,   -.25f,  .2f,  .25f,   20/2048f, 148/2048f,
+			-.25f, -1f, -.25f,    0/2048f, 128/2048f,    .25f, -1f, -.25f,   20/2048f, 128/2048f,
+			 .25f, -1f,  .25f,   20/2048f, 148/2048f,   -.25f, -1f,  .25f,    0/2048f, 148/2048f,
 		];
 		public static readonly uint[] PlrArmI = [0, 1, 2, 1, 2, 3, 2, 3, 4, 3, 4, 5, 4, 5, 6, 5, 6, 7, 8, 9, 0, 9, 0, 1, 10, 11, 12, 10, 12, 13, 14, 15, 16, 14, 16, 17,];
 		public static readonly float[] PlrLegV = [
-			-.25f,  .3f, -.25f,   40/1024f, 188/256f,   -.25f, -1f, -.25f,   40/1024f, 148/256f,
-			 .25f,  .3f, -.25f,   60/1024f, 188/256f,    .25f, -1f, -.25f,   60/1024f, 148/256f,
-			 .25f,  .3f,  .25f,   40/1024f, 188/256f,    .25f, -1f,  .25f,   40/1024f, 148/256f,
-			-.25f,  .3f,  .25f,    0/1024f, 188/256f,   -.25f, -1f,  .25f,    0/1024f, 148/256f,
-			-.25f,  .3f,  .25f,   60/1024f, 188/256f,   -.25f, -1f,  .25f,   60/1024f, 148/256f,
+			-.25f,  .3f, -.25f,   40/2048f, 188/2048f,   -.25f, -1f, -.25f,   40/2048f, 148/2048f,
+			 .25f,  .3f, -.25f,   60/2048f, 188/2048f,    .25f, -1f, -.25f,   60/2048f, 148/2048f,
+			 .25f,  .3f,  .25f,   40/2048f, 188/2048f,    .25f, -1f,  .25f,   40/2048f, 148/2048f,
+			-.25f,  .3f,  .25f,    0/2048f, 188/2048f,   -.25f, -1f,  .25f,    0/2048f, 148/2048f,
+			-.25f,  .3f,  .25f,   60/2048f, 188/2048f,   -.25f, -1f,  .25f,   60/2048f, 148/2048f,
 
-			-.25f,  .3f, -.25f,   20/1024f, 128/256f,    .25f,  .3f, -.25f,   40/1024f, 128/256f,
-			 .25f,  .3f,  .25f,   40/1024f, 148/256f,   -.25f,  .3f,  .25f,   20/1024f, 148/256f,
-			-.25f, -1f, -.25f,    0/1024f, 128/256f,    .25f, -1f, -.25f,   20/1024f, 128/256f,
-			 .25f, -1f,  .25f,   20/1024f, 148/256f,   -.25f, -1f,  .25f,    0/1024f, 148/256f,
+			-.25f,  .3f, -.25f,   20/2048f, 128/2048f,    .25f,  .3f, -.25f,   40/2048f, 128/2048f,
+			 .25f,  .3f,  .25f,   40/2048f, 148/2048f,   -.25f,  .3f,  .25f,   20/2048f, 148/2048f,
+			-.25f, -1f, -.25f,    0/2048f, 128/2048f,    .25f, -1f, -.25f,   20/2048f, 128/2048f,
+			 .25f, -1f,  .25f,   20/2048f, 148/2048f,   -.25f, -1f,  .25f,    0/2048f, 148/2048f,
 		];
 		public static readonly uint[] PlrLegI = [0, 1, 2, 1, 2, 3, 2, 3, 4, 3, 4, 5, 4, 5, 6, 5, 6, 7, 8, 9, 0, 9, 0, 1, 10, 11, 12, 10, 12, 13, 14, 15, 16, 14, 16, 17,];
 		/// <summary>
@@ -327,69 +404,69 @@ namespace GameEngineThing
 		public static readonly float[] PlrHeadV = [ // loaf
 			// =====Loaf's Crust=====
 			// 0-3 bottom
-			-.7f,-.5f,-1f,        393f/1024f, 15f/256f,
-			 .7f,-.5f,-1f,        393f/1024f, 15f/256f,
-			 .7f,-.5f, 1f,        393f/1024f, 15f/256f,
-			-.7f,-.5f, 1f,        393f/1024f, 15f/256f,
+			-.7f,-.5f,-1f,        393f/2048f, 15f/2048f,
+			 .7f,-.5f,-1f,        393f/2048f, 15f/2048f,
+			 .7f,-.5f, 1f,        393f/2048f, 15f/2048f,
+			-.7f,-.5f, 1f,        393f/2048f, 15f/2048f,
 			// 4-9 right ear (side)
-			-PlrEarW, .5f,-1f,     393f/1024f, 15f/256f,
-			-PlrEarW, .5f, 1f,     393f/1024f, 15f/256f,
-			-.7f,  .809f,-1f,     393f/1024f, 15f/256f, // y is .5f ± .309f
-			-.7f,  .809f, 1f,     393f/1024f, 15f/256f,
-			-.7f,  .191f,-1f,     393f/1024f, 15f/256f,
-			-.7f,  .191f, 1f,     393f/1024f, 15f/256f,
+			-PlrEarW, .5f,-1f,     393f/2048f, 15f/2048f,
+			-PlrEarW, .5f, 1f,     393f/2048f, 15f/2048f,
+			-.7f,  .809f,-1f,     393f/2048f, 15f/2048f, // y is .5f ± .309f
+			-.7f,  .809f, 1f,     393f/2048f, 15f/2048f,
+			-.7f,  .191f,-1f,     393f/2048f, 15f/2048f,
+			-.7f,  .191f, 1f,     393f/2048f, 15f/2048f,
 			// 10-12 right ear (back)
-			-PlrEarW,  .5f,-1f,    392f/1024f, 22f/256f,
-			-.7f,   .809f,-1f,    392f/1024f, 22f/256f,
-			-.7f,   .191f,-1f,    392f/1024f, 22f/256f,
+			-PlrEarW,  .5f,-1f,    392f/2048f, 22f/2048f,
+			-.7f,   .809f,-1f,    392f/2048f, 22f/2048f,
+			-.7f,   .191f,-1f,    392f/2048f, 22f/2048f,
 			// 13-15 right ear (front)
-			-PlrEarW,  .5f, 1f,    393f/1024f, 15f/256f,
-			-.7f,   .809f, 1f,    393f/1024f, 15f/256f,
-			-.7f,   .191f, 1f,    393f/1024f, 15f/256f,
+			-PlrEarW,  .5f, 1f,    393f/2048f, 15f/2048f,
+			-.7f,   .809f, 1f,    393f/2048f, 15f/2048f,
+			-.7f,   .191f, 1f,    393f/2048f, 15f/2048f,
 				
 			// 16-21 left ear (side)
-			 PlrEarW, .5f,-1f,     393f/1024f, 15f/256f,
-			 PlrEarW, .5f, 1f,     393f/1024f, 15f/256f,
-			 .7f,   .809f,-1f,     393f/1024f, 15f/256f,
-			 .7f,   .809f, 1f,     393f/1024f, 15f/256f,
-			 .7f,   .191f,-1f,     393f/1024f, 15f/256f,
-			 .7f,   .191f, 1f,     393f/1024f, 15f/256f,
+			 PlrEarW, .5f,-1f,     393f/2048f, 15f/2048f,
+			 PlrEarW, .5f, 1f,     393f/2048f, 15f/2048f,
+			 .7f,   .809f,-1f,     393f/2048f, 15f/2048f,
+			 .7f,   .809f, 1f,     393f/2048f, 15f/2048f,
+			 .7f,   .191f,-1f,     393f/2048f, 15f/2048f,
+			 .7f,   .191f, 1f,     393f/2048f, 15f/2048f,
 			// 22-24 left ear (back)
-			 PlrEarW,  .5f,-1f,     392f/1024f, 22f/256f,
-			 .7f,   .809f,-1f,     392f/1024f, 22f/256f,
-			 .7f,   .191f,-1f,     392f/1024f, 22f/256f,
+			 PlrEarW,  .5f,-1f,     392f/2048f, 22f/2048f,
+			 .7f,   .809f,-1f,     392f/2048f, 22f/2048f,
+			 .7f,   .191f,-1f,     392f/2048f, 22f/2048f,
 			// 25-27 left ear (front)
-			 PlrEarW,  .5f, 1f,     393f/1024f, 15f/256f,
-			 .7f,   .809f, 1f,     393f/1024f, 15f/256f,
-			 .7f,   .191f, 1f,     393f/1024f, 15f/256f,
+			 PlrEarW,  .5f, 1f,     393f/2048f, 15f/2048f,
+			 .7f,   .809f, 1f,     393f/2048f, 15f/2048f,
+			 .7f,   .191f, 1f,     393f/2048f, 15f/2048f,
 
 			// =======================================
 			// actual textured (not crust) part next!!
 			// =======================================
 
 			// 28-31 bottom
-			-.7f,-.5f,-1f,        210f/1024f, 128f/256f,
-			 .7f,-.5f,-1f,        154f/1024f, 128f/256f,
-			 .7f,-.5f, 1f,        384f/1024f, 126f/256f,
-			-.7f,-.5f, 1f,        566f/1024f, 126f/256f,
+			-.7f,-.5f,-1f,        210f/2048f, 128f/2048f,
+			 .7f,-.5f,-1f,        154f/2048f, 128f/2048f,
+			 .7f,-.5f, 1f,        384f/2048f, 126f/2048f,
+			-.7f,-.5f, 1f,        566f/2048f, 126f/2048f,
 			// 32-35 right ear-ish
-			-PlrEarW, .5f,-1f,     (182f+40f*PlrEarW)/1024f, 168f/256f,
-			-PlrEarW, .5f, 1f,     (475f+130f*PlrEarW)/1024f, 256f/256f,
-			-.7f,  .191f,-1f,     210f/1024f, 155.64f/256f,
-			// -.7f,  .191f, 1f,     566f/1024f, 155.64f/256f,
-			-.7f,  .191f, 1f,     566f/1024f, 215.83f/256f,
+			-PlrEarW, .5f,-1f,     (182f+40f*PlrEarW)/2048f, 168f/2048f,
+			-PlrEarW, .5f, 1f,     (475f+130f*PlrEarW)/2048f, 256f/2048f,
+			-.7f,  .191f,-1f,     210f/2048f, 155.64f/2048f,
+			// -.7f,  .191f, 1f,     566f/2048f, 155.64f/2048f,
+			-.7f,  .191f, 1f,     566f/2048f, 215.83f/2048f,
 			// 36-39 left ear-ish
-			 PlrEarW, .5f,-1f,     (182f-40f*PlrEarW)/1024f, 168f/256f,
-			 PlrEarW, .5f, 1f,     (475f-130f*PlrEarW)/1024f, 256f/256f,
-			 .7f,  .191f,-1f,     154f/1024f, 155.64f/256f,
-			//  .7f,  .191f, 1f,     384f/1024f, 155.64f/256f,
-			 .7f,  .191f, 1f,     384f/1024f, 215.83f/256f,
+			 PlrEarW, .5f,-1f,     (182f-40f*PlrEarW)/2048f, 168f/2048f,
+			 PlrEarW, .5f, 1f,     (475f-130f*PlrEarW)/2048f, 256f/2048f,
+			 .7f,  .191f,-1f,     154f/2048f, 155.64f/2048f,
+			//  .7f,  .191f, 1f,     384f/2048f, 155.64f/2048f,
+			 .7f,  .191f, 1f,     384f/2048f, 215.83f/2048f,
 			
 			// 40-43 ear centers
-			-PlrEarC, .5f,-1f,     392f/1024f, 15f/256f, // right-back
-			-PlrEarC, .5f, .8f, /*the ear is watching*/     393f/1024f, 22f/256f, // right-front
-			PlrEarC, .5f,-1f,     392f/1024f, 15f/256f, // left-back
-			PlrEarC, .5f, .8f,     393f/1024f, 22f/256f, // left-front
+			-PlrEarC, .5f,-1f,     392f/2048f, 15f/2048f, // right-back
+			-PlrEarC, .5f, .8f, /*the ear is watching*/     393f/2048f, 22f/2048f, // right-front
+			PlrEarC, .5f,-1f,     392f/2048f, 15f/2048f, // left-back
+			PlrEarC, .5f, .8f,     393f/2048f, 22f/2048f, // left-front
 		];
 		public static readonly uint[] PlrHeadI = [
 			0,1,2, 0,2,3,    // bottom of the loaf
@@ -425,21 +502,6 @@ namespace GameEngineThing
 		// public static readonly uint[] i = [];
 		// public static readonly float[] v = [];
 		// public static readonly uint[] i = [];
-		public static readonly V1KChart[] BuiltInV1KCharts;
-		public static readonly ManiaKey[][][] BuiltInCharts = [
-			[
-				[
-
-				],[
-
-				],[
-
-				],[
-
-				],
-			],
-
-		];
 		public static (float, float, float) HSVToRGB(float h, float sv, float v)
 		{
 			sv *= v;
@@ -475,83 +537,113 @@ namespace GameEngineThing
 		// 		(rg < 2) ? ((rg > 1) ? (2 - rg) : 1) : 0,
 		// 		(rb < 2) ? ((rb > 1) ? (2 - rb) : 1) : 0);
 		// }
-		public static Dictionary<string, (Action<Game, string> action, bool breakOut)> chatCommands = [];
-		public static Dictionary<string, (Action<Game> action, bool breakOut)> noInputChatCommands = [];
-		static DataStuff()
+		public static Matrix4 CreateRotationXYZ(Vector3 input)
 		{
-			BuiltInV1KCharts = new V1KChart[2];
-			V1KKey[] V1KChart1KeyData = new V1KKey[4096];
-			for (int i = 0; i < 4096; i++) { V1KChart1KeyData[i] = new V1KKey(Math.Pow(i, 0.5)); }
-			V1KKey[] V1KChart2KeyData = new V1KKey[32768];
-			for (int i = 0; i < 32768; i++) { V1KChart2KeyData[i] = new V1KKey(i / 694.20); }
+			// Matrix4 result;
+			(float x, float y, float z) = input;
+			float num = MathF.Cos(x),
+			num2 = MathF.Sin(x),
+			num3 = MathF.Cos(y),
+			num4 = MathF.Sin(y),
+			num5 = MathF.Cos(z),
+			num6 = MathF.Sin(z);
+			// Matrix4 result = new(1, 0, 0, 0,
+			// 0, num, num2, 0,
+			// 0, -num2, num, 0,
+			// 0, 0, 0, 1);
+			// Matrix4 result = new(num3,0,-num4,0,
+			// num2 * num4,num,num2 * num3,0,
+			// num * num4,-num2,num * num3,0,
+			// 0,0,0,1);
+			float x2 = num2 * num4, x3 = num * num4;
+			// Matrix4 result = new(num3 * num5,num3 * num6,-num4,0,
+			// x2 * num5 - num * num6,x2 * num6 + num * num5,num2*num3,0,
+			// x3 * num5 + num2 * num6,x3 * num6 - num2 * num5,num*num3,0,
+			// 0,0,0,1);
 
-			BuiltInV1KCharts[0] = new V1KChart(V1KChart1KeyData);
-			BuiltInV1KCharts[1] = new V1KChart(V1KChart2KeyData);
-
-
-
-
-
-			noInputChatCommands["exit"] = noInputChatCommands["quit"] = noInputChatCommands["cabbage"] = (delegate (Game game) {
-				game.WillReopen = false; game.Close();
-			}, true);
-			noInputChatCommands["pong"] = noInputChatCommands["snake"] = noInputChatCommands["fnf"] = (delegate (Game game) {
+			// result *= new Matrix4(num3, 0, -num4, 0,
+			// 0, 1, 0, 0,
+			// num4, 0, num3, 0,
+			// 0, 0, 0, 1);
+			// result *= new Matrix4(num5, num6, 0, 0,
+			// -num6, num5, 0, 0,
+			// 0, 0, 1, 0,
+			// 0, 0, 0, 1);
+			// return result;
+			return new(num3*num5,num3*num6,-num4,0,
+			x2*num5-num*num6,x2*num6+num*num5,num2*num3,0,
+			x3*num5+num2*num6,x3*num6-num2*num5,num*num3,0,
+			0,0,0,1);
+		}
+		public static Matrix4 CreateRotationXYZ(float x, float y, float z)
+		{
+			float num = MathF.Cos(x),
+			num2 = MathF.Sin(x),
+			num3 = MathF.Cos(y),
+			num4 = MathF.Sin(y),
+			num5 = MathF.Cos(z),
+			num6 = MathF.Sin(z);
+			float x2 = num2 * num4, x3 = num * num4;
+			return new(num3*num5,num3*num6,-num4,0,
+			x2*num5-num*num6,x2*num6+num*num5,num2*num3,0,
+			x3*num5+num2*num6,x3*num6-num2*num5,num*num3,0,
+			0,0,0,1);
+		}
+		public static Dictionary<string, Action<Game, string>> chatCommands = [];
+		public static Dictionary<string, Action<Game>> noInputChatCommands = [];
+		/// <summary>
+		/// this also includes invalid ones i think
+		/// </summary>
+		public static readonly List<Type> EverySingleMinigame = [];
+		public static readonly List<(Type, string)> AllMinigames = [];
+		public static readonly Dictionary<string, Action<Game>> MinigameInitializers = [];
+		// public static Dictionary<Type, string> MinigameIdentifiers = [];
+		static DataStuff() {
+			noInputChatCommands["exit"] = noInputChatCommands["quit"] = noInputChatCommands["cabbage"] = delegate (Game game) {
+				game.WillReopen = false; game.Close(); };
+			noInputChatCommands["pong"] = noInputChatCommands["snake"] = noInputChatCommands["fnf"] = delegate (Game game) {
 				game.ReopenData = game._chattingText;
 				game.WillReopen = true;
-				game.Close();
-			}, true);
-			noInputChatCommands["v1kshowalldata"] = noInputChatCommands["v1kshowall"] = noInputChatCommands["v1kshowallinfo"] = (delegate (Game game) {
-				VerticalOneKey.DisplayFullInfo = !VerticalOneKey.DisplayFullInfo;
-			}, true);
-			noInputChatCommands["maniashowalldata"] = (delegate (Game game) { ManiaRG.DisplayFullInfo = !ManiaRG.DisplayFullInfo; }, true);
-			noInputChatCommands["debugtxt"] = noInputChatCommands["debugtext"] = noInputChatCommands["dbtxt"] = (delegate (Game game) {
+				game.Close(); };
+			noInputChatCommands["debugtxt"] = noInputChatCommands["debugtext"] = noInputChatCommands["dbtxt"] = delegate (Game game) {
 				Console.WriteLine("debug txt entered debugging thing idk\nPrevious thing: " + game._debugFlags.HasFlag(DebugFlags.debugText));
 				// if (game._debugFlags.HasFlag(DebugFlags.debugText))
 				// 	game._debugFlags &= ~DebugFlags.debugText; else game._debugFlags |= DebugFlags.debugText;
 					game._debugFlags ^= DebugFlags.debugText;
-				Console.WriteLine("Now: " + game._debugFlags.HasFlag(DebugFlags.debugText));
-			}, true);
-			noInputChatCommands["debuglog"] = (delegate (Game game) {
+				Console.WriteLine("Now: " + game._debugFlags.HasFlag(DebugFlags.debugText)); };
+			noInputChatCommands["debuglog"] = delegate (Game game) {
 				Console.WriteLine("debug logging entered debugging thing idk\nPrevious: " + game._debugFlags.HasFlag(DebugFlags.debugLogging));
 				// if (game._debugFlags.HasFlag(DebugFlags.debugLogging))
 				// 	game._debugFlags &= ~DebugFlags.debugLogging; else game._debugFlags |= DebugFlags.debugLogging;
 				game._debugFlags ^= DebugFlags.debugLogging;
-				Console.WriteLine("Now: " + game._debugFlags.HasFlag(DebugFlags.debugText));
-			}, true);
-			noInputChatCommands["showvsync"] = (delegate (Game game) {
-				Console.WriteLine("Vsync mode right now: " + game.VSync);
-			}, true);
-			noInputChatCommands["vsyncon"] = (delegate (Game game) { game.VSync = VSyncMode.On; }, true);
-			noInputChatCommands["vsyncoff"] = (delegate (Game game) { game.VSync = VSyncMode.Off; }, true);
-			noInputChatCommands["vsyncadapt"] = (delegate (Game game) { game.VSync = VSyncMode.Adaptive; }, true);
-			noInputChatCommands["stoprecording"] = (delegate (Game game) {
-				Console.WriteLine("Stopping recording hopefully."); game.StopRecording(); Console.WriteLine("Stopped recording hopefully...");
-			}, true);
-			noInputChatCommands["reopen"] = (delegate (Game game) {  game.WillReopen = true; game.Close(); }, true);
-			noInputChatCommands["playerrendertoggle"] = (delegate (Game game) { game.renderPlayer = !game.renderPlayer; }, true);
-			noInputChatCommands["flysilly"] = (delegate (Game game) { game.GameEngineFlyBehavior = 1; }, true);
-			noInputChatCommands["flyunsilly"] = (delegate (Game game) { game.GameEngineFlyBehavior = 0; }, true);
+				Console.WriteLine("Now: " + game._debugFlags.HasFlag(DebugFlags.debugText)); };
+			noInputChatCommands["showvsync"] = delegate (Game game) {
+				Console.WriteLine("Vsync mode right now: " + game.VSync); };
+			noInputChatCommands["vsyncon"] = delegate (Game game) { game.VSync = VSyncMode.On; };
+			noInputChatCommands["vsyncoff"] = delegate (Game game) { game.VSync = VSyncMode.Off; };
+			noInputChatCommands["vsyncadapt"] = delegate (Game game) { game.VSync = VSyncMode.Adaptive; };
+			noInputChatCommands["stoprecording"] = delegate (Game game) {
+				Console.WriteLine("Stopping recording hopefully."); game.StopRecording(); Console.WriteLine("Stopped recording hopefully..."); };
+			noInputChatCommands["reopen"] = delegate (Game game) {  game.WillReopen = true; game.Close(); };
+			noInputChatCommands["playerrendertoggle"] = delegate (Game game) { game.renderPlayer = !game.renderPlayer; };
 
-			chatCommands["reopen"] = (delegate (Game game, string str) {
+			chatCommands["reopen"] = delegate (Game game, string str) {
 				game.WillReopen = true;
 				if (str.Length > 1 && str[0] == ' ') {
 					game.ReopenData = str[1..];
-					Console.WriteLine("ReopenData: \"" + game.ReopenData + "\""); } game.Close();
-			}, true);
-
-			chatCommands["help"] = (delegate (Game game, string str) {
-				switch (str)
-				{
+					Console.WriteLine("ReopenData: \"" + game.ReopenData + "\""); } game.Close(); };
+			chatCommands["help"] = delegate (Game game, string str) {
+				switch (str) {
 					case " record":
 						Console.WriteLine("""
-chatCommands["record "] = (delegate (Game game, string str) { game.StartRecording(str); Console.WriteLine("Recording with file path " + str); }, true);
-chatCommands["record_"] = (delegate (Game game, string str) {
+chatCommands["record "] = delegate (Game game, string str) { game.StartRecording(str); Console.WriteLine("Recording with file path " + str); };
+chatCommands["record_"] = delegate (Game game, string str) {
 	int breakcharpos = str.IndexOf(',');
 	if (breakcharpos == -1) { Console.WriteLine("file path never specified..."); return; }
 	int fps = Convert.ToInt32(str[..breakcharpos++]);
 	game.StartRecording(str[breakcharpos..], fps: fps); Console.WriteLine("Recording at " + fps + " fps with file path " + str[breakcharpos..]);
-}, true);
-chatCommands["recordf"] = chatCommands["records"] = (delegate (Game game, string str) {
+};
+chatCommands["recordf"] = chatCommands["records"] = delegate (Game game, string str) {
 	int breakcharpos1 = str.IndexOf(',');
 	if (breakcharpos1 == -1) { Console.WriteLine("speed + file location never specified..."); return; }
 	int inputfps = Convert.ToInt32(str[..breakcharpos1++]);
@@ -560,9 +652,9 @@ chatCommands["recordf"] = chatCommands["records"] = (delegate (Game game, string
 	float recordingSpeed = Convert.ToSingle(str[breakcharpos1..breakcharpos2]);
 	string newFilePath = str[(breakcharpos2+1)..];
 	game.StartRecording(newFilePath, fps: inputfps, speed: recordingSpeed); Console.WriteLine("Recording at " + inputfps + " fps at " + recordingSpeed + "x speed with file path " + newFilePath);
-}, true);
+};
 
-yeah it does that.
+yeah it does that. actually maybe not anymore bc this is outdated quite a bit.
 "record " records with whatever filepath after it, e.g. "record filethingy.mp4" will record with file name "filethingy.mp4".
 
 "record_" records with a specified framerate, where the first is fps(?) and the second is the file path. formatted like "{framerate},{filepath}" or something idk
@@ -574,16 +666,27 @@ yeah it does that.
 						break;
 					case "":
 						Console.WriteLine("""
-hi this is the help command idk. This is carbohydrated-engine, a "game engine" written in c# that uses OpenTK and StbImageSharp and some tutorials and stuff, made by the person with usernames "@ilovecake333636" and also maybe(?) "carbohydrated".
-"carbohydrated-engine" on github
+hi this is the help command idk. This is carbohydrated-engine, a "game engine" written in c# that uses OpenTK and StbImageSharp and some tutorials and stuff, made by the person with usernames that include "@ilovecake333636" and also maybe(?) "carbohydrated".
+"carbohydrated-engine" on github (no quotation marks)
+
+""");break;
+					case " record args":
+						Console.WriteLine("""
+args are made by:\n
+"-n -f rawvideo -pix_fmt bgra -s " + w + 'x' + h + " -r " + resfps.ToString("N4")) + " -i - -vf \"vflip\" -an -c:v libx265 -preset slow -crf 25 -pix_fmt yuv420p \" + p + '\"'
+
+so, with 1920x1080 display at 60 output fps and 30 input fps and path "miwocivsnvafd.mp4" it would be:
+
+-n -f rawvideo -pix_fmt bgra -s 1920x1080 -r 60.0000 -i - -vf "vflip" -an -c:v libx265 -preset slow -crf 25 -pix_fmt yuv420p "miwocivsnvafd.mp4"
+
+yeah use that as an example i guess or something. how you input it is: using recordc, the secret 4th argument is formatted like all the others and is the exact arguments i think.
+
+yep
 """);break;
 					default:
 						Console.WriteLine("idk");
-						break;
-				}
-			}, true);
-
-			// chatCommands["record"] = (delegate (Game game, string str) {
+						break; } };
+			// chatCommands["record"] = delegate (Game game, string str) {
 			// 	if (str.Length > 7) {
 			// 		switch (str[6]) {
 			// 			case ' ': // normal recording behavior
@@ -604,16 +707,14 @@ hi this is the help command idk. This is carbohydrated-engine, a "game engine" w
 			// 				float recordingSpeed = Convert.ToSingle(str[breakcharpos1..breakcharpos2]);
 			// 				string newFilePath = str[(breakcharpos2+1)..];
 			// 				game.StartRecording(newFilePath, fps: inputfps, speed: recordingSpeed); Console.WriteLine("Recording at " + inputfps + " fps with file path " + newFilePath);
-			// 				break; }}
-			// }, true);
-			chatCommands["record "] = (delegate (Game game, string str) { game.StartRecording(str); Console.WriteLine("Recording with file path " + str); }, true);
-			chatCommands["record_"] = (delegate (Game game, string str) {
+			// 				break; }} };
+			chatCommands["record "] = delegate (Game game, string str) { game.StartRecording(str); Console.WriteLine("Recording with file path " + str); };
+			chatCommands["record_"] = delegate (Game game, string str) {
 				int breakcharpos = str.IndexOf(',');
 				if (breakcharpos == -1) { Console.WriteLine("file path never specified..."); return; }
 				int fps = Convert.ToInt32(str[..breakcharpos++]);
-				game.StartRecording(str[breakcharpos..], fps: fps); Console.WriteLine("Recording at " + fps + " fps with file path " + str[breakcharpos..]);
-			}, true);
-			chatCommands["recordf"] = chatCommands["records"] = (delegate (Game game, string str) {
+				game.StartRecording(str[breakcharpos..], fps: fps); Console.WriteLine("Recording at " + fps + " fps with file path " + str[breakcharpos..]); };
+			chatCommands["recordf"] = chatCommands["records"] = delegate (Game game, string str) {
 				int breakcharpos1 = str.IndexOf(',');
 				if (breakcharpos1 == -1) { Console.WriteLine("speed + file location never specified..."); return; }
 				int inputfps = Convert.ToInt32(str[..breakcharpos1++]);
@@ -621,19 +722,25 @@ hi this is the help command idk. This is carbohydrated-engine, a "game engine" w
 				if (breakcharpos2 == -1) { Console.WriteLine("file path never specified..."); return; }
 				float recordingSpeed = Convert.ToSingle(str[breakcharpos1..breakcharpos2]);
 				string newFilePath = str[(breakcharpos2+1)..];
-				game.StartRecording(newFilePath, fps: inputfps, speed: recordingSpeed); Console.WriteLine("Recording at " + inputfps + " fps at " + recordingSpeed + "x speed with file path " + newFilePath);
-			}, true);
-			chatCommands["recordc"] = (delegate (Game game, string str) {
+				game.StartRecording(newFilePath, fps: inputfps, speed: recordingSpeed); Console.WriteLine("Recording at " + inputfps + " fps at " + recordingSpeed + "x speed with file path " + newFilePath); };
+			chatCommands["recordc"] = delegate (Game game, string str) {
 				int breakcharpos1 = str.IndexOf(',');
 				if (breakcharpos1 == -1) { Console.WriteLine("inFPS + file location never specified..."); return; }
 				float outFPS = Convert.ToSingle(str[..breakcharpos1++]);
 				int breakcharpos2 = str.IndexOf(',', breakcharpos1);
 				if (breakcharpos2 == -1) { Console.WriteLine("file path never specified..."); return; }
-				float inFPS = Convert.ToSingle(str[breakcharpos1..breakcharpos2]);
-				string newFilePath = str[(breakcharpos2+1)..];
-				game.StartRecording(newFilePath, resfps: outFPS, inpfps: inFPS); Console.WriteLine("Inputting at " + inFPS + " fps, output file has " + outFPS + " fps with file path " + newFilePath);
-			}, true);
-			chatCommands["loadmap "] = (delegate (Game game, string path) {
+				float inFPS = Convert.ToSingle(str[breakcharpos1..breakcharpos2++]);
+				breakcharpos1 = str.IndexOf(',', breakcharpos2);
+				if (breakcharpos1 == -1) // if there's no other additonal control info,
+					{string newFilePath = str[breakcharpos2..];
+					game.StartRecording(newFilePath, resfps: outFPS, inpfps: inFPS); Console.WriteLine("Inputting at " + inFPS + " fps, output file has " + outFPS + " fps with file path " + newFilePath);}
+				else {
+					string newFilePath = str[breakcharpos2..breakcharpos1++];
+					string parameters = str[breakcharpos1..];
+					game.StartRecording(newFilePath, outFPS, inFPS, parameters); Console.WriteLine("Inputting at " + inFPS + " fps, output file has " + outFPS + " fps with file path " + newFilePath + ".\nargs are \""+parameters+'\"');
+				}};
+			// recordc format is "{outputfps},{inputfps},{outputpath}"
+			chatCommands["loadmap "] = delegate (Game game, string path) {
 				List<VerticalOneKey> v1kl = [];
 				List<ManiaRG> mrgl = [];
 				foreach (IMinigame minigame in game._currentMinigames) { if (minigame is VerticalOneKey m0) v1kl.Add(m0); else if (minigame is ManiaRG m1) mrgl.Add(m1); }
@@ -645,45 +752,42 @@ hi this is the help command idk. This is carbohydrated-engine, a "game engine" w
 						if (_m.TryLoadMapFromString(data)) Console.WriteLine("Loadmap success!"); else Console.WriteLine("Failed to load map.");
 						foreach (ManiaRG _m in mrgl)
 						if (_m.TryLoadMapFromString(data)) Console.WriteLine("Loadmap success!"); else Console.WriteLine("Failed to load map."); }
-					else Console.WriteLine("Path does not exist!"); }
-			}, true);
-			chatCommands["profamt "] = chatCommands["proflen "] = (delegate (Game game, string str) {
+					else Console.WriteLine("Path does not exist!"); } };
+			chatCommands["profamt "] = chatCommands["proflen "] = delegate (Game game, string str) {
 				try { game.profilerFrameTimes = new double[Math.Min(Convert.ToUInt32(str), 1048576)]; game.profilerIndex = 0; }
 				catch (FormatException ex) { Console.WriteLine("Incorrect formatting. " + ex.Message); }
-				catch (OverflowException ex) { Console.WriteLine("Overflow. ARE YOU TRYING TO CRASH YOUR COMPUTER OR SOMETHING??? (automatically capped at 1048576, but this error only appears above ~4.2B) " + ex.Message); }
-			}, true);
-			chatCommands["mininggame "] = chatCommands["miner "] = (delegate (Game game, string str) {
-				int i;
-				bool ret = true;
-				for (i = 0; i < game._currentMinigames.Count; i++) if (game._currentMinigames[i] is MiningGame) { ret = false; break; }
-				if (ret) { Console.WriteLine("nuh uh there ain't a mining game active bozo"); return; }
-				switch (str)
-				{
-					case "oldmininggame":
-						game._currentMinigames[i] = new OldMiningGame();
-						break;
-					default:
-						Console.WriteLine("uhh what you entered i haven't really implemented yet or you've misspelled or you're Searching For a Code That Doesn't Exist /j (i haven't actually watched that idk what happens in it :3)");
-						break;
-				}
-			}, true);
-			chatCommands["oldmininggame "] = chatCommands["miner "] = (delegate (Game game, string str) {
-				int i;
-				bool ret = true;
-				for (i = 0; i < game._currentMinigames.Count; i++) if (game._currentMinigames[i] is OldMiningGame) { ret = false; break; }
-				if (ret) { Console.WriteLine("nuh uh there ain't an old mining game active bozo"); return; }
-				switch (str) {
-					case "newmininggame":
-						game._currentMinigames[i] = new MiningGame();
-						break;
-					default:
-						Console.WriteLine("uhh um what you entered i haven't really implemented yet or you've misspelled or you're Searching For a Code That Doesn't Exist /j (i haven't actually watched that idk what happens in it :3)");
-						break;
-				}
-			}, true);
+				catch (OverflowException ex) { Console.WriteLine("Overflow. ARE YOU TRYING TO CRASH YOUR COMPUTER OR SOMETHING??? (automatically capped at 1048576, but this error only appears above ~4.2B) " + ex.Message); } };
+			// code based off https://stackoverflow.com/questions/73003523/how-to-get-all-inherited-classes by Gec
+			var assemblies = AppDomain.CurrentDomain.GetAssemblies();
+			foreach (var assembly in assemblies)
+				foreach (Type type in assembly.GetTypes())
+					if (typeof(IMinigame).IsAssignableFrom(type)) {
+						EverySingleMinigame.Add(type);
+						// type.GetMethod("StartInit").Invoke(null,null);
+						type.GetMethod("StartInit")?.Invoke(null,null);
+						if (type.GetField("GameIdentifier")?.GetValue(null) is string s && !string.IsNullOrEmpty(s) && type.GetField("InGameConstructorthings")?.GetValue(null) is Dictionary<string, Action<Game>> dict && !(dict == null || dict.Count < 1)) {
+							AllMinigames.Add((type, s));
+							foreach (var a in dict) {MinigameInitializers[a.Key] = a.Value;}
+						} else Console.WriteLine("well this minigame has screwed up at least one thing.."+type.FullName);
+					}
+			StringBuilder sb = new("MinigameInitializers list:\n");
+			foreach (var a in MinigameInitializers) {
+				sb.Append(a.Key+'\n');
+			}
+			sb.Append("EverySingleMinigame:\n");
+			foreach (var a in EverySingleMinigame) {
+				sb.Append(a.FullName+'\n');
+			}
+			sb.Append("AllMinigames:\n");
+			foreach ((Type type, string name) in AllMinigames) {
+				sb.Append(name+"; FullName: "+type.FullName+'\n');
+			}
+			sb.Append("\ndone\n");
+			Console.Write(sb);sb.Clear();
+			
 
-			// chatCommands["what"] = (delegate (Game game, string str) { Console.WriteLine("Hello, World!"); }, true);
-			// noInputChatCommands["what"] = (delegate (Game game) { Console.WriteLine("Hello, World!"); }, true);
+			// chatCommands["what"] = delegate (Game game, string str) { Console.WriteLine("Hello, World!"); };
+			// noInputChatCommands["what"] = delegate (Game game) { Console.WriteLine("Hello, World!"); };
 			// /*template*/
 		}
 	}

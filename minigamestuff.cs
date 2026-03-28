@@ -9,9 +9,24 @@ using System.Diagnostics;
 using OpenTK.Graphics.OpenGL4;
 using OpenTK.Windowing.Common;
 using System.ComponentModel;
+using System.IO;
 
 namespace GameEngineThing {
+	/// <summary>
+	/// HEY YOU! For your minigame to actually work, you need the following:
+	/// public static Dictionary<string, Action<Game>> InGameConstructorThings;
+	/// public static string GameIdentifier;
+	/// For the dict, it needs to exist and have at least one value which constructs based off a reopen command.
+	/// For the string, it needs to be set to something at least i think.
+	/// If you want, you CAN implement a static StartInit() function. don't have to.
+	/// </summary>
 	public class IMinigame {
+		// /// <summary>
+		// /// HEY BUDDY you've gotta override this and also the GameIdentifier or something i think or else your game won't be playable i think (bc can't launch)
+		// /// </summary>
+		// public static Dictionary<string, Action<Game>> InGameConstructorthings;
+		// public static string GameIdentifier;
+		// public static void StartInit() { }
 		public virtual void OnLoad(Game game) { }
 		public virtual void OnUpdateFrame(Game game, double dt) { }
 		public virtual void OnRenderFrame(Game game, double dt) { }
@@ -22,8 +37,24 @@ namespace GameEngineThing {
 		public virtual void OnMouseUp(MouseButtonEventArgs e) { }
 		public virtual void OnClosing(CancelEventArgs e) { }
 		public virtual void OnEngineTick(Game game, double tickDT) { }
+		public virtual void OnResize(ResizeEventArgs e) {}
 		}
 	public class Pong : IMinigame {
+		// public static void StartInit() {
+		// 	GameIdentifier = "pong";
+		// 	InGameConstructorthings = new() {
+		// 		["pong"] = delegate (Game game) {
+		// 			game._currentMinigames.Add(new Pong(new Vector3(10f, 0f, 10f), new Vector3(1f), new Vector3(270f, 0f, 0f)));
+		// 			game._gameModes.Add("pong");}
+		// 	};
+		// }
+		public const string GameIdentifier = "pong";
+		public static Dictionary<string, Action<Game>> InGameConstructorthings = new() {
+			["pong"] = delegate (Game game) {
+				game._currentMinigames.Add(new Pong((10f,0,10), Vector3.One, (270f,0,0)));
+				game._gameModes.Add(GameIdentifier);
+			}
+		};
 		public bool AngleMode = true; // true is degrees, and false is radians
 		public Vector3 Pos;
 		public Vector3 Scale;
@@ -57,6 +88,7 @@ namespace GameEngineThing {
 		public sbyte P2UpDown; // 0 is false, 1 is true. please dont put anything else okay idk whats gonna happen.
 		public sbyte P1State = 0;
 		public sbyte P2State = 0;
+		public ObjectMesh _cube, _plane;
 		public List<GameKeyState1> KeyInputQueue = [];
 		public Pong() { }
 		public Pong(Vector3 pos, Vector3 scale, Vector3 rot) {
@@ -125,13 +157,13 @@ namespace GameEngineThing {
 			else if (BallY <= -5f) {
 				BallY = -5f - BallVY * DT;
 				BallVY = -BallVY * 1.05f;}} // probably a bit glitchy maybe? idk
-		public void Render(Shader shader, ObjectMesh CubeMesh, ObjectMesh Background, bool bind) {
-			CubeMesh.DrawWithModels(shader, [
+		public void Render(Shader shader, bool bind) {
+			_cube.DrawWithModels(shader, [
 				Matrix4.CreateScale(new Vector3(HittingWidth*2,PaddleHeight,1f)) * Matrix4.CreateTranslation(Paddle1X,Paddle1Y,0) * Transformation,
 				Matrix4.CreateScale(new Vector3(HittingWidth*2,PaddleHeight,1f)) * Matrix4.CreateTranslation(Paddle2X,Paddle2Y,0) * Transformation,
 				Matrix4.CreateScale(new Vector3(BallRadius*2)) * Matrix4.CreateTranslation(BallX,BallY,0) * Transformation,
 			], bind);
-			Background.DrawWithModel(shader, Matrix4.CreateScale(new Vector3(5.5f, 5.5f, 1f)) * Matrix4.CreateTranslation(0f, 0f, -1f) * Transformation, true);}
+			_plane.DrawWithModel(shader, Matrix4.CreateScale(new Vector3(5.5f, 5.5f, 1f)) * Matrix4.CreateTranslation(0f, 0f, -1f) * Transformation, true);}
 		public string ScoreText => "Score: " + P1Score + " - " + P2Score;
 		public void UpdateTransformation(Matrix4 Transformation) {
 			this.Transformation = Transformation;}
@@ -148,9 +180,15 @@ namespace GameEngineThing {
 			Scale = scale;
 			Transformation = Matrix4.CreateRotationX(Rot.X) * Matrix4.CreateRotationY(Rot.Y) * Matrix4.CreateRotationZ(Rot.Z) * Matrix4.CreateScale(Scale) * Matrix4.CreateTranslation(Pos);}
 		public void Loss(byte Player1Side) {}
+		public override void OnLoad(Game game)
+		{
+			base.OnLoad(game);
+			_cube = new ObjectMesh((2,0,0), Vector3.Zero, Vector3.One, DataStuff.CubeV, DataStuff.CubeI);
+			_plane = new ObjectMesh(Vector3.Zero, Vector3.Zero, Vector3.One, DataStuff.PlaneV, DataStuff.PlaneI);
+		}
 		public override void OnRenderFrame(Game game, double dt) {
 			base.OnRenderFrame(game, dt);
-			Render(game._shader, game._cube, game._plane, true);
+			Render(game._shader, true);
 			// _textRenderer.RenderText(this, _textShader, _pongGame.ScoreText, Vector2i.Zero, new(0f, .45f), new(6f), new(0f, 1f, 0f), 10f, _clientSize, FontCharFillerThing.FontCharDeeta, false);
 			game._textRenderer.Render(new TxtOptions(Vector2i.Zero, new(0f, .45f), new(4f), new(0f, 1f, 0f), 10f, FontCharFillerThing.FontCharDeeta, false), game, ScoreText); }
 		public override void OnUpdateFrame(Game game, double dt)
@@ -158,17 +196,17 @@ namespace GameEngineThing {
 			base.OnUpdateFrame(game, dt);
 			UpdateRot(new Vector3(270f, (float)game._gameTime * 15f, 0f));
 			Update(1 / game._gameTickSpeed);
-        }
+		}
 		public override void OnKeyDown(KeyboardKeyEventArgs e)
 		{
 			base.OnKeyDown(e);
 			KeyInputQueue.Add(new GameKeyState1(e.Key, true));
-        }
+		}
 		public override void OnKeyUp(KeyboardKeyEventArgs e)
 		{
 			base.OnKeyUp(e);
 			KeyInputQueue.Add(new GameKeyState1(e.Key, false));
-        }
+		}
 		
 	}
 	public enum MKNoteType {
@@ -269,6 +307,46 @@ namespace GameEngineThing {
 	// 			default:
 	// 				break;}}}
 	public class ManiaRG : IMinigame {
+		public static readonly ManiaKey[][][] BuiltInCharts = [
+			[
+				[
+
+				],[
+
+				],[
+
+				],[
+
+				],
+			],
+
+		];
+		public const string GameIdentifier = "mania";
+		public static Dictionary<string, Action<Game>> InGameConstructorthings = new() {
+			["mania"] = delegate (Game game) {
+				game._currentMinigames.Add(new ManiaRG(game._textRenderer));
+				game._gameModes.Add(GameIdentifier);}
+		};
+		public static void StartInit()
+		{
+			DataStuff.noInputChatCommands["maniashowalldata"] = delegate (Game game) { DisplayFullInfo = !DisplayFullInfo; };
+			DataStuff.chatCommands["manialoadmap "] = delegate (Game game, string path) {
+				List<ManiaRG> mrgl = [];
+				foreach (IMinigame minigame in game._currentMinigames) if (minigame is ManiaRG m1) mrgl.Add(m1);
+				if (mrgl.Count > 0) {
+					if (File.Exists(path))
+						foreach (ManiaRG _m in mrgl)
+							if (_m.TryLoadMapFromString(File.ReadAllText(path))) Console.WriteLine("Loadmap success!"); else Console.WriteLine("Failed to load map.");
+					else Console.WriteLine("Path does not exist!"); } };
+		}
+		// public static void StartInit() {
+		// 	GameIdentifier = "mania";
+		// 	InGameConstructorthings = new() {
+		// 		["mania"] = delegate (Game game) {
+		// 			game._currentMinigames.Add(new ManiaRG(game._textRenderer));
+		// 			game._gameModes.Add("mania");}
+		// 	};InGameConstructorthings["fnf"] = InGameConstructorthings["mania"];
+		// }
 		public Keys[] keybinds;
 		public uint KeyCount { get; private set; }
 		public Text gameRenderer;
@@ -349,19 +427,20 @@ namespace GameEngineThing {
 		public float[][] CalcVertices(Vector2 posScale, Vector2 noteScale, GlyphData noteGlyphData, Vector2i windowSize, Vector2i? posOffset = null) {
 			float ftexW = gameRenderer.TextTexture.Width;
 			float ftexH = gameRenderer.TextTexture.Height;
-			float halfOfCeilTrueSizeX = MathF.Ceiling(noteGlyphData.size.X * noteScale.X) * 0.5f;
-			float halfOfCeilTrueSizeY = MathF.Ceiling(noteGlyphData.size.Y * noteScale.Y) * 0.5f;
+			float halfOfCeilTrueSizeX = MathF.Ceiling(noteGlyphData.sizeX * noteScale.X) * 0.5f;
+			float halfOfCeilTrueSizeY = MathF.Ceiling(noteGlyphData.sizeY * noteScale.Y) * 0.5f;
 			// int WinSX = windowSize.X; int WinSY = windowSize.Y;
 			(int WinSX, int WinSY) = (windowSize.X, windowSize.Y);
 			float oX = posOffset?.X??0 + posScale.X * WinSX; // offset x
 			float oY = posOffset?.Y??0 + posScale.Y * WinSY; // offset y
 			List<float[]> vertices = []; int I = 0; // I is vertex index
 			float[] v = new float[Text.BulkDrawFloats];
-			Vector2i texStart = noteGlyphData.textureStart;
-			float tSX = texStart.X / ftexW; // texture start x
-			float tSY = texStart.Y / ftexH; // texture start y
-			float tNX = (texStart.X + noteGlyphData.textureSize.X) / ftexW; // texture end x
-			float tNY = (texStart.Y + noteGlyphData.textureSize.Y) / ftexH; // texture end y
+			// Vector2i texStart = noteGlyphData.textureStart;
+			float tSX = noteGlyphData.tStartX, tSY = noteGlyphData.tStartY; // no need to divide each time anymore lol
+			// float tSX = texStart.X / ftexW; // texture start x
+			// float tSY = texStart.Y / ftexH; // texture start y
+			float tNX = noteGlyphData.tEndX; // texture end x
+			float tNY = noteGlyphData.tEndY; // texture end y
 			float baseSX = (MathF.Floor(oX - halfOfCeilTrueSizeX) + .5f) / WinSX + jBasePosX; // the base value for the start X
 			float baseSY = (MathF.Floor(oY - halfOfCeilTrueSizeY) + .5f) / WinSY + jBasePosY; // the base value for the start Y
 			float baseNX = (MathF.Floor(oX + halfOfCeilTrueSizeX) + .5f) / WinSX + jBasePosX; // the base value for the end X
@@ -391,8 +470,8 @@ namespace GameEngineThing {
 						v = new float[Text.BulkDrawFloats]; // this is VERY important! adding to the list just adds a pointer i think, and it doesn't actually clone it, so you need to create it again or else it will be filled with the same array over and over again.
 						I = 0; }
 					else I += 16; }
-				float halfOfCeilTrueJudgementSizeX = MathF.Ceiling(noteGlyphData.size.X * noteScale.X) * 0.55f; // scaled wider slightly
-				float halfOfCeilTrueJudgementSizeY = MathF.Ceiling(noteGlyphData.size.Y * noteScale.Y) * 0.5f;
+				float halfOfCeilTrueJudgementSizeX = MathF.Ceiling(noteGlyphData.sizeX * noteScale.X) * 0.55f; // scaled wider slightly
+				float halfOfCeilTrueJudgementSizeY = MathF.Ceiling(noteGlyphData.sizeY * noteScale.Y) * 0.5f;
 				float jGeneralOffsetX = jBasePosX + jLaneOffsX;
 				float jGeneralOffsetY = jBasePosY + jLaneOffsY;
 				float SX = (MathF.Floor(oX - halfOfCeilTrueJudgementSizeX) + .5f) / WinSX + jGeneralOffsetX;
@@ -483,18 +562,17 @@ namespace GameEngineThing {
 
 			float ftexW = gameRenderer.TextTexture.Width;
 			float ftexH = gameRenderer.TextTexture.Height;
-			float halfOfCeilTrueSizeX = MathF.Ceiling(noteGlyphData.size.X * noteScaleX) * 0.5f;
-			float halfOfCeilTrueSizeY = MathF.Ceiling(noteGlyphData.size.Y * noteScaleY) * 0.5f;
-			(int WinSX, int WinSY) = (windowSize.X, windowSize.Y);
+			float halfOfCeilTrueSizeX = MathF.Ceiling(noteGlyphData.sizeX * noteScaleX) * 0.5f;
+			float halfOfCeilTrueSizeY = MathF.Ceiling(noteGlyphData.sizeY * noteScaleY) * 0.5f;
+			(int WinSX, int WinSY) = windowSize;
 			float oX = posScaleX * WinSX; // offset x
 			float oY = posScaleY * WinSY; // offset y
 			int I = 0; // I is vertex index
 			float[] v = new float[Text.BulkDrawFloats];
-			Vector2i texStart = noteGlyphData.textureStart;
-			float tSX = texStart.X / ftexW; // texture start x
-			float tSY = texStart.Y / ftexH; // texture start y
-			float tNX = (texStart.X + noteGlyphData.textureSize.X) / ftexW; // texture end x
-			float tNY = (texStart.Y + noteGlyphData.textureSize.Y) / ftexH; // texture end y
+			float tSX = noteGlyphData.tStartX; // texture start x
+			float tSY = noteGlyphData.tStartY; // texture start y
+			float tNX = noteGlyphData.tEndX; // texture end x
+			float tNY = noteGlyphData.tEndY; // texture end y
 			float baseSX = (MathF.Floor(oX - halfOfCeilTrueSizeX) + .5f) / WinSX + jBasePosX; // the base value for the start X
 			float baseSY = (MathF.Floor(oY - halfOfCeilTrueSizeY) + .5f) / WinSY + jBasePosY; // the base value for the start Y
 			float baseNX = (MathF.Floor(oX + halfOfCeilTrueSizeX) + .5f) / WinSX + jBasePosX; // the base value for the end X
@@ -525,8 +603,8 @@ namespace GameEngineThing {
 						// render notes!
 						I = 0; }
 					else I += 16; }
-				float halfOfCeilTrueJudgementSizeX = MathF.Ceiling(noteGlyphData.size.X * noteScaleX) * 0.55f; // scaled wider slightly
-				float halfOfCeilTrueJudgementSizeY = MathF.Ceiling(noteGlyphData.size.Y * noteScaleY) * 0.5f;
+				float halfOfCeilTrueJudgementSizeX = MathF.Ceiling(noteGlyphData.sizeX * noteScaleX) * 0.55f; // scaled wider slightly
+				float halfOfCeilTrueJudgementSizeY = MathF.Ceiling(noteGlyphData.sizeY * noteScaleY) * 0.5f;
 				float jGeneralOffsetX = jBasePosX + jLaneOffsX;
 				float jGeneralOffsetY = jBasePosY + jLaneOffsY;
 				float SX = (MathF.Floor(oX - halfOfCeilTrueJudgementSizeX) + .5f) / WinSX + jGeneralOffsetX;
@@ -659,8 +737,8 @@ namespace GameEngineThing {
 				for (int j = 0; j < 4096; j++) { laneKeyData[j] = new ManiaKey(0.2d*(j+iOverkC)); }
 				keyData[i] = laneKeyData; }
 			chart = new ManiaChart(keyData); }
-        public override void OnLoad(Game game) {
-            base.OnLoad(game);
+		public override void OnLoad(Game game) {
+			base.OnLoad(game);
 			StartTraining();
 			RestartMap(); }
 		public override void OnRenderFrame(Game game, double dt) {
@@ -675,16 +753,16 @@ namespace GameEngineThing {
 			// Console.WriteLine(_dT);
 			time = Stopwatch.GetElapsedTime(timeOffset).TotalSeconds;
 			Update();
-        }
+		}
 		public override void OnKeyDown(KeyboardKeyEventArgs e)
 		{
 			base.OnKeyDown(e);
 			KeyDown(e.Key,Stopwatch.GetElapsedTime(timeOffset).TotalSeconds);
-        }
-        public override void OnKeyUp(KeyboardKeyEventArgs e)
-        {
-            base.OnKeyUp(e);
-        }
+		}
+		public override void OnKeyUp(KeyboardKeyEventArgs e)
+		{
+			base.OnKeyUp(e);
+		}
 	}
 	public enum V1KNoteType {
 		Normal,
@@ -693,12 +771,12 @@ namespace GameEngineThing {
 		Bullet,
 		Poison,}
 	public struct V1KKey(double Time, float HoldLength = 0, V1KNoteType Type = V1KNoteType.Normal)
-    {
+	{
 		public double time = Time;
 		public float holdLength = HoldLength;
 		public V1KNoteType type = Type;
-    }
-    [Flags]
+	}
+	[Flags]
 	public enum V1KMods {
 		none = 0,
 		speedChanged = 1,
@@ -730,11 +808,42 @@ namespace GameEngineThing {
 		fp30,/*+-1/60s;FramePerfect@30FPS.*/excellent,/*10ms*/fp60,/*1/120,~8ms*/fp120,/*1/240,~4ms*/fp240,/*1/480,~2ms*/msPerfect,/*1ms*/hmsPerfect,/*.5ms*/qmsPerfect,/*.25ms*/
 		p100mcs,p50mcs,p25mcs,p10mcs,p5mcs,p3mcs,p2mcs,pMCS,pHMCS,PERFECT }
 	public class VerticalOneKey : IMinigame {
+		public static Dictionary<string, Action<Game>> InGameConstructorthings = new() {
+			["v1k"] = delegate (Game game) {
+				game._currentMinigames.Add(new VerticalOneKey(game._textRenderer, BuiltInV1KCharts[0]));
+				game._gameModes.Add(GameIdentifier);},
+			["v1k2"] = delegate (Game game) {
+				game._currentMinigames.Add(new VerticalOneKey(game._textRenderer, BuiltInV1KCharts[1]));
+				game._gameModes.Add(GameIdentifier);}
+		};
+		public const string GameIdentifier = "v1k";
+		static readonly V1KChart[] BuiltInV1KCharts = new V1KChart[2];
+		public static void StartInit() {
+			V1KKey[] V1KChart1KeyData = new V1KKey[4096];
+			for (int i = 0; i < 4096; i++) { V1KChart1KeyData[i] = new V1KKey(Math.Pow(i, 0.5)); }
+			V1KKey[] V1KChart2KeyData = new V1KKey[32768];
+			for (int i = 0; i < 32768; i++) { V1KChart2KeyData[i] = new V1KKey(i / 694.20); }
+			BuiltInV1KCharts[0] = new V1KChart(V1KChart1KeyData);
+			BuiltInV1KCharts[1] = new V1KChart(V1KChart2KeyData);
+			DataStuff.noInputChatCommands["v1kshowalldata"] = DataStuff.noInputChatCommands["v1kshowall"] = DataStuff.noInputChatCommands["v1kshowallinfo"] = delegate (Game game) {
+				DisplayFullInfo = !DisplayFullInfo; };
+			InGameConstructorthings["1k fnf"] = InGameConstructorthings["1kfnf"] = InGameConstructorthings["fnf 1k"] = InGameConstructorthings["fnf1k"] =
+			InGameConstructorthings["verticalonekey"] = InGameConstructorthings["vertical one key"] = InGameConstructorthings["v1k"];
+			DataStuff.chatCommands["v1kloadmap "] = delegate (Game game, string path) {
+				List<VerticalOneKey> v1kl = [];
+				foreach (IMinigame minigame in game._currentMinigames) { if (minigame is VerticalOneKey m0) v1kl.Add(m0); }
+				if (v1kl.Count > 0) {
+					if (File.Exists(path)) {
+						string data = File.ReadAllText(path);
+						foreach (VerticalOneKey _m in v1kl)
+						if (_m.TryLoadMapFromString(data)) Console.WriteLine("Loadmap success!"); else Console.WriteLine("Failed to load map.");}
+					else Console.WriteLine("Path does not exist!"); } };
+		}
 		public Keys keybind = Keys.E;
 		public Text gameRenderer;
 		public Stopwatch stopwatch = new();
-		public VerticalOneKey(Text renderer) { gameRenderer = renderer; LoadMap(chart); RestartMap(); }
-		public VerticalOneKey(Text renderer, V1KChart chart) { gameRenderer = renderer; }
+		public VerticalOneKey(Text renderer, V1KChart chart) { gameRenderer = renderer; this.chart = chart; LoadMap(chart); RestartMap(); }
+		public VerticalOneKey(Text renderer) { gameRenderer = renderer; }
 		private string lingeringText = "No note hit yet";
 		public float timeOffset = 0;
 		private uint currentKey = 0;
@@ -761,18 +870,17 @@ namespace GameEngineThing {
 		public float[][] CalcVertices(Vector2i posOffset, Vector2 posScale, Vector2 noteScale, GlyphData noteGlyphData, Vector2i windowSize) {
 			float ftexW = gameRenderer.TextTexture.Width;
 			float ftexH = gameRenderer.TextTexture.Height;
-			float halfCeilTrueSzX = MathF.Ceiling(noteGlyphData.size.X * noteScale.X) * 0.5f; // the x value for half of the ceiling of the true size
-			float halfCeilTrueSzY = MathF.Ceiling(noteGlyphData.size.Y * noteScale.Y) * 0.5f; // the y value for half of the ceiling of the true size
+			float halfCeilTrueSzX = MathF.Ceiling(noteGlyphData.sizeX * noteScale.X) * 0.5f; // the x value for half of the ceiling of the true size
+			float halfCeilTrueSzY = MathF.Ceiling(noteGlyphData.sizeY * noteScale.Y) * 0.5f; // the y value for half of the ceiling of the true size
 			int WinSX = windowSize.X; int WinSY = windowSize.Y;
 			float oX = posOffset.X + posScale.X * WinSX; // offset x
 			float oY = posOffset.Y + posScale.Y * WinSY; // offset y
 			List<float[]> vertices = [];    int I = 0; // I is vertex index
 			float[] v = new float[Text.BulkDrawFloats];
-			Vector2i texStart = noteGlyphData.textureStart;
-			float tSX = texStart.X / ftexW; // texture start x
-			float tSY = texStart.Y / ftexH; // texture start y
-			float tNX = (texStart.X + noteGlyphData.textureSize.X) / ftexW; // texture end x
-			float tNY = (texStart.Y + noteGlyphData.textureSize.Y) / ftexH; // texture end y
+			float tSX = noteGlyphData.tStartX; // texture start x
+			float tSY = noteGlyphData.tStartY; // texture start y
+			float tNX = noteGlyphData.tEndX; // texture end x
+			float tNY = noteGlyphData.tEndY; // texture end y
 			float baseSX = (MathF.Floor(oX - halfCeilTrueSzX) + .5f) / WinSX; // the base value for the start X
 			float baseSY = (MathF.Floor(oY - halfCeilTrueSzY) + .5f) / WinSY; // the base value for the start Y
 			float baseNX = (MathF.Floor(oX + halfCeilTrueSzX) + .5f) / WinSX; // the base value for the end X
@@ -793,8 +901,8 @@ namespace GameEngineThing {
 					vertices.Add(v);
 					v = new float[Text.BulkDrawFloats]; // this step is VERY important! i think adding to the list just adds a pointer, and it doesn't actually clone it, so you need to create it again or else it will be filled with the same table over and over again.
 					I = 0;} else I += 16;}
-			float halfCeilTrueJudgementSzX = MathF.Ceiling(noteGlyphData.size.X * noteScale.X) * 0.625f;
-			float halfCeilTrueJudgementSzY = MathF.Ceiling(noteGlyphData.size.Y * noteScale.Y) * 0.5f;
+			float halfCeilTrueJudgementSzX = MathF.Ceiling(noteGlyphData.sizeX * noteScale.X) * 0.625f;
+			float halfCeilTrueJudgementSzY = MathF.Ceiling(noteGlyphData.sizeY * noteScale.Y) * 0.5f;
 			float SX = (MathF.Floor(oX - halfCeilTrueJudgementSzX) + .5f) / WinSX;
 			float SY = (MathF.Floor(oY - halfCeilTrueJudgementSzY) + .5f) / WinSY;
 			float NX = (MathF.Floor(oX + halfCeilTrueJudgementSzX) + .5f) / WinSX;
@@ -812,12 +920,12 @@ namespace GameEngineThing {
 			float[][] V = new float[vertices.Count][];
 			for (int i = vertices.Count; i-- > 0;) { V[i] = vertices[i]; }
 			return V;}
-        public void Update() {
-            uint currentKeyNow = currentKey;
-            while (currentKey < chart.KeyData.Length && chart.KeyData[currentKey].time - time <= -0.3) { currentKey++; } // calculates miss amounts
-            uint missAmount = currentKey - currentKeyNow;
-            if (missAmount != 0) { Console.WriteLine("Missed " + missAmount + " notes this frame."); AccAmts[(int)ManiaAcc.miss] += missAmount; }
-        }
+		public void Update() {
+			uint currentKeyNow = currentKey;
+			while (currentKey < chart.KeyData.Length && chart.KeyData[currentKey].time - time <= -0.3) { currentKey++; } // calculates miss amounts
+			uint missAmount = currentKey - currentKeyNow;
+			if (missAmount != 0) { Console.WriteLine("Missed " + missAmount + " notes this frame."); AccAmts[(int)ManiaAcc.miss] += missAmount; }
+		}
 		public void Render(Game game) {
 			GlyphData noteGlyphData = FontCharFillerThing.FontCharDeeta.SChars["note"];
 			float[][] data = CalcVertices(Vector2i.Zero, new((float)Math.Sin(time)*.4f,(float)(-.2+Math.Cos(time)*.05f)), new(16), noteGlyphData, game._clientSize);
@@ -966,23 +1074,23 @@ namespace GameEngineThing {
 					case Keys.GraveAccent:
 						RestartMap(); break;
 					default: break; } } }
-        public bool TryLoadMapFromString(string chart) {
-            string[] processedS1 = chart.Split('\n');
-            if (processedS1.Length < 2) return false; // must have at least 2 lines; first is version number
-            Console.WriteLine("Version number: " + processedS1[0]);
-            string[] processedS2 = processedS1[1].Split(',');
-            V1KKey[] keyData1 = new V1KKey[processedS2.Length];
-            for (int i = 0; i < processedS2.Length; i++) {
-                string[] stringThingy = processedS2[i].Split(' ');
-                switch (stringThingy.Length) {
-                    case 1: keyData1[i] = new V1KKey(Convert.ToDouble(stringThingy[0])); break; // not a hold note
-                    case 2: keyData1[i] = new V1KKey(Convert.ToDouble(stringThingy[0]), Convert.ToSingle(stringThingy[1])); break; // hold note
-                    default: return false; } }
-            V1KChart NewChart = new(keyData1);
-            LoadMap(NewChart);
-            return true; }
-        public override void OnRenderFrame(Game game, double dt) {
-            base.OnRenderFrame(game, dt);
+		public bool TryLoadMapFromString(string chart) {
+			string[] processedS1 = chart.Split('\n');
+			if (processedS1.Length < 2) return false; // must have at least 2 lines; first is version number
+			Console.WriteLine("Version number: " + processedS1[0]);
+			string[] processedS2 = processedS1[1].Split(',');
+			V1KKey[] keyData1 = new V1KKey[processedS2.Length];
+			for (int i = 0; i < processedS2.Length; i++) {
+				string[] stringThingy = processedS2[i].Split(' ');
+				switch (stringThingy.Length) {
+					case 1: keyData1[i] = new V1KKey(Convert.ToDouble(stringThingy[0])); break; // not a hold note
+					case 2: keyData1[i] = new V1KKey(Convert.ToDouble(stringThingy[0]), Convert.ToSingle(stringThingy[1])); break; // hold note
+					default: return false; } }
+			V1KChart NewChart = new(keyData1);
+			LoadMap(NewChart);
+			return true; }
+		public override void OnRenderFrame(Game game, double dt) {
+			base.OnRenderFrame(game, dt);
 			time = stopwatch.Elapsed.TotalSeconds + timeOffset;
 			Render(game); }
 		public override void OnUpdateFrame(Game game, double dt) {
@@ -990,9 +1098,27 @@ namespace GameEngineThing {
 			// Console.WriteLine(_dT);
 			time = stopwatch.Elapsed.TotalSeconds + timeOffset;
 			Update(); }
-        public override void OnKeyUp(KeyboardKeyEventArgs e) {
-            base.OnKeyUp(e); } }
+		public override void OnKeyUp(KeyboardKeyEventArgs e) {
+			base.OnKeyUp(e); } }
 	public class OldMiningGame : IMinigame {
+		public static Dictionary<string, Action<Game>> InGameConstructorthings = new() {
+			["old:miner"] = delegate (Game game) {
+				game._currentMinigames.Add(new OldMiningGame());
+				game._gameModes.Add(GameIdentifier);}
+		};
+		public const string GameIdentifier = "old:miner";
+		public static void StartInit() {
+			DataStuff.chatCommands["oldmininggame "] = DataStuff.chatCommands["miner "] = delegate (Game game, string str) {
+				int i;
+				bool ret = true;
+				for (i = 0; i < game._currentMinigames.Count; i++) if (game._currentMinigames[i] is OldMiningGame) { ret = false; break; }
+				if (ret) { Console.WriteLine("nuh uh there ain't an old mining game active bozo"); return; }
+				switch (str) {
+					case "newmininggame": game._currentMinigames[i] = new MiningGame(); break;
+					default:
+						Console.WriteLine("uhh um what you entered i haven't really implemented yet or you've misspelled or you're Searching For a Code That Doesn't Exist /j (i haven't actually watched that idk what happens in it :3)");
+						break; } };
+		}
 		public const int cBSN = 5; // chunk bitshift number; 1<<cBSAmt is the chunk size. the name also coincidentally references chaotic bean simulator :3
 		public const int cSz = 1<<cBSN; // chunk size
 		public const int cSzSq = cSz * cSz; // chunk size squared
@@ -1013,10 +1139,10 @@ namespace GameEngineThing {
 			// uint key2=X-(X>>cBSN<<cBSN)|((Y-(Y>>cBSN<<cBSN))<<cBSN)|((Z-(Z>>cBSN<<cBSN))<<cBS2);
 			uint key2=(X&31)|((Y&31)<<cBSN)|((Z&31)<<cBS2);
 			if (!bData.TryGetValue(key1, out ushort[] value)) {
-                value = new ushort[cSzCb];
-                bData[key1] = value;
-                // fData[key1] = new ulong[cSzCb/8];
-                fData[key1] = new int[cSzCb*3];
+				value = new ushort[cSzCb];
+				bData[key1] = value;
+				// fData[key1] = new ulong[cSzCb/8];
+				fData[key1] = new int[cSzCb*3];
 				CDT[key1] = 0;
 			}
 			// try {value[key2] = v;} catch { throw new Exception("bruh anyways " + x + "," + y + "," + z + "," + v + ", " + key1 + ", " + key2); }
@@ -1027,7 +1153,7 @@ namespace GameEngineThing {
 		int cubeVAO;
 		int cubeVBO;
 		int instanceVBO;
-		float[] cubeVerts = [
+		static float[] cubeVerts = [
 			0,0,1, 0,0, 1,0,1, 1,0, 0,1,1, 0,1,  1,0,1, 1,0, 1,1,1, 1,1, 0,1,1, 1,0, // front
 			0,0,0, 0,0, 0,1,0, 1,0, 1,0,0, 0,1,  1,0,0, 1,0, 0,1,0, 1,1, 1,1,0, 1,0, // back
 			1,0,0, 0,0, 1,1,0, 1,0, 1,0,1, 0,1,  1,0,1, 1,0, 1,1,0, 1,1, 1,1,1, 1,0, // right
@@ -1615,7 +1741,7 @@ namespace GameEngineThing {
 		{
 			base.OnKeyDown(e);
 			if (e.Key == Keys.L) GL.PolygonMode(MaterialFace.FrontAndBack, PolygonMode.Point + Random.Shared.Next(3));
-        }
+		}
 		public override void OnClosing(CancelEventArgs e)
 		{
 			base.OnClosing(e);
@@ -1646,6 +1772,48 @@ namespace GameEngineThing {
 #endif
 		}}
 	public class MiningGame : IMinigame {
+		public static Dictionary<string, Action<Game>> InGameConstructorthings = new() {
+			["miner"] = delegate (Game game) {
+				game._currentMinigames.Add(new MiningGame());
+				game._gameModes.Add(GameIdentifier);}
+		};
+		public const string GameIdentifier = "miner";
+		public static readonly Action<Game> FlySillyBehavior = delegate (Game game){
+			Camera cam = game._camera;
+			var ks = game.KeyboardState;
+			float movAmt = cam.CamSpeed / game._gameTickSpeed;
+			Player player = game._player;
+			long frameCount = game._frameCount;
+			player.RootPosition += cam.Direction*((ks[Keys.S]?movAmt:0)-(ks[Keys.W]?movAmt:0))+
+			cam.Right*((ks[Keys.D]?movAmt:0)-(ks[Keys.A]?movAmt:0))+
+			cam.Up*(((ks[Keys.Space] || ks[Keys.E])?movAmt:0)-((ks[Keys.LeftShift] || ks[Keys.Q])?movAmt:0));
+			bool silly = (frameCount & 256) == 0;//(float ax, float ay, float az) = player.RootRotation;
+			Vector3 scale = player.RootScale, rot = player.RootRotation, pos = player.RootPosition;
+			if (silly) {
+				scale += (MathF.Sin(frameCount*0.0017f)*1.5f,MathF.Sin(frameCount*0.0022f)*1.5f,MathF.Sin(frameCount*0.0031f)*1.5f);
+				rot += (MathF.Sin(frameCount*.009f)*5,MathF.Sin(frameCount*.012f)*5,MathF.Sin(frameCount*.006f)*5);
+				pos += (MathF.Sin(frameCount*0.0012f),MathF.Sin(frameCount*0.00133f),MathF.Sin(frameCount*0.00162f));
+				for (int i = 0; i < player.Limbs.Length; i++) {
+					player.LimbRotations[i] = (Random.Shared.NextSingle()*MathF.PI,Random.Shared.NextSingle()*MathF.PI,Random.Shared.NextSingle()*MathF.PI);
+				}
+			}
+			player.RootModel = Matrix4.CreateScale(scale) * DataStuff.CreateRotationXYZ(rot) * Matrix4.CreateTranslation(pos);
+			player.UpdateLimbs();
+		};
+		public static void StartInit() {
+			DataStuff.noInputChatCommands["flysilly"] = delegate (Game game) { game.FlyBehavior = FlySillyBehavior; };
+			DataStuff.noInputChatCommands["flyunsilly"] = delegate (Game game) { game.FlyBehavior = Game.DefaultFlyBehavior; };
+			DataStuff.chatCommands["mininggame "] = DataStuff.chatCommands["miner "] = delegate (Game game, string str) {
+				int i;
+				bool ret = true;
+				for (i = 0; i < game._currentMinigames.Count; i++) if (game._currentMinigames[i] is MiningGame) { ret = false; break; }
+				if (ret) { Console.WriteLine("nuh uh there ain't a mining game active bozo"); return; }
+				switch (str) {
+					case "oldmininggame": game._currentMinigames[i] = new OldMiningGame(); break;
+					default:
+						Console.WriteLine("uhh what you entered i haven't really implemented yet or you've misspelled or you're Searching For a Code That Doesn't Exist /j (i haven't actually watched that idk what happens in it :3)");
+						break; } };
+		}
 		public const int cBSN = 5; // chunk bitshift number; 1<<cBSAmt is the chunk size. the name also coincidentally references chaotic bean simulator :3
 		public const int cSz = 1<<cBSN; // chunk size
 		public const int cSzSq = cSz * cSz; // chunk size squared
@@ -1666,10 +1834,10 @@ namespace GameEngineThing {
 			// uint key2=X-(X>>cBSN<<cBSN)|((Y-(Y>>cBSN<<cBSN))<<cBSN)|((Z-(Z>>cBSN<<cBSN))<<cBS2);
 			uint key2=(X&31)|((Y&31)<<cBSN)|((Z&31)<<cBS2);
 			if (!bData.TryGetValue(key1, out ushort[] value)) {
-                value = new ushort[cSzCb];
-                bData[key1] = value;
-                // fData[key1] = new ulong[cSzCb/8];
-                fData[key1] = new int[cSzCb*3];
+				value = new ushort[cSzCb];
+				bData[key1] = value;
+				// fData[key1] = new ulong[cSzCb/8];
+				fData[key1] = new int[cSzCb*3];
 				CDT[key1] = 0;
 			}
 			// try {value[key2] = v;} catch { throw new Exception("bruh anyways " + x + "," + y + "," + z + "," + v + ", " + key1 + ", " + key2); }
@@ -1680,13 +1848,13 @@ namespace GameEngineThing {
 		int cubeVAO;
 		int cubeVBO;
 		int instanceVBO;
-		float[] cubeVerts = [
-			0,0,1, 0,0, 1,0,1, 1,0, 0,1,1, 0,1,  1,0,1, 1,0, 1,1,1, 1,1, 0,1,1, 1,0, // front
-			0,0,0, 0,0, 0,1,0, 1,0, 1,0,0, 0,1,  1,0,0, 1,0, 0,1,0, 1,1, 1,1,0, 1,0, // back
-			1,0,0, 0,0, 1,1,0, 1,0, 1,0,1, 0,1,  1,0,1, 1,0, 1,1,0, 1,1, 1,1,1, 1,0, // right
-			0,0,0, 0,0, 0,0,1, 1,0, 0,1,0, 0,1,  0,0,1, 1,0, 0,1,1, 1,1, 0,1,0, 1,0, // left
-			0,1,1, 0,0, 0,1,0, 1,0, 1,1,1, 0,1,  1,1,1, 1,0, 0,1,0, 1,1, 1,1,0, 1,0, // top
-			0,0,1, 0,0, 1,0,1, 1,0, 0,0,0, 0,1,  1,0,1, 1,0, 1,0,0, 1,1, 0,0,0, 1,0, // bottom
+		static float[] cubeVerts = [
+			0,0,1, 0,15f/128,  1,0,1, 1f/128,15f/128,  0,1,1, 0,16f/128,   1,0,1, 1f/128,15f/128,  1,1,1, 1f/128,16f/128,  0,1,1, 0,16f/128, // front
+			0,0,0, 0,15f/128,  0,1,0, 0,16f/128,  1,0,0, 1f/128,15f/128,   1,0,0, 1f/128,15f/128,  0,1,0, 0,16f/128,  1,1,0, 1f/128,16f/128, // back
+			1,0,0, 0,15f/128,  1,1,0, 0,16f/128,  1,0,1, 1f/128,15f/128,   1,0,1, 1f/128,15f/128,  1,1,0, 0,16f/128,  1,1,1, 1f/128,16f/128, // right
+			0,0,0, 1f/128,15f/128,  0,0,1, 0,15f/128,  0,1,0, 1f/128,16f/128,   0,0,1, 0,15f/128,  0,1,1, 0,16f/128,  0,1,0, 1f/128,16f/128, // left
+			0,1,1, 0,16f/128,  0,1,0, 0,15f/128,  1,1,1, 1f/128,16f/128,   1,1,1, 1f/128,16f/128,  0,1,0, 0,15f/128,  1,1,0, 1f/128,15f/128, // top
+			0,0,1, 0,15f/128,  1,0,1, 1f/128,15f/128,  0,0,0, 0,16f/128,   1,0,1, 1f/128,15f/128,  1,0,0, 1f/128,16f/128,  0,0,0, 0,16f/128, // bottom
 		];
 		// private void UpdateBlocks()
 		// {
@@ -1782,7 +1950,6 @@ namespace GameEngineThing {
 			GL.BindBuffer(BufferTarget.ArrayBuffer, cubeVBO);
 			GL.BufferData(BufferTarget.ArrayBuffer, cubeVerts.Length * sizeof(float), cubeVerts, BufferUsageHint.StaticDraw);
 
-			// Set up vertex attributes
 			GL.EnableVertexAttribArray(0);
 			GL.VertexAttribPointer(0, 3, VertexAttribPointerType.Float, false, 5 * sizeof(float), 0);
 			GL.EnableVertexAttribArray(1);
@@ -1797,8 +1964,8 @@ namespace GameEngineThing {
 			GL.BindBuffer(BufferTarget.ArrayBuffer, 0);
 			GL.VertexAttribDivisor(2, 1);
 
-			// unbind to prevent later code from accidentally modifying this VAO/EBO
-			GL.BindBuffer(BufferTarget.ArrayBuffer, 0);
+			// unbind
+			// GL.BindBuffer(BufferTarget.ArrayBuffer, 0);
 			GL.BindVertexArray(0);
 			// GL.BindBuffer(BufferTarget.ElementArrayBuffer, 0);
 		}
@@ -2104,7 +2271,7 @@ namespace GameEngineThing {
 		{
 			base.OnUpdateFrame(game, dt);
 			(int x, int y, int z) = (Vector3i)game._player.RootPosition;
-			x >>= 2; y = -y>>2; z >>= 2;
+			x >>= 2; y = -(y-2)>>2; z >>= 2;
 			if (game.MouseState[MouseButton.Right]) {
 				SetBlock(x, y, z, 1);
 			} else if (game.MouseState[MouseButton.Left]) {
@@ -2114,8 +2281,8 @@ namespace GameEngineThing {
 		public override void OnKeyDown(KeyboardKeyEventArgs e)
 		{
 			base.OnKeyDown(e);
-			if (e.Key == Keys.L) GL.PolygonMode(MaterialFace.FrontAndBack, PolygonMode.Point + Random.Shared.Next(3));
-        }
+			if (e.Key == Keys.L) GL.PolygonMode(MaterialFace.Front, PolygonMode.Point + Random.Shared.Next(3));
+		}
 		public override void OnClosing(CancelEventArgs e)
 		{
 			base.OnClosing(e);
@@ -2149,16 +2316,415 @@ namespace GameEngineThing {
 	{
 		public short[] data;
 	}
-	public class DefaultGameBehavior : IMinigame
+	public class Animate : IMinigame
 	{
-        public override void OnRenderFrame(Game game, double dt)
-        {
-            base.OnRenderFrame(game, dt);
-			game._tetrahedron.Draw(game._shader, true);
+		public static Dictionary<string, Action<Game>> InGameConstructorthings = new() {
+			["animate"] = delegate (Game game) {
+				game._currentMinigames.Add(new Animate());
+				game._gameModes.Add(GameIdentifier);}
+		};
+		public const string GameIdentifier = "animate";
+		// public static void StartInit() {
+			
+		// }
+		long frameamt = 0;
+		Mesh _mesh;
+		Mesh _mesh2;
+		Matrix4 _groundmatrix;
+		Texture _textureSheet;
+		Shader _shader;
+		const float _tickSpeed = 60;
+		const float _tickSpeedInv = 1/_tickSpeed;
+		public static class DeetaStuff
+		{
+			public static readonly float[] objv = [
+				0,0,0, 0,0, 16/2048f,16/2048f, 16/2048f, 240/2048f,
+				1,0,0, 64,0, 16/2048f,16/2048f, 16/2048f, 240/2048f,
+				0,0,1, 0,64, 16/2048f,16/2048f, 16/2048f, 240/2048f,
+				1,0,1, 64,64, 16/2048f,16/2048f, 16/2048f, 240/2048f,
+			];
+			public static readonly uint[] obji = [
+				0,1,2,1,3,2
+			];
+			public static readonly float[] bluebgv = [
+				0,0,0, 0,0, 2/2048f,2/2048f, 32/2048f, 254/2048f,
+				1,0,0, 10,0, 2/2048f,2/2048f, 32/2048f, 254/2048f,
+				0,0,1, 3,10, 2/2048f,2/2048f, 32/2048f, 254/2048f,
+				1,0,1, 13,10, 2/2048f,2/2048f, 32/2048f, 254/2048f,
+			];
+			public static readonly uint[] bluebgi = [
+				0,1,2,1,3,2
+			];
+		}
+		public class Mesh
+		{
+			public static int MeshCount;
+			public static List<Mesh> Meshes = [];
+			public float[] Vertices;
+			public uint[] Indices;
+			public int MeshIndex;
+			public int VertexArrayObject;
+			public int VertexBufferObject;
+			public int ElementBufferObject;
+			public int ICount;
+			public Mesh(float[] vertices, uint[] indices, BufferUsageHint VBOHint, BufferUsageHint EBOHint) {
+				if (vertices.Clone() is float[] a) Vertices = a; else throw new Exception("huh????? what.");
+				if (indices.Clone() is uint[] b) Indices = b; else throw new Exception("huh????? what2.");
+				MeshIndex = MeshCount;
+				VertexArrayObject = GL.GenVertexArray();
+				GL.BindVertexArray(VertexArrayObject);
 
-			game._cube.Draw(game._shader, true);
+				VertexBufferObject = GL.GenBuffer();
+				GL.BindBuffer(BufferTarget.ArrayBuffer, VertexBufferObject);
+				GL.BufferData(BufferTarget.ArrayBuffer, vertices.Length * sizeof(float), vertices, VBOHint);
 
-			Matrix4 Scale = Matrix4.CreateScale(new Vector3((float)Math.Sin(game._gameTime) + 1f, (float)Math.Sin(game._gameTime) + 1f, (float)Math.Sin(game._gameTime) + 1f));
+				ICount = indices.Length;
+				ElementBufferObject = GL.GenBuffer();
+				GL.BindBuffer(BufferTarget.ElementArrayBuffer, ElementBufferObject);
+				GL.BufferData(BufferTarget.ElementArrayBuffer, ICount * sizeof(uint), indices, EBOHint);
+
+				GL.EnableVertexAttribArray(0); // position
+				GL.VertexAttribPointer(0, 3, VertexAttribPointerType.Float, false, 9 * sizeof(float), 0);
+				GL.EnableVertexAttribArray(1); // texture (before mod)
+				GL.VertexAttribPointer(1, 2, VertexAttribPointerType.Float, false, 9 * sizeof(float), 3 * sizeof(float));
+				GL.EnableVertexAttribArray(2); // scale after texture mod
+				GL.VertexAttribPointer(2, 2, VertexAttribPointerType.Float, false, 9 * sizeof(float), 5 * sizeof(float));
+				GL.EnableVertexAttribArray(3); // offset after texture mod
+				GL.VertexAttribPointer(3, 2, VertexAttribPointerType.Float, false, 9 * sizeof(float), 7 * sizeof(float));
+
+				Meshes.Add(this);
+				GL.BindBuffer(BufferTarget.ArrayBuffer, 0);
+				GL.BindVertexArray(0);
+				GL.BindBuffer(BufferTarget.ElementArrayBuffer, 0);
+				MeshCount++; }
+			public void Bind() { GL.BindVertexArray(VertexArrayObject); }
+			public void UpdMeshV() {
+				GL.BindVertexArray(VertexArrayObject);
+				GL.BindBuffer(BufferTarget.ArrayBuffer, VertexBufferObject);
+				GL.BufferSubData(BufferTarget.ArrayBuffer, 0, Vertices.Length * sizeof(float), Vertices); }
+			public void UpdMeshI() {
+				GL.BindVertexArray(VertexArrayObject);
+				GL.BindBuffer(BufferTarget.ElementArrayBuffer, ElementBufferObject);
+				GL.BufferSubData(BufferTarget.ElementArrayBuffer, 0, Indices.Length * sizeof(float), Indices); }
+			public void UpdMeshVI() {
+				GL.BindVertexArray(VertexArrayObject);
+				GL.BindBuffer(BufferTarget.ArrayBuffer, VertexBufferObject);
+				GL.BufferSubData(BufferTarget.ArrayBuffer, 0, Vertices.Length * sizeof(float), Vertices);
+				GL.BindBuffer(BufferTarget.ElementArrayBuffer, ElementBufferObject);
+				GL.BufferSubData(BufferTarget.ElementArrayBuffer, 0, Indices.Length * sizeof(float), Indices); }
+			public void UpdMesh(float[] vertices) {
+				GL.BindVertexArray(VertexArrayObject);
+				GL.BindBuffer(BufferTarget.ArrayBuffer, VertexBufferObject);
+				GL.BufferSubData(BufferTarget.ArrayBuffer, 0, vertices.Length * sizeof(float), vertices); }
+			public void UpdMesh(uint[] indices) {
+				GL.BindVertexArray(VertexArrayObject);
+				GL.BindBuffer(BufferTarget.ElementArrayBuffer, ElementBufferObject);
+				GL.BufferSubData(BufferTarget.ElementArrayBuffer, 0, indices.Length * sizeof(float), indices); }
+			public void UpdMesh(float[] vertices, uint[] indices) {
+				GL.BindVertexArray(VertexArrayObject);
+				GL.BindBuffer(BufferTarget.ArrayBuffer, VertexBufferObject);
+				GL.BufferSubData(BufferTarget.ArrayBuffer, 0, vertices.Length * sizeof(float), vertices);
+				GL.BindBuffer(BufferTarget.ElementArrayBuffer, ElementBufferObject);
+				GL.BufferSubData(BufferTarget.ElementArrayBuffer, 0, indices.Length * sizeof(float), indices); }
+			public static void UpdCurrentMesh(float[] vertices) {
+				GL.BufferSubData(BufferTarget.ArrayBuffer, 0, vertices.Length * sizeof(float), vertices); }
+			public static void UpdCurrentMesh(uint[] indices) {
+				GL.BufferSubData(BufferTarget.ElementArrayBuffer, 0, indices.Length * sizeof(float), indices); }
+			public static void UpdCurrentMesh(float[] vertices, uint[] indices) {
+				GL.BufferSubData(BufferTarget.ArrayBuffer, 0, vertices.Length * sizeof(float), vertices);
+				GL.BufferSubData(BufferTarget.ElementArrayBuffer, 0, indices.Length * sizeof(float), indices); }
+			public void Draw(Shader shader, Matrix4 model) {
+				shader.SetMatrix4("model", model);
+				GL.DrawElements(PrimitiveType.Triangles, ICount, DrawElementsType.UnsignedInt, 0); }
+		}
+		public static class PlrCam
+		{
+			public static float Speed = 3f;
+			public static bool FirstPerson = true;
+			public static bool Freecam = true;
+			public static Vector3 CamToTargetOffset = (-1,0,0);
+			/// <summary>
+			/// so yeah this should be normalized so this is just direction i think?
+			/// </summary>
+			public static Vector3 CamLookAt = (1,0,0);
+			public static Vector3 Right = (0,0,1);
+			public static float CamToTargetDist = 3f;
+			public static Vector3 Pos = (1,1,1);
+			public static Vector3 Up = (0,1,0);
+			public static Matrix4 View;
+			public static float Pitch;
+			public static float Yaw;
+			public static float MouseSensitivity = 0.005f;
+			public static Matrix4 Projection;
+			public static float fovy=45f*DataStuff.D2RConst, aspect=400f/600f, depthNear=.1f, depthFar=10000f;
+			public static void UpdProjection()
+			{
+				float num = MathF.Tan(0.5f * fovy);
+				Projection = new(1f / (num * aspect),0f,0f,0f,
+					0f,1f / num,0f,0f,
+					0f,0f,(depthFar + depthNear) / (depthNear - depthFar),-1f,
+					0f,0f,2f * depthFar * depthNear / (depthNear - depthFar),0f);
+			}
+			static PlrCam() {
+				// Vector3 Direction = Vector3.Normalize(CamLookAt);
+				// Vector3 Right = Vector3.Normalize(Vector3.Cross(Up, Direction));
+				(float x, float x2, float x3) = Right = Vector3.Normalize(Vector3.Cross(Up, CamLookAt));
+				// Projection = Matrix4.CreatePerspectiveFieldOfView(45f*DataStuff.D2RConst, 800f / 600f, .1f, 10000f);
+				// public static void CreatePerspectiveFieldOfView(float fovy, float aspect, float depthNear, float depthFar, out Matrix4 result){
+				//     if (fovy <= 0f || fovy > (float)Math.PI) {throw new ArgumentOutOfRangeException("fovy");}
+				//     if (aspect <= 0f) {throw new ArgumentOutOfRangeException("aspect");}
+				//     if (depthNear <= 0f) {throw new ArgumentOutOfRangeException("depthNear");}
+				//     if (depthFar <= 0f) {throw new ArgumentOutOfRangeException("depthFar");}
+				//     float num = depthNear * MathF.Tan(0.5f * fovy);
+				//     float num2 = 0f - num;
+				//     float left = num2 * aspect;
+				//     float right = num * aspect;
+				//     CreatePerspectiveOffCenter(left, right, num2, num, depthNear, depthFar, out result);}
+				// public static void CreatePerspectiveOffCenter(float left, float right, float bottom, float top, float depthNear, float depthFar, out Matrix4 result){
+				//     if (depthNear <= 0f){throw new ArgumentOutOfRangeException("depthNear");}
+				//     if (depthFar <= 0f){throw new ArgumentOutOfRangeException("depthFar");}
+				//     if (depthNear >= depthFar){throw new ArgumentOutOfRangeException("depthNear");}
+				//     float x = 2f * depthNear / (right - left);
+				//     float y = 2f * depthNear / (top - bottom);
+				//     float x2 = (right + left) / (right - left);
+				//     float y2 = (top + bottom) / (top - bottom);
+				//     float z = (0f - (depthFar + depthNear)) / (depthFar - depthNear);
+				//     float z2 = (0f - 2f * depthFar * depthNear) / (depthFar - depthNear);
+				//     result.Row0.X = x;
+				//     result.Row0.Y = 0f;
+				//     result.Row0.Z = 0f;
+				//     result.Row0.W = 0f;
+				//     result.Row1.X = 0f;
+				//     result.Row1.Y = y;
+				//     result.Row1.Z = 0f;
+				//     result.Row1.W = 0f;
+				//     result.Row2.X = x2;
+				//     result.Row2.Y = y2;
+				//     result.Row2.Z = z;
+				//     result.Row2.W = -1f;
+				//     result.Row3.X = 0f;
+				//     result.Row3.Y = 0f;
+				//     result.Row3.Z = z2;
+				//     result.Row3.W = 0f;
+				// }
+				float num = MathF.Tan(0.5f * fovy);
+				// Projection = new(2f * depthNear / (right - left),0f,0f,0f,
+				// 	0f,2f * depthNear / (num - num2),0f,0f,
+				// 	(right + left) / (right - left),(num + num2) / (num - num2),(depthFar + depthNear) / (depthNear - depthFar),-1f,
+				// 	0f,0f,2f * depthFar * depthNear / (depthNear - depthFar),0f);
+				Projection = new(1f / (num * aspect),0f,0f,0f,
+					0f,1f / num,0f,0f,
+					0f,0f,(depthFar + depthNear) / (depthNear - depthFar),-1f,
+					0f,0f,2f * depthFar * depthNear / (depthNear - depthFar),0f);
+				(float y, float y2, float y3) = Vector3.Normalize(Vector3.Cross(CamLookAt, Right));
+				(float z, float z2, float z3) = CamLookAt;
+				float x4 = x * Pos.X + x2 * Pos.Y + x3 * Pos.Z;
+				float y4 = y * Pos.X + y2 * Pos.Y + y3 * Pos.Z;
+				float z4 = z * Pos.X + z2 * Pos.Y + z3 * Pos.Z;
+				float x5 = Projection.Row0.X;
+				float y6 = Projection.Row1.Y;
+				float z7 = Projection.Row2.Z;
+				float z8 = Projection.Row3.Z;
+				View = new(x * x5,y * y6,z * z7,-z,
+				x2 * x5,y2 * y6,z2 * z7,-z2,
+				x3 * x5,y3 * y6,z3 * z7,-z3,
+				-x4 * x5,-y4 * y6,z8 - z4 * z7,z4);}
+			public static void UpdateVectors() {
+				(float x, float x2, float x3) = Right = Vector3.Normalize(Vector3.Cross(Up, CamLookAt));
+				(float y, float y2, float y3) = Vector3.Normalize(Vector3.Cross(CamLookAt, Right));
+				// Vector3.Cross function:
+				// result.X = left.Y * right.Z - left.Z * right.Y;
+				// result.Y = left.Z * right.X - left.X * right.Z;
+				// result.Z = left.X * right.Y - left.Y * right.X;
+				// Vector3.Normalize function:
+				// float num = 1f / vec.Length;
+				// vec.X *= num;
+				// vec.Y *= num;
+				// vec.Z *= num;
+				(float z, float z2, float z3) = CamLookAt;
+				float x4 = x * Pos.X + x2 * Pos.Y + x3 * Pos.Z;
+				float y4 = y * Pos.X + y2 * Pos.Y + y3 * Pos.Z;
+				float z4 = z * Pos.X + z2 * Pos.Y + z3 * Pos.Z;
+				float x5 = Projection.Row0.X;
+				float y6 = Projection.Row1.Y;
+				float z7 = Projection.Row2.Z;
+				float z8 = Projection.Row3.Z;
+				View = new(x * x5,y * y6,z * z7,-z,
+				x2 * x5,y2 * y6,z2 * z7,-z2,
+				x3 * x5,y3 * y6,z3 * z7,-z3,
+				-x4 * x5,-y4 * y6,z8 - z4 * z7,z4);}}
+		public override void OnLoad(Game game)
+		{
+			base.OnLoad(game);
+			game.UpdateFrequency = 60;
+			game.renderPlayer = false;
+			_mesh = new Mesh(DeetaStuff.objv,DeetaStuff.obji,BufferUsageHint.DynamicDraw,BufferUsageHint.DynamicDraw);
+			_mesh2 = new Mesh(DeetaStuff.bluebgv,DeetaStuff.bluebgi,BufferUsageHint.DynamicDraw,BufferUsageHint.DynamicDraw);
+			_shader = new Shader("Shaders/animate/Shader.vert", "Shaders/animate/Shader.frag");
+			_shader.Use();
+			GL.Enable(EnableCap.DepthTest);
+			_textureSheet = Texture.LoadFromFile("Textures/texturesheet.png", false, false);
+			_textureSheet.Use(TextureUnit.Texture0);
+			_shader.SetInt("texture0",0);
+			_groundmatrix = Matrix4.CreateScale(1024,1,1024) * Matrix4.CreateTranslation(1,-2,0);
+		}
+		public override void OnRenderFrame(Game game, double dt)
+		{
+			base.OnRenderFrame(game, dt);
+			_textureSheet.Use(TextureUnit.Texture0);
+			_shader.Use();
+			_shader.SetMatrix4("view", PlrCam.View);
+			_mesh.Bind();
+			_mesh.Draw(_shader,Matrix4.CreateTranslation(MathF.Sin(frameamt*0.001f),0,0));
+			_mesh.Draw(_shader,_groundmatrix);
+			for (int i = 0; i < 30; i++) _mesh.Draw(_shader,DataStuff.CreateRotationXYZ(Random.Shared.NextSingle(),Random.Shared.NextSingle(),Random.Shared.NextSingle()) * Matrix4.CreateTranslation(Vector3.Normalize((Random.Shared.Next(-100,100),Random.Shared.Next(-100,100),Random.Shared.Next(-100,100)))*10));
+			_mesh2.Bind();
+			_mesh2.Draw(_shader,Matrix4.CreateTranslation(0,-5,0));
+			_mesh2.Draw(_shader,Matrix4.CreateTranslation(-0.5f,0,-0.5f)*Matrix4.CreateScale(20,1,20)*DataStuff.CreateRotationXYZ(90*DataStuff.D2RConst,30*DataStuff.D2RConst,frameamt*.0001f)*Matrix4.CreateTranslation(-30,5,30));
+			game._textRenderer.RenderText(game, game._textShader, "cam properties:\nSpeed: "+PlrCam.Speed.ToString("N4")+"\nFirstPerson: "
++PlrCam.FirstPerson.ToString()+"\nFreecam: "
++PlrCam.Freecam.ToString()+"\nCamToTargetOffset: "
++PlrCam.CamToTargetOffset.ToString("N4")+"\nCamLookAt: "
++PlrCam.CamLookAt.ToString("N4")+"\nRight: "
++PlrCam.Right.ToString("N4")+"\nCamToTargetDist: "
++PlrCam.CamToTargetDist.ToString("N4")+"\nPos: "
++PlrCam.Pos.ToString("N4")+"\nUp: "
++PlrCam.Up.ToString("N4")+"\nView: "
++PlrCam.View.ToString("N4")+"\nPitch: "
++PlrCam.Pitch.ToString("N4")+"\nYaw: "
++PlrCam.Yaw.ToString("N4")+"\nMouseSensitivity: "
++PlrCam.MouseSensitivity.ToString("N4")+"\nProjection: "
++PlrCam.Projection.ToString("N4")+"\nfovy: "
++PlrCam.fovy.ToString("N4")+"\n",(0,-200),(-.5f,.5f),(2,2),(.75f,.9f,.9f),10f,game._clientSize,FontCharFillerThing.FontCharDeeta);
+		}
+		public override void OnUpdateFrame(Game game, double dt)
+		{
+			base.OnUpdateFrame(game, dt);
+			frameamt++;
+			bool UpdCamVecs = false;
+			MouseState ms = game.MouseState;
+			(float deltaX, float deltaY) = ms.Position - ms.PreviousPosition;
+			if ((ms[MouseButton.Middle] || ms[MouseButton.Right]) && (deltaX != 0 || deltaY != 0)) {
+				float Yaw = PlrCam.Yaw = (PlrCam.Yaw + deltaX * PlrCam.MouseSensitivity) % MathF.Tau;
+				float Pitch = PlrCam.Pitch = Math.Max(-89f*DataStuff.D2RConst, Math.Min(89f*DataStuff.D2RConst, PlrCam.Pitch + deltaY * PlrCam.MouseSensitivity));
+				// float NCosPitch = -(float)Math.Cos(Pitch);
+				float CosPitch = MathF.Cos(Pitch);
+				// PlrCam.CamToTargetOffset = Vector3.Normalize(new Vector3(
+				// 	NCosPitch * (float)Math.Cos(Yaw),
+				// 	-(float)Math.Sin(Pitch),
+				// 	NCosPitch * (float)Math.Sin(Yaw)));/*if (IsNotEngineTick) {*/PlrCam.UpdateVectors();// return;}
+				PlrCam.CamLookAt = Vector3.Normalize(new Vector3(
+					CosPitch * MathF.Cos(Yaw),
+					MathF.Sin(Pitch),
+					CosPitch * MathF.Sin(Yaw)));UpdCamVecs = true;
+			}
+			if (ms.ScrollDelta.Y != 0f) {PlrCam.Speed = Math.Min(Math.Max(PlrCam.Speed * (1+ms.ScrollDelta.Y*0.1f),0.1f),1000f);}
+			KeyboardState ks = game.KeyboardState;
+			float moveAmount = PlrCam.Speed / _tickSpeed;
+			// Player player = _player;
+			// float movement = (ks.IsKeyDown(Keys.W) ? -moveAmount : 0) + (ks.IsKeyDown(Keys.S) ? moveAmount : 0);
+			// Vector3 plrMovement = PlrCam.CamLookAt * movement;
+			// movement = (ks.IsKeyDown(Keys.A) ? -moveAmount : 0) + (ks.IsKeyDown(Keys.D) ? moveAmount : 0);
+			// plrMovement += PlrCam.Right * movement;
+			// movement = ((ks.IsKeyDown(Keys.Space) || ks.IsKeyDown(Keys.E)) ? moveAmount : 0) + ((ks.IsKeyDown(Keys.LeftShift) || ks.IsKeyDown(Keys.Q)) ? -moveAmount : 0);
+			// plrMovement += PlrCam.Up * movement;
+			Vector3 plrMovement = PlrCam.CamLookAt * ((ks[Keys.W] ? -moveAmount : 0) + (ks[Keys.S] ? moveAmount : 0)) +
+			PlrCam.Right * ((ks[Keys.A] ? -moveAmount : 0) + (ks[Keys.D] ? moveAmount : 0)) +
+			PlrCam.Up * (((ks[Keys.Space] || ks[Keys.E]) ? moveAmount : 0) + ((ks[Keys.LeftShift] || ks[Keys.Q]) ? -moveAmount : 0));
+			if (plrMovement != Vector3.Zero) {
+				PlrCam.Pos += plrMovement;
+				UpdCamVecs = true;
+			}
+			if (frameamt % 2 == 0) {
+				PlrCam.fovy = MathF.Sin(frameamt*.0025f)*4f;
+				PlrCam.UpdProjection();
+				UpdCamVecs = true;
+			}
+			if (UpdCamVecs) PlrCam.UpdateVectors();
+			float[] mesh = _mesh.Vertices;
+			if (ks[Keys.RightControl]) {DeetaStuff.objv.CopyTo(mesh);Console.WriteLine("resetted");}
+			else{float n;
+			if (ks[Keys.R]) {n=MathF.Sin(frameamt*.01f)*(16/2048f);
+				mesh[5]=mesh[14]=mesh[23]=mesh[32]=n;Console.WriteLine("thing:r"); }
+			if (ks[Keys.T]) {n=MathF.Cos(frameamt*.01f)*(16/2048f);
+				mesh[6]=mesh[15]=mesh[24]=mesh[33]=n;Console.WriteLine("thing:t"); }
+			if (ks[Keys.U]) {n=MathF.Sin(frameamt*.012f)*(16/2048f);
+				mesh[7]=mesh[16]=mesh[25]=mesh[34]=n;Console.WriteLine("thing:u"); }
+			if (ks[Keys.I]) {n=MathF.Cos(frameamt*.0134f)*(16/2048f)+240/2048f;
+				mesh[8]=mesh[17]=mesh[26]=mesh[35]=n;Console.WriteLine("thing:i"); }
+			if (ks[Keys.O]) {n=MathF.Sin(frameamt*.0026f)*96f;
+				mesh[12]=mesh[30]=n;Console.WriteLine("thing:o"); }
+			if (ks[Keys.P]) {n=MathF.Cos(frameamt*.00232f)*64f;
+				mesh[22]=mesh[31]=n;Console.WriteLine("thing:p"); }
+			if (ks[Keys.LeftBracket]) {n=MathF.Sin(frameamt*.0046f)*96f;
+				mesh[3]=n;mesh[12]=n+64;mesh[21]=n;mesh[30]=n+64;Console.WriteLine("thing:["); }
+			if (ks[Keys.K]) {n=MathF.Cos(frameamt*.00432f)*96f;
+				mesh[4]=n;mesh[13]=n;mesh[22]=mesh[31]=n+64;Console.WriteLine("thing:k"); }}
+			_mesh.UpdMeshV();
+			mesh = DeetaStuff.bluebgv;
+			float offsetthing = frameamt*.005f+MathF.Sin(frameamt*.0025f);
+			mesh[3]=offsetthing;
+			mesh[12]=offsetthing+10;
+			mesh[21]=offsetthing+3;
+			mesh[30]=offsetthing+13;
+			offsetthing = frameamt*(-.0025f)-MathF.Cos(frameamt*.0025f)*.5f;
+			mesh[4]=mesh[13]=offsetthing;
+			mesh[22]=mesh[31]=offsetthing+10;
+			_mesh2.UpdMesh(mesh);
+		}
+		public override void OnResize(ResizeEventArgs e)
+		{
+			base.OnResize(e);
+			PlrCam.aspect =(float)e.Width/e.Height;
+			PlrCam.UpdProjection();
+			PlrCam.UpdateVectors();
+		}
+		public override void OnClosing(CancelEventArgs e)
+		{
+			base.OnClosing(e);
+		}
+	}
+	public class RandomDemo1 : IMinigame
+	{
+		public const string GameIdentifier = "randomdemo1";
+		public static Dictionary<string, Action<Game>> InGameConstructorthings = new() {
+			["randomdemo1"] = delegate (Game game) {
+				game._currentMinigames.Add(new RandomDemo1());
+				game._gameModes.Add(GameIdentifier);
+			}
+		};
+		public ObjectMesh _tetrahedron, _cube, _plane;
+		public List<TxtOptions> TextThingies = [];
+#nullable enable
+		public void TextThingiesRender(Text textRenderer, int i, Game game, string text, Shader? shader = null, Vector2i? windowSize = null) {
+			textRenderer.Render(TextThingies[i], game, text, shader ?? game._textShader, windowSize ?? game._clientSize); }
+#nullable disable
+		public override void OnLoad(Game game)
+		{
+			base.OnLoad(game);
+			_tetrahedron = new ObjectMesh(new Vector3(0f, 10f, 0f), Vector3.Zero, Vector3.One, DataStuff.TetrahedronV, DataStuff.TetrahedronI);
+			_cube = new ObjectMesh((2,0,0), Vector3.Zero, Vector3.One, DataStuff.CubeV, DataStuff.CubeI);
+			_plane = new ObjectMesh(Vector3.Zero, Vector3.Zero, Vector3.One, DataStuff.PlaneV, DataStuff.PlaneI);
+
+			const float _lineHeight = 10f;
+			// _textRenderer.NewTxtThing(new TxtOptions(posOffset, posScale, textScale, color, lineHeight, windowSize, fontCharData, useSpecialChar));
+			TextThingies.Add(new TxtOptions(Vector2i.Zero, new(-.9f, .9f), new(5), Vector3.One, _lineHeight, FontCharFillerThing.FontCharDeeta, true));
+			TextThingies.Add(new TxtOptions(Vector2i.Zero, new(-.5f, .9f), new(5), Vector3.One, _lineHeight, FontCharFillerThing.FontCharDeeta, true));
+			TextThingies.Add(new TxtOptions(Vector2i.Zero, new(-.9f, .9f), new(2), Vector3.One, _lineHeight, FontCharFillerThing.FontCharDeeta, true));
+			TextThingies.Add(new TxtOptions(Vector2i.Zero, new(-.9f, .9f), new(1), Vector3.One, _lineHeight, FontCharFillerThing.FontCharDeeta, true));
+			TextThingies.Add(new TxtOptions(Vector2i.Zero, new(-.9f, -.9f), new(10), new(1f, .5f, 1f), _lineHeight, FontCharFillerThing.FontCharDeeta, true));
+			TextThingies.Add(new TxtOptions(Vector2i.Zero, new(-.9f, -.4f), new(10), new(1f, .5f, 1f), _lineHeight, FontCharFillerThing.FontCharDeeta, true));
+			TextThingies.Add(new TxtOptions(Vector2i.Zero, new(-.9f, -.6f), new(1), new(1f, .5f, 1f), _lineHeight, FontCharFillerThing.FontCharDeeta, true));
+
+			TextThingies.Add(new TxtOptions(Vector2i.Zero, new(-.96f + (float)Math.Sin(game._gameTime) * .05f, -.5f), Vector2.Zero, new(Random.Shared.Next(0, 100) / 100f), _lineHeight, FontCharFillerThing.FontCharDeeta, true));
+		}
+		public override void OnRenderFrame(Game game, double dt)
+		{
+			base.OnRenderFrame(game, dt);
+			_tetrahedron.Draw(game._shader, true);
+			_cube.Draw(game._shader, true);
+			float sinGameTime = (float)Math.Sin(game._gameTime);
+			Matrix4 Scale = Matrix4.CreateScale(new Vector3(sinGameTime + 1f));
 			Matrix4[] models = [
 				Scale * Matrix4.CreateTranslation(new Vector3(-10f, 0f, 0f)),
 				Scale * Matrix4.CreateTranslation(new Vector3(10f, 0f, 0f)),
@@ -2167,10 +2733,582 @@ namespace GameEngineThing {
 				Scale * Matrix4.CreateTranslation(new Vector3(0f, 0f, 10f)),
 				Scale * Matrix4.CreateTranslation(new Vector3(0f, 0f, -10f)),
 			];
-
-			// // Draw multiple cubes with different texture layers
+			_cube.DrawWithModels(game._shader, models, false);
 			// for (int i = 0; i < models.Length; i++) game._cube.DrawWithModel(game._shader, models[i], false);
-			game._cube.DrawWithModels(game._shader, models, false);
+			Text _tr = game._textRenderer;
+			TextThingiesRender(_tr, 0, game, $"FPS: {1 / game._dT:N4}");
+			TextThingiesRender(_tr, 1, game, "FPS: {1 / _dT:N4}");
+			TextThingiesRender(_tr, 2, game, "FPS: " + (1 / game._dT));
+			TextThingiesRender(_tr, 3, game, $"FPS: {1 / game._dT:N4}");
+			TextThingiesRender(_tr, 4, game, "abcdefghijklmnopqrstuvwxyz a b      d!? b");
+			TxtOptions txtOptions = TextThingies[4];
+			txtOptions.posScaleX = (float)Math.Sin(game._gameTime);
+			_tr.Render(txtOptions, game, "abcdefghijklmnopqrstuvwxyz a b      d!? b");
+			TextThingiesRender(_tr, 5, game, "FPS");
+			TextThingiesRender(_tr, 6, game, "The FitnessGram(TM) Pacer Test is an aerobic capacity test that progressively gets harder as it continues.\nThe thirty meter pacer test begins in 20 seconds.\nWhen you hear this signal a lap is completed if you don't complete the lap in time you get a strike if you get two strikes you are out\nblah blah when you hear this sound it starts on your mark get ready start\nthe quick brown fox jumped over the lazy dog THE QUICK BROWN FOX JUMPED OVER THE LAZY DOG 0123456789\n?!?!?![]{}-=_+`~!@#$%^&*();':\",.<>/\\|        cabbage");
+			txtOptions = TextThingies[7];
+			float xOffset = (float)Math.Sin(game._gameTime) * .025f - .48f;
+			for (int i = 20; i > 0; i--) {
+				if (i == 15) { i -= 4; continue; }
+				txtOptions.posScaleX = xOffset;
+				txtOptions.posScaleY = i * .05f - .25f;
+				txtOptions.textScaleX = i * .5f;
+				txtOptions.textScaleY = i * .5f;
+				txtOptions.color = new(Random.Shared.Next(0, 100) / 100f);
+				_tr.Render(txtOptions, game, i + "FPS: " + 1 / game._dT);}
+			_tr.AnnouncementsRender(game._announcementsThing, game, game._textShader, 10f, game._clientSize);
+		}
+		public override void OnUpdateFrame(Game game, double dt)
+		{
+			base.OnUpdateFrame(game, dt);
+			if (game.IsFocused && !game._isChatting) {
+				_cube.Update(0, (2,0,0), (0f, (float)game._gameTime, (float)Math.Sin(game._gameTime) * 2f), Vector3.One);
+				_tetrahedron.Update(0, (0f, 3f, 0f), (0f, (float)game._gameTime, (float)Math.Sin(game._gameTime) * 2f), Vector3.One);
+			}
+		}
+		public override void OnClosing(CancelEventArgs e)
+		{
+			base.OnClosing(e);
+			_cube?.Dispose();
+			_tetrahedron?.Dispose();
+			_plane?.Dispose();
+		}
+	}
+	public class BABFTE : IMinigame
+	{
+		public const string GameIdentifier = "babfte";
+		public static Dictionary<string, Action<Game>> InGameConstructorthings = new() {
+			["bab"] = delegate (Game game) {
+				game._currentMinigames.Add(new BABFTE());
+				game._gameModes.Add(GameIdentifier);
+			}
+		};
+		public static void StartInit() {
+			InGameConstructorthings["babft"]=
+			InGameConstructorthings["babfte"]=
+			InGameConstructorthings["buildaboat"]=
+			InGameConstructorthings["buildaboatfortreasure"]=
+			InGameConstructorthings["buildaboatemulator"]=
+			InGameConstructorthings["buildaboatfortreasureemulator"]=
+			InGameConstructorthings["babemulator"]=
+			InGameConstructorthings["babftemulator"]=
+			InGameConstructorthings["babgates"]=
+			InGameConstructorthings["babftgates"]=
+			InGameConstructorthings["logicgates"]=
+			InGameConstructorthings["logic gates"]=
+			InGameConstructorthings["build a boat for treasure logic gates"]=InGameConstructorthings["bab"];
+		}
+		public static int frame;
+		public BABFTE() {
+			
+		}
+		public static class BlockStuff {
+			public const int BulkDrawConst = 4096;
+			public static List<IBlock> AllBlocks = [];
+			public static Type[] AllBlockTypes = [typeof(Gate)];
+			public static int[] BlockVAOs;
+			public static int[] BlockVBOs;
+			public static int[] InstanceVBOs;
+			public static Dictionary<Type, Action> BlockRenderBehavior = new() {
+				[typeof(Gate)] = Gate.R
+			};
+			public static Action[] BlockRenderBehaviors = [
+				Gate.R
+			];
+		}
+		public abstract class IBlock {
+			public Vector3 Pos, Rot, Clr;
+			public bool IsSelected; // by, like, tools.
+			public static int VAO, VBO, instanceVBO;
+		}
+		public static class BindableBlockStuff {
+			public static List<IBindableBlock> AllBindableBlocks = [], CalcQueue = [], NextCalcQueue = [];
+			public static int BlockUpdatesPerFrame = 16;
+			/// <summary>
+			/// 0: each frame;
+			/// 1: each other frame;
+			/// 2: each third frame; etc.
+			/// </summary>
+			public static int AdditionalFramesPerUpdate = 0;
+			public static int LastUpdateFrame = 0;
+			public static int QueuePtr = 0;
+			public static int Tick = 0;
+			public static void QueueBlock(IBindableBlock block) {
+				if (!(block.IsScheduled == Tick)) {
+					CalcQueue.Add(block);
+					block.IsScheduled = Tick;
+				}
+			}
+			public static void NewTick() {
+				Tick++;
+				QueuePtr = 0;
+				(CalcQueue, NextCalcQueue) = (NextCalcQueue, CalcQueue);
+			}
+			public static void OnTickUpdate() {
+				int i = QueuePtr;
+				if (CalcQueue.Count < QueuePtr + BlockUpdatesPerFrame+1) { // if true, tick will complete this frame
+					for (; i < CalcQueue.Count; i++) {
+						CalcQueue[i].OnUpdate();
+					}
+					NewTick();
+				} else { // if false, tick won't complete this frame.
+					for (; i < QueuePtr + BlockUpdatesPerFrame; i++) {
+						CalcQueue[i].OnUpdate();
+					}
+				}
+			}
+			public static void OnUpdateFrame() {
+				if (frame > LastUpdateFrame + AdditionalFramesPerUpdate) {
+					OnTickUpdate(); // block updates
+				}
+			}
+		}
+		public abstract class IBindableBlock : IBlock {
+			public List<IBindableBlock> Inputs, Outputs;
+			public bool State;
+			public int IsScheduled;
+			public abstract bool OnUpdate();
+		}
+		/// <summary>
+		/// all 7 tools lol, babfte probably won't work if there are multiple. lol.
+		/// </summary>
+		public static class Tools {
+			public static int ToolEquipped = 0;
+			public static IBlock[] SelectedBlocks;
+			public static Type BuildToolBlock;
+			public static Vector2 DragStart;
+			public static bool Dragging;
+			public static void OnUpdateFrame(Game game) {
+				Console.WriteLine("tool equipped: "+ToolEquipped);
+				MouseState ms = game.MouseState;
+				Vector2 mousePos = ms.Position;
+				KeyboardState ks = game.KeyboardState;
+				switch (ToolEquipped) { // none, del, build, paint, bind, scale, prop, trow; DTool, BTool, PTool, BiTool, STool, PTool, TTool, MTool lol
+					case 0: // none
+						break;
+					case 1: // del
+						if (ms[MouseButton.Left]) {
+							if (Dragging) {
+								Matrix4 viewMat = game._camera.View;
+								(float x0, float x1, float x2, float x3, float y0, float y1, float y2, float y3) = (viewMat.Row0.X, viewMat.Row1.X, viewMat.Row2.X, viewMat.Row3.X, viewMat.Row0.Y, viewMat.Row1.Y, viewMat.Row2.Y, viewMat.Row3.Y);
+								(float lx, float ly) = DragStart;
+								(float hx, float hy) = mousePos;
+								(float csx, float csy) = game._clientSize;
+								lx = (lx/csx - x3); hx = (hx/csx - x3); // me when i try to save one multiplication operation per loop
+								ly = (ly/csy - y3); hy = (hy/csy - y3); // also me when i do that again
+								// if (lx > hx) (lx, hx) = (hx, lx);
+								// if (ly > hy) (ly, hy) = (hy, ly);
+								foreach (var block in BlockStuff.AllBlocks) {
+									// matrix * vec4:
+									// new Vector4(
+									// vec.X * mat.Row0.X + vec.Y * mat.Row1.X + vec.Z * mat.Row2.X + vec.W * mat.Row3.X,
+									// vec.X * mat.Row0.Y + vec.Y * mat.Row1.Y + vec.Z * mat.Row2.Y + vec.W * mat.Row3.Y,
+									// vec.X * mat.Row0.Z + vec.Y * mat.Row1.Z + vec.Z * mat.Row2.Z + vec.W * mat.Row3.Z,
+									// vec.X * mat.Row0.W + vec.Y * mat.Row1.W + vec.Z * mat.Row2.W + vec.W * mat.Row3.W);
+									// Vector2 pos = (new Vector4(block.Pos, 1) * viewMat).Xy;
+									(float bx, float by, float bz) = block.Pos;
+									float posX = bx * x0 + by * x1 + bz * x2;
+									float posY = bx * y0 + by * y1 + bz * y2;
+									// if ((posX > lx ^ posX > hx) && (posY > ly ^ posY > hy)) {
+									// 	block.IsSelected = true;
+									// 	Console.WriteLine("block in del selection!");
+									// } else if (!(ks[Keys.LeftShift] || ks[Keys.RightShift])) block.IsSelected = false;
+									if ((posX > 0 ^ posX > 1) && (posY > 0 ^ posY > 1)) {
+										block.IsSelected = true;
+										Console.WriteLine("block in del selection!");
+									} else if (!(ks[Keys.LeftShift] || ks[Keys.RightShift])) block.IsSelected = false;
+								}
+							} else {
+								DragStart = mousePos;
+								Dragging = true;
+								Console.WriteLine("del drag start");
+							}
+						} else {
+							Dragging = false;
+						}
+						if (ks[Keys.Enter]) {
+							{List<IBlock> BlockList = BlockStuff.AllBlocks;
+							for (int i = BlockList.Count-1; i > -1; i--) {
+								if (BlockList[i].IsSelected) BlockList.RemoveAt(i);
+							}}
+							{List<IBindableBlock> BlockList = BindableBlockStuff.AllBindableBlocks;
+							for (int i = BlockList.Count-1; i > -1; i--) {
+								if (BlockList[i].IsSelected) BlockList.RemoveAt(i);
+							}}
+							{List<Gate> BlockList = Gate.AllGates;
+							for (int i = BlockList.Count-1; i > -1; i--) {
+								if (BlockList[i].IsSelected) BlockList.RemoveAt(i);
+							}}
+						}
+						break;
+					case 2: // build
+						break;
+					case 3: // paint
+						break;
+					case 4: // bind
+						break;
+					case 5: // scale
+						break;
+					case 6: // prop
+						break;
+					case 7: // trow
+						break;
+					case 8: // game mods
+						break;
+					default: throw new Exception();
+				}
+			}
+			public static void OnKeyDown(KeyboardKeyEventArgs e) {
+				switch (e.Key) {
+					case Keys.D1: ToolEquipped = (ToolEquipped == 1) ? 0 : 1; return;
+					case Keys.D2: ToolEquipped = (ToolEquipped == 2) ? 0 : 2; return;
+					case Keys.D3: ToolEquipped = (ToolEquipped == 3) ? 0 : 3; return;
+					case Keys.D4: ToolEquipped = (ToolEquipped == 4) ? 0 : 4; return;
+					case Keys.D5: ToolEquipped = (ToolEquipped == 5) ? 0 : 5; return;
+					case Keys.D6: ToolEquipped = (ToolEquipped == 6) ? 0 : 6; return;
+					case Keys.D7: ToolEquipped = (ToolEquipped == 7) ? 0 : 7; return;
+					case Keys.D8: ToolEquipped = (ToolEquipped == 8) ? 0 : 8; return;
+				}
+				switch (ToolEquipped) {
+					case 0: break;
+					case 1: break;
+					case 2:
+						if (e.Alt) {
+							switch (e.Key) {
+								case Keys.Q:
+									BuildToolBlock = typeof(Gate);
+									break;
+							}
+						}
+						break;
+					case 3: break;
+					case 4: break;
+					case 5: break;
+					case 6: break;
+					case 7: break;
+					case 8: break;
+				}
+			}
+			public static void OnMouseDown(MouseButtonEventArgs e, Game game) {
+				switch (ToolEquipped) {
+					case 0: break;
+					case 1: break;
+					case 2:
+							Vector3 position = game._player.RootPosition;
+							_ = new Gate(position);
+							Console.WriteLine("New gate made @ "+position);
+							foreach (IBindableBlock b in BindableBlockStuff.AllBindableBlocks)
+							{
+								Console.WriteLine("bindable block at "+b.Pos);
+								if (b is Gate) Console.WriteLine("b is a gate.");
+							}
+						break;
+					case 3: break;
+					case 4: break;
+					case 5: break;
+					case 6: break;
+					case 7: break;
+					case 8: break;
+				}
+			}
+		}
+		public enum GateType {
+			And, Or, Xor
+		}
+		public class Gate : IBindableBlock {
+			public static List<Gate> AllGates = [];
+			public GateType Type;
+			/// <summary>
+			/// True: Not enabled. False: Not disabled.
+			/// </summary>
+			public bool Not;
+			public Gate(Vector3 position) {
+				Pos = position;
+				BlockStuff.AllBlocks.Add(this);
+				BindableBlockStuff.AllBindableBlocks.Add(this);
+				AllGates.Add(this);
+			}
+			public Gate(Vector3 position, Vector3 rotation) {
+				Pos = position; Rot = rotation;
+				BlockStuff.AllBlocks.Add(this);
+				BindableBlockStuff.AllBindableBlocks.Add(this);
+				AllGates.Add(this);
+			}
+			public static void New(Vector3 position) {
+				_ = new Gate(position);
+			}
+			public static void New(Vector3 position, Vector3 rotation) {
+				_ = new Gate(position, rotation);
+			}
+			public static float[] verts = [
+				0,-.2f,1, 0,0,  1,-.2f,1, 1,0,  0,.2f,1, 0,1,   1,-.2f,1, 1,0,  1,.2f,1, 1,1,  0,.2f,1, 0,1, // front
+				0,-.2f,0, 0,0,  0,.2f,0, 0,1,  1,-.2f,0, 1,0,   1,-.2f,0, 1,0,  0,.2f,0, 0,1,  1,.2f,0, 1,1, // back
+				1,-.2f,0, 0,0,  1,.2f,0, 0,1,  1,-.2f,1, 1,0,   1,-.2f,1, 1,0,  1,.2f,0, 0,1,  1,.2f,1, 1,1, // right
+				0,-.2f,0, 1,0,  0,-.2f,1, 0,0,  0,.2f,0, 1,1,   0,-.2f,1, 0,0,  0,.2f,1, 0,1,  0,.2f,0, 1,1, // left
+				0,.2f,1, 0,1,  0,.2f,0, 0,0,  1,.2f,1, 1,1,   1,.2f,1, 1,1,  0,.2f,0, 0,0,  1,.2f,0, 1,0, // top
+				0,-.2f,1, 0,0,  1,-.2f,1, 1,0,  0,-.2f,0, 0,1,   1,-.2f,1, 1,0,  1,-.2f,0, 1,1,  0,-.2f,0, 0,1, // bottom
+			];
+			public static void L(Game game) {
+				VAO = GL.GenVertexArray();
+				GL.BindVertexArray(VAO);
+
+				VBO = GL.GenBuffer();
+				GL.BindBuffer(BufferTarget.ArrayBuffer, VBO);
+				GL.BufferData(BufferTarget.ArrayBuffer, verts.Length * sizeof(float), verts, BufferUsageHint.StaticDraw);
+
+				GL.EnableVertexAttribArray(0);
+				GL.VertexAttribPointer(0, 3, VertexAttribPointerType.Float, false, 5 * sizeof(float), 0);
+				GL.EnableVertexAttribArray(1);
+				GL.VertexAttribPointer(1, 2, VertexAttribPointerType.Float, false, 5 * sizeof(float), 3 * sizeof(float));
+
+				instanceVBO = GL.GenBuffer();
+				GL.BindBuffer(BufferTarget.ArrayBuffer, instanceVBO);
+				GL.BufferData(BufferTarget.ArrayBuffer, sizeof(float) * 9 * BlockStuff.BulkDrawConst, /*pos*/ 0, BufferUsageHint.DynamicDraw);
+
+				GL.EnableVertexAttribArray(2);
+				GL.VertexAttribPointer(2, 4, VertexAttribPointerType.Float, false, 12 * sizeof(float), 0);
+				GL.EnableVertexAttribArray(3);
+				GL.VertexAttribPointer(3, 4, VertexAttribPointerType.Float, false, 12 * sizeof(float), 4 * sizeof(float));
+				GL.EnableVertexAttribArray(4);
+				GL.VertexAttribPointer(4, 4, VertexAttribPointerType.Float, false, 12 * sizeof(float), 8 * sizeof(float));
+				GL.BindBuffer(BufferTarget.ArrayBuffer, 0);
+				GL.VertexAttribDivisor(2, 1);
+				GL.VertexAttribDivisor(3, 1);
+				GL.VertexAttribDivisor(4, 1);
+
+				// // unbind
+				// GL.BindBuffer(BufferTarget.ArrayBuffer, 0);
+				// GL.BindVertexArray(0);
+				// eh it'll be fineeee without unbind here lol
+			}
+			public static int Frame = 0;
+			public static void R() {
+				GL.BindVertexArray(VAO);
+				GL.BindBuffer(BufferTarget.ArrayBuffer, instanceVBO);
+				float[] blockdata = new float[BlockStuff.BulkDrawConst*9];
+				int count = AllGates.Count;
+				if (count > BlockStuff.BulkDrawConst) {
+					throw new Exception("bruhh i haven't gotten around to doing this yet..");
+				} else {
+					for (int i = 0, i2=0; i < count*12; i+=12,i2++) {
+						// (blockdata[i], blockdata[i+1], blockdata[i+2]) = AllGates[i2].Pos;
+						// (blockdata[i+3], blockdata[i+4], blockdata[i+5]) = AllGates[i2].Rot;
+						// (blockdata[i+6], blockdata[i+7], blockdata[i+8]) = AllGates[i2].Clr;
+						Gate gate = AllGates[i2];
+						(float x, float y, float z) = gate.Rot;
+						float thisT = Frame+Random.Shared.NextSingle();
+						x += MathF.Sin(thisT*.01f)*.05f;
+						y += MathF.Sin(thisT*.01f+MathF.PI/3f)*.05f;
+						z += MathF.Sin(thisT*.01f+MathF.PI/1.5f)*.05f;
+						float num = MathF.Cos(x),
+						num2 = MathF.Sin(x),
+						num3 = MathF.Cos(y),
+						num4 = MathF.Sin(y),
+						num5 = MathF.Cos(z),
+						num6 = MathF.Sin(z);
+						float x2 = num2 * num4, x3 = num * num4;
+						(float x8, float y8, float z8) = gate.Pos;
+						x2 = x2*num5-num*num6;
+						float y2 = x2*num6+num*num5;
+						float z2 = num2*num3;
+						x3 = x3*num5+num2*num6;
+						float y3 = x3*num6-num2*num5;
+						float z3 = num*num3;
+						// Matrix4 result = new(
+						// 	num3*num5,num3*num6,-num4,0,
+						// 	x2,y2,z2,0,
+						// 	x3,y3,z3,0,
+						// 	x8,y8,z8,1
+						// );
+						(blockdata[i],blockdata[i+1],blockdata[i+2],blockdata[i+3])=(num3*num5,x2,x3,x8);
+						(blockdata[i+4],blockdata[i+5],blockdata[i+6],blockdata[i+7])=(num3*num6,y2,y3,y8);
+						(blockdata[i+8],blockdata[i+9],blockdata[i+10],blockdata[i+11])=(-num4,z2,z3,z8);
+					}
+					GL.BufferSubData(BufferTarget.ArrayBuffer, 0, sizeof(float)*12*count, blockdata);
+					GL.DrawArraysInstanced(PrimitiveType.Triangles, 0, 36, count);
+				}
+				Frame++;
+			}
+			public override bool OnUpdate() {
+				bool NewState;
+				switch (Type) {
+					case GateType.And:
+						NewState = true;
+						foreach (IBindableBlock block in Inputs) if (!block.State) {NewState = false; break;}
+						break;
+					case GateType.Or:
+						NewState = false;
+						foreach (IBindableBlock block in Inputs) if (block.State) {NewState = true; break;}
+						break;
+					case GateType.Xor:
+						NewState = true;
+						foreach (IBindableBlock block in Inputs) NewState ^= block.State;
+						break;
+					default: throw new Exception();
+				}
+				if (State ^ NewState ^ Not) {
+					State ^= true;
+					foreach (IBindableBlock block in Outputs) {
+						BindableBlockStuff.QueueBlock(block);
+					}
+					return true;
+				}
+				return false;
+			}
+		}
+		public Shader shader;
+		public int cubeVAO, cubeVBO, instanceVBO;
+		public static float[] cubeVerts = [
+			0,0,1, 0,0,  1,0,1, 1,0,  0,1,1, 0,1,   1,0,1, 1,0,  1,1,1, 1,1,  0,1,1, 0,1, // front
+			0,0,0, 0,0,  0,1,0, 0,1,  1,0,0, 1,0,   1,0,0, 1,0,  0,1,0, 0,1,  1,1,0, 1,1, // back
+			1,0,0, 0,0,  1,1,0, 0,1,  1,0,1, 1,0,   1,0,1, 1,0,  1,1,0, 0,1,  1,1,1, 1,1, // right
+			0,0,0, 1,0,  0,0,1, 0,0,  0,1,0, 1,1,   0,0,1, 0,0,  0,1,1, 0,1,  0,1,0, 1,1, // left
+			0,1,1, 0,1,  0,1,0, 0,0,  1,1,1, 1,1,   1,1,1, 1,1,  0,1,0, 0,0,  1,1,0, 1,0, // top
+			0,0,1, 0,0,  1,0,1, 1,0,  0,0,0, 0,1,   1,0,1, 1,0,  1,0,0, 1,1,  0,0,0, 0,1, // bottom
+		];
+		public override void OnLoad(Game game) {
+			base.OnLoad(game);
+			this.game = game;
+			frame = 0;
+			// me when i steal from myself
+			// game._camera.IsFlying = true;
+			game._camera.MaxDist = 1024;
+			shader = new("Shaders/babfte/Shader.vert", "Shaders/babfte/Shader.frag");
+			GL.UseProgram(shader.Handle);
+			// GenDefaultWorld();
+			foreach (Type type in BlockStuff.AllBlockTypes) type.GetMethod("L")?.Invoke(null, [game]);
+			GL.BindVertexArray(0);
+			// cubeVAO = GL.GenVertexArray();
+			// GL.BindVertexArray(cubeVAO);
+
+			// cubeVBO = GL.GenBuffer();
+			// GL.BindBuffer(BufferTarget.ArrayBuffer, cubeVBO);
+			// GL.BufferData(BufferTarget.ArrayBuffer, cubeVerts.Length * sizeof(float), cubeVerts, BufferUsageHint.StaticDraw);
+
+			// GL.EnableVertexAttribArray(0);
+			// GL.VertexAttribPointer(0, 3, VertexAttribPointerType.Float, false, 5 * sizeof(float), 0);
+			// GL.EnableVertexAttribArray(1);
+			// GL.VertexAttribPointer(1, 2, VertexAttribPointerType.Float, false, 5 * sizeof(float), 3 * sizeof(float));
+
+			// instanceVBO = GL.GenBuffer();
+			// GL.BindBuffer(BufferTarget.ArrayBuffer, instanceVBO);
+			// GL.BufferData(BufferTarget.ArrayBuffer, sizeof(int) * Text.BulkDrawConst * 3, /*pos*/ 0, BufferUsageHint.DynamicDraw);
+
+			// GL.EnableVertexAttribArray(2);
+			// GL.VertexAttribIPointer(2, 3, VertexAttribIntegerType.Int, 3 * sizeof(int), 0);
+			// GL.BindBuffer(BufferTarget.ArrayBuffer, 0);
+			// GL.VertexAttribDivisor(2, 1);
+
+			// // unbind
+			// GL.BindBuffer(BufferTarget.ArrayBuffer, 0);
+			// GL.BindVertexArray(0);
+			// // GL.BindBuffer(BufferTarget.ElementArrayBuffer, 0);
+
+		}
+		Game game;
+		public override void OnRenderFrame(Game game, double dt) {
+			base.OnRenderFrame(game, dt);
+			GL.UseProgram(shader.Handle);
+			GL.UniformMatrix4(GL.GetUniformLocation(shader.Handle, "view"), true, ref game._camera.View);
+			foreach (var BlockType in BlockStuff.BlockRenderBehavior) {
+				BlockType.Value();
+			}
+		}
+		public override void OnUpdateFrame(Game game, double dt) {
+			base.OnUpdateFrame(game, dt);
+			frame++;
+			BindableBlockStuff.OnUpdateFrame();
+
+			Tools.OnUpdateFrame(game);
+		}
+		public override void OnKeyDown(KeyboardKeyEventArgs e) {
+			base.OnKeyDown(e);
+			Tools.OnKeyDown(e);
+		}
+        public override void OnMouseDown(MouseButtonEventArgs e)
+        {
+            base.OnMouseDown(e);
+			Tools.OnMouseDown(e, game);
         }
+	}
+	public class RandomProgramStuff : IMinigame {
+		public const string GameIdentifier = "randomprogramstuff";
+		public static Dictionary<string, Action<Game>> InGameConstructorthings = new() {
+			["randomprogramstuff"] = delegate (Game game) {
+				game._currentMinigames.Add(new RandomProgramStuff());
+				game._gameModes.Add(GameIdentifier);
+			}
+		};
+		public Dictionary<string, Action> Things = new() {
+			["infrpgthing"] = delegate() {
+				Console.Write("Infinity RPG Weapon Loadout Calculator\n");
+				List<string> weaponnames = [];
+				// List<double> weaponlowstats = [];
+				// List<double> weaponhighstats = [];
+				List<double> weaponavgstats = [];
+				while (true) {
+					Console.Write("Another weapon, nothing to stop or input name... ");
+					string thing = Console.ReadLine() ?? "";
+					if (thing == "") break;
+					Console.Write('\n'+thing+"\nLow dmg: ");
+					double lowdmg = Convert.ToDouble(Console.ReadLine());
+					double highdmg = Convert.ToDouble(Console.ReadLine());
+					weaponnames.Add(thing);
+					weaponavgstats.Add((lowdmg+highdmg)*.5);
+				}
+				int amt = weaponavgstats.Count;
+				if (amt == 0) {Console.Write("nothing listed...\n"); return;}
+				int thingyy = Math.Min(10, amt);
+				string[] weaponlist = new string[thingyy];
+				double[] avgdmglist = new double[thingyy];
+				for (int bruh = 0; bruh < thingyy; bruh++) {
+					double highest = weaponavgstats[0];
+					int ind = 0;
+					for (int i = 1; i < weaponavgstats.Count; i++) {
+						double tmp = weaponavgstats[i];
+						if (tmp > highest) {
+							ind = i;
+							highest = tmp;
+						}
+					}
+					weaponlist[bruh] = weaponnames[ind];
+					avgdmglist[bruh] = weaponavgstats[ind];
+					weaponnames.RemoveAt(ind);
+					weaponavgstats.RemoveAt(ind);
+				}
+				Console.Write("\nWeapon order:\n");
+				for (int i = 0; i < thingyy; i++) Console.Write(weaponlist[i]+", avg dmg: "+avgdmglist[i]);
+				Console.Write("Done! :3\n");
+			}
+		};
+		public override void OnLoad(Game game) {
+			base.OnLoad(game);
+			Console.WriteLine("random program stuff thing. yeah.");
+			while (true) {
+				foreach (KeyValuePair<string, Action> act in Things) Console.Write("Thing: \""+act.Key+"\"\n");
+				Console.WriteLine("Input the thing you want, or smth that isn't to stop.");
+				string thing = Console.ReadLine() ?? "\n";
+				if (Things.TryGetValue(thing, out Action action)) {Console.Write("thing found...\n");try{action();}catch(Exception a){Console.Write("oops, smth happened and it broke... . w .\n"+a.Message+'\n'+a.StackTrace+'\n');}Console.Write("done...\n\n");}
+				else {game.WillReopen=true;game.Close();return;}
+			}
+		}
+	}
+	public class DefaultGameBehavior : IMinigame
+	{
+		public const string GameIdentifier = "DEFAULT_BEHAVIOR";
+		public static Dictionary<string, Action<Game>> InGameConstructorthings = new() {
+			["DEFAULT_BEHAVIOR"] = delegate (Game game) {
+				game._currentMinigames.Add(new DefaultGameBehavior());
+				game._gameModes.Add(GameIdentifier);
+			}
+		};
+		// public override void OnLoad(Game game)
+		// {
+		//     base.OnLoad(game);
+		// }
+		// public override void OnRenderFrame(Game game, double dt)
+		// {
+		//     base.OnRenderFrame(game, dt);
+		// }
 	}
 }

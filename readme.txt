@@ -1,6 +1,5 @@
 this is a file idk
 this is a game engine ig and it has some games built in and some recorder.
-(the recorder WAS built 90% by cursor ai though.. yeah... but the minigames weren't built by ai much if at all. I built them.)
 there's a semi-working pong game, a one key mania game, and a 4 key mania game.
 there's a very basic terminal built-in also, accessed with '/', then typing and pressing enter.
 Escape and enter both go out of the terminal, but escape keeps what you typed, and enter clears what you typed and does whatever it's supposed to if you typed a valid command.
@@ -24,6 +23,6 @@ yeah.
 (I have not updated this text file in quite a while... btw inputting command "help" does something and so does "reopen miner". you should totally "flysilly" in the mining game)
 (if you don't want to "flysilly" but you already have you can "flyunsilly")
 (there's also "record" like "record sdjfklmcdms.mp4" records with a file called "sdjfklmcdms.mp4". there is more but i don't feel like describing everything hahahhahahaha)
-
-
+(oh yeah now it also shows not actually all the commands but all the reopen commands (i think) in the console lol idk)
+(also new minigames, animate and babfte. only half-made lolololololol)
                                                                                                                                                          :D
