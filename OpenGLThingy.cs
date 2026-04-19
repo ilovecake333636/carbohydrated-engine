@@ -48,6 +48,7 @@ namespace GameEngineThing {
 		private ObjectMesh _playerArmMesh;
 		private ObjectMesh _playerLegMesh;
 		public bool _isChatting {get; private set;} = false;
+		public double _consoleScroll = 0;
 		private int _chattingBlinker = 0;
 		public string _chattingText { get; private set; } = "";
 		private int _chattingTextLines = 1;
@@ -250,11 +251,11 @@ namespace GameEngineThing {
 			// remember that this renderer is pretty weird or smth and if you render in the wrong order the game may not render properly.
 			bool debugText = _debugFlags.HasFlag(DebugFlags.debugText);
 			if (_isChatting) {
-				string chatTxt = "> " + _chattingText;
-				if (_chattingBlinker < 128) chatTxt += "\\blinker|";
-				Vector2i posOffset = new(0, (int)(_chattingTextLines * _chattingTextLineHeight * _chattingTextSize.Y));
-				_textRenderer.RenderText(this, _textShader, chatTxt, posOffset, new(-.5f), _chattingTextSize, new(1), _chattingTextLineHeight, _clientSize, FontCharFillerThing.FontCharDeeta, true);
-				if (debugText) _textRenderer.RenderText(this, _textShader, chatTxt, posOffset, new(-1, -.8f), _chattingTextSize, new(.7f), _chattingTextLineHeight, _clientSize, FontCharFillerThing.FontCharDeeta, false);}
+				StringBuilder chatTxt = new("> "); chatTxt.Append(_chattingText);
+				if (_chattingBlinker < 128) chatTxt.Append("\\blinker|");
+				string chattxt = chatTxt.ToString();
+				_textRenderer.RenderText(this, _textShader, chattxt, (0,(int)_consoleScroll), new(-.5f), _chattingTextSize, new(1), _chattingTextLineHeight, _clientSize, FontCharFillerThing.FontCharDeeta, true);
+				if (debugText) _textRenderer.RenderText(this, _textShader, chattxt, (0,(int)_consoleScroll), new(-1, -.8f), _chattingTextSize, new(.7f), _chattingTextLineHeight, _clientSize, FontCharFillerThing.FontCharDeeta, false);}
 			// _videoRecorder?.CaptureFrame(this.ClientSize, VSync == VSyncMode.On);
 			long timestampNow = Stopwatch.GetTimestamp();
 			profilerFrameTimes[profilerIndex] = (timestampNow - previousFrameTimestamp) / (double)Stopwatch.Frequency * 1000;
@@ -277,8 +278,14 @@ namespace GameEngineThing {
 			minigame.OnUpdateFrame(this, _dT);
 
 			if (IsFocused) {
-				if (_isChatting) {_chattingBlinker=(_chattingBlinker+3)&255;}
-				else {
+				if (_isChatting) {
+					_chattingBlinker=(_chattingBlinker+3)&255;
+					if (MouseState.ScrollDelta.Y != 0) {
+						float scrollAmt = -MouseState.ScrollDelta.Y * _chattingTextLineHeight * _chattingTextSize.Y;
+						if (KeyboardState[Keys.LeftAlt]) scrollAmt *= 5;
+						_consoleScroll += scrollAmt;
+					}
+				} else {
 					if (MouseState.ScrollDelta.Y != 0) { // (3f * _tickSpeedInv + 1)
 						_camera.CamSpeed = Math.Max(.1f, Math.Min(1024f, _camera.CamSpeed * (MouseState.ScrollDelta.Y * 0.1f + 1)));
 						if (_debugFlags.HasFlag(DebugFlags.debugLogging)) Console.WriteLine("scroll speed changed; new speed: " + _camera.CamSpeed);}
@@ -356,6 +363,7 @@ namespace GameEngineThing {
 				_chattingText += s;
 			else if (s == "/") {
 				_isChatting = true;
+				_consoleScroll = _chattingTextLines * _chattingTextLineHeight * _chattingTextSize.Y;
 				_chattingBlinker = 0;}}
 		protected override void OnKeyDown(KeyboardKeyEventArgs e) {
 			long timestamp = Stopwatch.GetTimestamp();
@@ -497,7 +505,7 @@ namespace GameEngineThing {
 			// _videoRecorder?.Stop();
 			_videoRecorder?.Dispose();
 			_videoRecorder = null; } }
-	public class Shader {
+	public class Shader : IDisposable {
 		public readonly int Handle;
 		public Shader(string vertexPath, string fragmentPath) {
 			string ShaderSource = File.ReadAllText(vertexPath);
@@ -556,6 +564,48 @@ namespace GameEngineThing {
 			GL.Uniform3(location, value);}
 
 		public void Dispose() {GL.DeleteProgram(Handle);}}
+	// public class CompShader {
+	// 	public readonly int Handle;
+	// 	public CompShader(string computePath) {
+	// 		string ShaderSource = File.ReadAllText(computePath);
+	// 		var ComputeShader = GL.CreateShader(ShaderType.ComputeShader);
+	// 		GL.ShaderSource(ComputeShader, ShaderSource);
+
+	// 		// compile shader
+	// 		GL.CompileShader(ComputeShader);
+
+	// 		// check for errors
+	// 		GL.GetShader(ComputeShader, ShaderParameter.CompileStatus, out int success);
+	// 		if (success == 0) {
+	// 			string infoLog = GL.GetShaderInfoLog(ComputeShader);
+	// 			throw new Exception("oh no the shader (" + ComputeShader + ") failed to compile: " + infoLog);}
+	// 		// done compiling vertex shader
+
+	// 		Handle = GL.CreateProgram();
+	// 		GL.AttachShader(Handle, ComputeShader);
+	// 		GL.LinkProgram(Handle);
+
+	// 		GL.DetachShader(Handle, ComputeShader);
+	// 		GL.DeleteShader(ComputeShader);}
+	// 	public void Use() {GL.UseProgram(Handle);}
+	// 	public int GetAttribLocation(string attribName) {
+	// 		return GL.GetAttribLocation(Handle, attribName);}
+	// 	public void SetInt(string name, int value) {
+	// 		int location = GL.GetUniformLocation(Handle, name);
+	// 		GL.Uniform1(location, value);}
+	// 	public void SetMatrix4(string name, Matrix4 value) {
+	// 		int location = GL.GetUniformLocation(Handle, name);
+	// 		GL.UniformMatrix4(location, true, ref value);}
+
+	// 	public void SetTextureLayer(int layer) {SetInt("textureLayer", layer);}
+	// 	public void SetTextureLocation(string name, Vector4 LocationAndSize) {
+	// 		int location = GL.GetUniformLocation(Handle, name);
+	// 		GL.Uniform4(location, LocationAndSize);}
+	// 	public void SetVector3(string name, Vector3 value) {
+	// 		int location = GL.GetUniformLocation(Handle, name);
+	// 		GL.Uniform3(location, value);}
+
+	// 	public void Dispose() {GL.DeleteProgram(Handle);}}
 	public class Texture {
 		public readonly int Handle;
 		public readonly int Width;
@@ -607,13 +657,13 @@ namespace GameEngineThing {
 			GL.DeleteTexture(Handle);}}
 	public class Camera {
 		public float CamSpeed = 3f;
-		public Vector3 CameraToTargetOffset = new Vector3(1f/MathF.Sqrt(3f), 1f/MathF.Sqrt(3f), -1f/MathF.Sqrt(3f));
+		public Vector3 CameraToTargetOffset = new(1f/MathF.Sqrt(3f), 1f/MathF.Sqrt(3f), -1f/MathF.Sqrt(3f));
 		public float CameraDistFromTarget = 8f;
 		// public Vector3 CameraFront { get; set; } = new Vector3(0f, 0f, -1f);
 		public float MinDist = .05f;
 		public float MaxDist = 128f;
-		public Vector3 Target = Vector3.Zero;
-		public Vector3 Position = new Vector3(0f, 0f, 3f);
+		public Vector3 Target;
+		public Vector3 Position;
 		public readonly Vector3 Up = Vector3.UnitY;
 		public Vector3 Direction;
 		public Vector3 Right;
@@ -621,6 +671,7 @@ namespace GameEngineThing {
 		/// The matrix to project objects to the screen. It is the view but also multiplied by the projection matrix. idk if it helps but yeah.
 		/// </summary>
 		public Matrix4 View;
+		public Matrix4 otherview;
 
 		public float Pitch;
 		public float Yaw;
@@ -639,7 +690,8 @@ namespace GameEngineThing {
 			Direction = Vector3.Normalize(position - target);
 			Right = Vector3.Normalize(Vector3.Cross(up, Direction));
 			Projection = Matrix4.CreatePerspectiveFieldOfView(MathHelper.DegreesToRadians(45f), 800f / 600f, .1f, 10000f);
-			View = Matrix4.LookAt(position, target, up) * Projection;
+			otherview = Matrix4.LookAt(position, target, up);
+			View = otherview * Projection;
 
 			Position = position;
 			Target = target;
@@ -651,7 +703,8 @@ namespace GameEngineThing {
 			// View = Matrix4.LookAt(Position, Target, Up) * Projection;
 			Direction = Vector3.Normalize(CameraToTargetOffset);
 			Right = Vector3.Normalize(Vector3.Cross(Up, Direction));
-			View = Matrix4.LookAt(Position, Target, Up) * Projection;
+			otherview = Matrix4.LookAt(Position, Target, Up);
+			View = otherview * Projection;
 		}}
 	public class ObjectMesh {
 		public static int MeshCount = 0;
@@ -880,7 +933,7 @@ namespace GameEngineThing {
 			_w = w; _h = h; _recAllFrames = fps < 0;
 			_fBuffer = new byte[w*h<<2];
 			_tickStepNs = (long)(1000000000d/(fps*speed));
-			StringBuilder args = new("-n -f rawvideo -pix_fmt bgra -s ", 256);args.Append(w);args.Append('x');args.Append(h);args.Append(" -r ");args.Append((fps*speed).ToString("N4"));args.Append(" -i - -vf \"vflip\" -an -c:v libx265 -preset slow -crf 25 -pix_fmt yuv420p \"");args.Append(p);args.Append('\"');
+			StringBuilder args = new("-n -f rawvideo -pix_fmt bgra -s ", 256);args.Append(w);args.Append('x');args.Append(h);args.Append(" -r ");args.Append((fps*speed).ToString("N4"));args.Append(" -i - -vf \"vflip\" -an -c:v libx265 -preset superfast -crf 25 -pix_fmt yuv420p \"");args.Append(p);args.Append('\"');
 			_ffmpeg = new Process {
 				StartInfo = new ProcessStartInfo {
 					FileName = "ffmpeg",
@@ -902,7 +955,7 @@ namespace GameEngineThing {
 			_w = w; _h = h; _recAllFrames = resfps < 0;
 			_fBuffer = new byte[w*h<<2];
 			_tickStepNs = (long)(1000000000d/inpfps);
-			StringBuilder args = new("-n -f rawvideo -pix_fmt bgra -s ", 256);args.Append(w);args.Append('x');args.Append(h);args.Append(" -r ");args.Append(resfps.ToString("N4"));args.Append(" -i - -vf \"vflip\" -an -c:v libx265 -preset slow -crf 25 -pix_fmt yuv420p \"");args.Append(p);args.Append('\"');
+			StringBuilder args = new("-n -f rawvideo -pix_fmt bgra -s ", 256);args.Append(w);args.Append('x');args.Append(h);args.Append(" -r ");args.Append(resfps.ToString("N4"));args.Append(" -i - -vf \"vflip\" -an -c:v libx265 -preset superfast -crf 25 -pix_fmt yuv420p \"");args.Append(p);args.Append('\"');
 			_ffmpeg = new Process {
 				StartInfo = new ProcessStartInfo {
 					FileName = "ffmpeg",

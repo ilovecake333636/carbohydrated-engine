@@ -10,6 +10,7 @@ using OpenTK.Graphics.OpenGL4;
 using OpenTK.Windowing.Common;
 using System.ComponentModel;
 using System.IO;
+using System.Text;
 
 namespace GameEngineThing {
 	/// <summary>
@@ -2800,10 +2801,11 @@ namespace GameEngineThing {
 		}
 		public static int frame;
 		public BABFTE() {
-			
+			Tools.BABs.Add(this);
 		}
 		public static class BlockStuff {
-			public const int BulkDrawConst = 4096;
+			public const int BulkDrawBS = 12;
+			public const int BulkDrawConst = 1<<BulkDrawBS; // 4096
 			public static List<IBlock> AllBlocks = [];
 			public static Type[] AllBlockTypes = [typeof(Gate)];
 			public static int[] BlockVAOs;
@@ -2817,9 +2819,17 @@ namespace GameEngineThing {
 			];
 		}
 		public abstract class IBlock {
-			public Vector3 Pos, Rot, Clr;
-			public bool IsSelected; // by, like, tools.
+			public Vector3 Pos, Rot;
+			public uint Clr;
+			public BlockState SelState; // by, like, tools.
 			public static int VAO, VBO, instanceVBO;
+		}
+		[Flags]
+		public enum BlockState {
+			None = 0,
+			Selected = 1, // selected, e.g. drag sel'd or shift-sel'd or clicked or whv.
+			Highlighted = 2, // highlighted, e.g. hovered over w/ mouse.
+			On = 4, // only for ibindableblock idk
 		}
 		public static class BindableBlockStuff {
 			public static List<IBindableBlock> AllBindableBlocks = [], CalcQueue = [], NextCalcQueue = [];
@@ -2832,7 +2842,7 @@ namespace GameEngineThing {
 			public static int AdditionalFramesPerUpdate = 0;
 			public static int LastUpdateFrame = 0;
 			public static int QueuePtr = 0;
-			public static int Tick = 0;
+			public static long Tick = 0;
 			public static void QueueBlock(IBindableBlock block) {
 				if (!(block.IsScheduled == Tick)) {
 					CalcQueue.Add(block);
@@ -2864,60 +2874,295 @@ namespace GameEngineThing {
 			}
 		}
 		public abstract class IBindableBlock : IBlock {
-			public List<IBindableBlock> Inputs, Outputs;
-			public bool State;
-			public int IsScheduled;
+			// public List<IBindableBlock> Inputs, Outputs;
+			public HashSet<IBindableBlock> Inputs = [], Outputs = [];
+			// public bool State;
+			public long IsScheduled = -1L;
 			public abstract bool OnUpdate();
+			public abstract void ForceToggle();
+			public abstract void ForceSet(bool state);
+			public abstract void QuietForceToggle();
+			public abstract void QuietForceSet(bool state);
+			public abstract void ForceEvent();
 		}
 		/// <summary>
 		/// all 7 tools lol, babfte probably won't work if there are multiple. lol.
 		/// </summary>
 		public static class Tools {
+			public static List<BABFTE> BABs = [];
+			// public static Shader shader;
+			// public static CompShader compShader;
 			public static int ToolEquipped = 0;
-			public static IBlock[] SelectedBlocks;
+			// public static IBlock[] SelectedBlocks;
 			public static Type BuildToolBlock;
 			public static Vector2 DragStart;
 			public static bool Dragging;
+			// public const int ptsListElementLen = BlockStuff.BulkDrawConst+4;
+			// public static List<Vector3[]> ptsList = [new Vector3[ptsListElementLen]];
+			// public static int CSVAO,CSSSBO,VAO,VBO;
+			public static Shader BiToolShader;
+			public static int BiToolVAO, BiToolVBO;//, BiToolEBO;
+			public static void OnLoad(Game game) {
+				// shader = new("Shaders/babfte/debug.vert","Shaders/babfte/debug.frag");
+				// GL.UseProgram(shader.Handle);
+				// GL.PointSize(8);
+				// VAO = GL.GenVertexArray();
+				// GL.BindVertexArray(VAO);
+
+				// VBO = GL.GenBuffer();
+				// GL.BindBuffer(BufferTarget.ArrayBuffer, VBO);
+				// GL.BufferData(BufferTarget.ArrayBuffer, BlockStuff.BulkDrawConst * sizeof(float) * 3, 0, BufferUsageHint.DynamicDraw);
+
+				// GL.EnableVertexAttribArray(0);
+				// GL.VertexAttribPointer(0, 3, VertexAttribPointerType.Float, false, 3 * sizeof(float), 0);
+
+				// compShader = new("Shaders/babfte/Shader.comp");
+				// CSVAO = GL.GenVertexArray();
+				// GL.BindVertexArray(CSVAO);
+
+				// CSSSBO = GL.GenBuffer();
+				// GL.BindBuffer(BufferTarget.ShaderStorageBuffer, CSSSBO);
+				// GL.BufferData(BufferTarget.ShaderStorageBuffer, (BlockStuff.BulkDrawConst + 4) * sizeof(float) * 3, 0, BufferUsageHint.DynamicDraw);
+				BiToolShader = new("Shaders/babfte/BindTool.vert","Shaders/babfte/BindTool.frag");
+				GL.UseProgram(BiToolShader.Handle);
+				BiToolVAO = GL.GenVertexArray();
+				GL.BindVertexArray(BiToolVAO);
+
+				BiToolVBO = GL.GenBuffer();
+				GL.BindBuffer(BufferTarget.ArrayBuffer, BiToolVBO);
+				// GL.BufferData(BufferTarget.ArrayBuffer, BlockStuff.BulkDrawConst * sizeof(float) * 3, 0, BufferUsageHint.DynamicDraw);
+				GL.BufferData(BufferTarget.ArrayBuffer, BlockStuff.BulkDrawConst * sizeof(float) * 6, 0, BufferUsageHint.DynamicDraw);
+
+				// BiToolEBO = GL.GenBuffer();
+				// GL.BindBuffer(BufferTarget.ElementArrayBuffer, BiToolEBO);
+				// GL.BufferData(BufferTarget.ArrayBuffer, BlockStuff.BulkDrawConst * sizeof(int), 0, BufferUsageHint.DynamicDraw);
+
+				GL.EnableVertexAttribArray(0);
+				GL.VertexAttribPointer(0, 3, VertexAttribPointerType.Float, false, 6 * sizeof(float), 0);
+				GL.EnableVertexAttribArray(1);
+				GL.VertexAttribPointer(1, 3, VertexAttribPointerType.Float, false, 6 * sizeof(float), 3 * sizeof(float));
+				GL.VertexAttribDivisor(0, 1);
+				GL.VertexAttribDivisor(1, 1);
+			}
+			public static void OnRenderFrame(Game game) {
+				// int amt = ptsList.Count;
+				// switch (amt) {
+				// 	case 0: break;
+				// 	case 1:
+				// 		if((frame&127)==0)Console.Write("rendering thing\n");
+				// 		GL.UseProgram(compShader.Handle);
+				// 		GL.BindVertexArray(CSVAO);
+				// 		GL.BindBuffer(BufferTarget.ShaderStorageBuffer, CSSSBO);
+				// 		Vector3[] arr = ptsList[0];
+				// 		GL.GetBufferSubData(BufferTarget.ShaderStorageBuffer, 0, (BlockStuff.BulkDrawConst+4) * sizeof(float) * 3, arr);
+				// 		if (ASJFDKJDFKSDJ){StringBuilder s = new("\n\nbuffer after:\n");
+				// 			for (int i = 0; i < 128; i++) s.Append(arr[i]); s.Append('\n');
+				// 			Console.Write(s.ToString());ASJFDKJDFKSDJ=false;}
+				// 		GL.UseProgram(shader.Handle);
+				// 		GL.BindVertexArray(VAO);
+				// 		GL.BindBuffer(BufferTarget.ArrayBuffer, VBO);
+				// 		GL.BufferSubData(BufferTarget.ArrayBuffer, 0, sizeof(float)*3*BlockStuff.BulkDrawConst, arr[4..]);
+				// 		GL.DrawArrays(PrimitiveType.Points, 0, BlockStuff.BulkDrawConst);
+				// 		// Vector3[] list = new Vector3[BlockStuff.BulkDrawConst];
+				// 		// for (int i = 0; i < 20; i++) list[i]=(Random.Shared.NextSingle()*2f-1f,Random.Shared.NextSingle()*4f-2f,Random.Shared.NextSingle()*2f-1f);
+				// 		// GL.BufferSubData(BufferTarget.ArrayBuffer, 0, sizeof(float)*3*16, list);
+				// 		// GL.DrawArrays(PrimitiveType.Points, 0, 16);
+				// 		break;
+				// 	default:
+				// 		throw new Exception("oopsies, not made yet :3");
+				// 		// break;
+				// }
+				switch (ToolEquipped) {
+					case 4:
+						GL.UseProgram(BiToolShader.Handle);
+						GL.BindVertexArray(BiToolVAO);
+						GL.BindBuffer(BufferTarget.ArrayBuffer, BiToolVBO);
+						BiToolShader.SetMatrix4("view", currentView);
+						List<IBindableBlock> AllBiBlocks = BindableBlockStuff.AllBindableBlocks;
+						int amt = AllBiBlocks.Count;
+						const int BDCX2 = BlockStuff.BulkDrawConst<<1; // because i don't want VSCODE COLORING ALMOST EVERYTHING AFTER THAT SWITCH STATEMENT IN YELLOW DFJSFJWEJFWIOFJ
+						Vector3[] list = new Vector3[BDCX2];
+
+						int i = 0;
+						foreach (IBindableBlock block in AllBiBlocks) {
+							HashSet<IBindableBlock> bOuts = block.Outputs;
+							int count = bOuts.Count;
+							int countThing = count<<1;
+							if (countThing > 0) {
+								switch (i + countThing) {
+									case > BDCX2:
+										// throw new Exception("oopsies too many binds, i haven't implemented bulk drawing binds yet :3");
+										// remaining of the first one
+										Vector3 pos = block.Pos;
+										int amtThingy = BDCX2-i;
+										Array.Fill(list, pos, i, amtThingy);
+										IBindableBlock[] arr = new IBindableBlock[count];
+										bOuts.CopyTo(arr);
+										i++;
+										for (int j = 0; j < amtThingy>>1; j++, i+=2) list[i] = arr[j].Pos;
+										// render
+										GL.BufferSubData(BufferTarget.ArrayBuffer, 0, sizeof(float)*6*BlockStuff.BulkDrawConst, list);
+										GL.DrawArraysInstanced(PrimitiveType.Triangles, 0, 6, BlockStuff.BulkDrawConst);
+
+										// repeat full array until done or smth
+										Array.Fill(list, pos, 0, BDCX2-amtThingy);
+										int k = amtThingy;
+										for (; k < count-BDCX2; k+=BDCX2) {
+											i = 1;
+											for (int L = k; L < k+BDCX2; L++, i+=2) list[i] = arr[L].Pos;
+											GL.BufferSubData(BufferTarget.ArrayBuffer, 0, sizeof(float)*6*BlockStuff.BulkDrawConst, list);
+											GL.DrawArraysInstanced(PrimitiveType.Triangles, 0, 6, BlockStuff.BulkDrawConst);
+										}
+										for (i = 1; k < count; k++, i+=2) list[i] = arr[k].Pos;
+										i--;
+										break;
+									case BDCX2:
+										Array.Fill(list, block.Pos, i, countThing);
+										// int i2 = i+1;
+										i++;
+										foreach (IBindableBlock b in bOuts) {
+											// list[i2] = b.Pos;
+											// i2 += 2;
+											list[i] = b.Pos;
+											i += 2;
+										}
+										// i--; // i SHOULD equal BDCX2 if you do i-- here i think idk
+										GL.BufferSubData(BufferTarget.ArrayBuffer, 0, sizeof(float)*6*BlockStuff.BulkDrawConst, list);
+										GL.DrawArraysInstanced(PrimitiveType.Triangles, 0, 6, BlockStuff.BulkDrawConst);
+										i = 0;
+										// i += countThing;
+										break;
+									default:
+										Array.Fill(list, block.Pos, i, countThing);
+										// int i2 = i+1;
+										i++;
+										foreach (IBindableBlock b in bOuts) {
+											// list[i2] = b.Pos;
+											// i2 += 2;
+											list[i] = b.Pos;
+											i += 2;
+										}
+										
+										// i += countThing;
+										i--;
+										break;
+								}
+								// if (i + countThing > ((BlockStuff.BulkDrawConst<<1)-1)) {
+								// } else {
+								// } // todo this feels like it'll end up looking like crap so uh.
+							}
+						}
+						if (i > 0) { if ((frame&127)==0) Console.WriteLine("rendering binds");
+							GL.BufferSubData(BufferTarget.ArrayBuffer, 0, sizeof(float)*3*i, list);
+							GL.DrawArraysInstanced(PrimitiveType.Triangles, 0, 6, i>>1);
+						}
+						
+						break;
+				}
+			}
+			// public static bool ASJFDKJDFKSDJ = false;
+			public static List<IBindableBlock> BindToolSelList = [];
+			public static List<IBindableBlock> BindToolBindList = [];
 			public static void OnUpdateFrame(Game game) {
-				Console.WriteLine("tool equipped: "+ToolEquipped);
 				MouseState ms = game.MouseState;
 				Vector2 mousePos = ms.Position;
 				KeyboardState ks = game.KeyboardState;
+				Vector2i CliSz = game._clientSize;
+				bool ShiftSelect = ks[Keys.LeftShift] || ks[Keys.RightShift];
+				// Matrix4 view = game._camera.View;
+				Matrix4 view = currentView;
 				switch (ToolEquipped) { // none, del, build, paint, bind, scale, prop, trow; DTool, BTool, PTool, BiTool, STool, PTool, TTool, MTool lol
 					case 0: // none
 						break;
 					case 1: // del
 						if (ms[MouseButton.Left]) {
 							if (Dragging) {
-								Matrix4 viewMat = game._camera.View;
-								(float x0, float x1, float x2, float x3, float y0, float y1, float y2, float y3) = (viewMat.Row0.X, viewMat.Row1.X, viewMat.Row2.X, viewMat.Row3.X, viewMat.Row0.Y, viewMat.Row1.Y, viewMat.Row2.Y, viewMat.Row3.Y);
-								(float lx, float ly) = DragStart;
-								(float hx, float hy) = mousePos;
-								(float csx, float csy) = game._clientSize;
-								lx = (lx/csx - x3); hx = (hx/csx - x3); // me when i try to save one multiplication operation per loop
-								ly = (ly/csy - y3); hy = (hy/csy - y3); // also me when i do that again
-								// if (lx > hx) (lx, hx) = (hx, lx);
-								// if (ly > hy) (ly, hy) = (hy, ly);
-								foreach (var block in BlockStuff.AllBlocks) {
-									// matrix * vec4:
-									// new Vector4(
-									// vec.X * mat.Row0.X + vec.Y * mat.Row1.X + vec.Z * mat.Row2.X + vec.W * mat.Row3.X,
-									// vec.X * mat.Row0.Y + vec.Y * mat.Row1.Y + vec.Z * mat.Row2.Y + vec.W * mat.Row3.Y,
-									// vec.X * mat.Row0.Z + vec.Y * mat.Row1.Z + vec.Z * mat.Row2.Z + vec.W * mat.Row3.Z,
-									// vec.X * mat.Row0.W + vec.Y * mat.Row1.W + vec.Z * mat.Row2.W + vec.W * mat.Row3.W);
-									// Vector2 pos = (new Vector4(block.Pos, 1) * viewMat).Xy;
-									(float bx, float by, float bz) = block.Pos;
-									float posX = bx * x0 + by * x1 + bz * x2;
-									float posY = bx * y0 + by * y1 + bz * y2;
-									// if ((posX > lx ^ posX > hx) && (posY > ly ^ posY > hy)) {
-									// 	block.IsSelected = true;
-									// 	Console.WriteLine("block in del selection!");
-									// } else if (!(ks[Keys.LeftShift] || ks[Keys.RightShift])) block.IsSelected = false;
-									if ((posX > 0 ^ posX > 1) && (posY > 0 ^ posY > 1)) {
-										block.IsSelected = true;
-										Console.WriteLine("block in del selection!");
-									} else if (!(ks[Keys.LeftShift] || ks[Keys.RightShift])) block.IsSelected = false;
+								// Matrix4 otherview = game._camera.otherview;
+								// Matrix4 projection = game._camera.Projection;
+								// List<IBlock> AllBlocks = BlockStuff.AllBlocks;
+								// int blockCount = AllBlocks.Count;
+								// Vector3[] positions = new Vector3[blockCount];
+								// Vector3[] matThingy = [(view.Row0.X, view.Row1.X, view.Row2.X), (view.Row3.X, view.Row0.Y, view.Row1.Y), (view.Row2.Y, view.Row3.Y, view.Row0.Z), (view.Row1.Z, view.Row2.Z, view.Row3.Z)];
+								(float x0,float y0,float z0,float w0,float x1,float y1,float z1,float w1,float x2,float y2,float z2,float w2,float x3,float y3,float z3,float w3)=
+								(view.Row0.X,view.Row0.Y,view.Row0.Z,view.Row0.W,view.Row1.X,view.Row1.Y,view.Row1.Z,view.Row1.W,view.Row2.X,view.Row2.Y,view.Row2.Z,view.Row2.W,view.Row3.X,view.Row3.Y,view.Row3.Z,view.Row3.W);
+								x1 /= x0; x2 /= x0; x3 /= x0;
+								y1 /= y0; y2 /= y0; y3 /= y0;
+								(float sx, float sy) = DragStart/CliSz;
+								(float ex, float ey) = mousePos/CliSz;
+								sx = (sx*2-1)/x0;sy = (sy*-2+1)/y0;ex = (ex*2-1)/x0;ey = (ey*-2+1)/y0; // idk for some reason the y axis is flipped
+								List<IBlock> AllBlocks = BlockStuff.AllBlocks;
+								int AmtOfBlocks = AllBlocks.Count;
+								// int diff = ((AmtOfBlocks+(BlockStuff.BulkDrawConst-1))>>BlockStuff.BulkDrawBS)-ptsList.Count;
+								// if (diff>0) {do{ptsList.Add(new Vector3[BlockStuff.BulkDrawConst]);diff--;}while(diff>0);}
+								if (ShiftSelect) {
+									for (int i = AmtOfBlocks-1; i > -1; i--) {
+										IBlock block = AllBlocks[i];
+										//result = new Vector4(vec.X * mat.Row0.X + vec.Y * mat.Row1.X + vec.Z * mat.Row2.X + vec.W * mat.Row3.X,
+										// vec.X * mat.Row0.Y + vec.Y * mat.Row1.Y + vec.Z * mat.Row2.Y + vec.W * mat.Row3.Y,
+										// vec.X * mat.Row0.Z + vec.Y * mat.Row1.Z + vec.Z * mat.Row2.Z + vec.W * mat.Row3.Z,
+										// vec.X * mat.Row0.W + vec.Y * mat.Row1.W + vec.Z * mat.Row2.W + vec.W * mat.Row3.W);
+										// (float x, float y, float z, float w) = new Vector4(block.Pos, 1) * view;
+										(float x, float y, float z) = block.Pos;
+										float w = x*w0+y*w1+z*w2+w3, wi = 1f/w;
+										(x,y,z)=((x+y*x1+z*x2+x3)*wi,
+										(x+y*y1+z*y2+y3)*wi,
+										x*z0+y*z1+z*z2+z3);
+										// x /= w; y /= w; z /= w; // OH, OH, OH MY GOD YEAAAH BOIIIIIIIIIIIII YEUUREUUUEUREUEEEAAEAAAAHHHSHSSSS HOLY [__] YES OMG FINALLY HOLY COW WOW SDJFKJSDF AAAAAAAAAAAA
+										// // sdfjsdfjsjdflkdjks
+
+										if (z > -w && (x > sx ^ x > ex) && (y > sy ^ y > ey)) block.SelState |= BlockState.Selected;
+									}
+								} else {
+									for (int i = AmtOfBlocks-1; i > -1; i--) {
+										IBlock block = AllBlocks[i];
+										(float x, float y, float z) = block.Pos;
+										float w = x*w0+y*w1+z*w2+w3, wi = 1f/w;
+										(x,y,z)=((x+y*x1+z*x2+x3)*wi,
+										(x+y*y1+z*y2+y3)*wi,
+										x*z0+y*z1+z*z2+z3);
+										// x /= w; y /= w; z /= w; // OH, OH, OH MY GOD YEAAAH BOIIIIIIIIIIIII YEUUREUUUEUREUEEEAAEAAAAHHHSHSSSS HOLY [__] YES OMG FINALLY HOLY COW WOW SDJFKJSDF AAAAAAAAAAAA
+										// // sdfjsdfjsjdflkdjks
+
+										// block.IsSelected = z > -w && (x > sx ^ x > ex) && (y > sy ^ y > ey);
+										if (z > -w && (x > sx ^ x > ex) && (y > sy ^ y > ey))
+											block.SelState |= BlockState.Selected; else block.SelState &= ~BlockState.Selected;
+									}
 								}
+								// for (int i = 0; i < blockCount; i++) {
+								// 	positions[i] = AllBlocks[i].Pos;
+								// }
+								// int amtthing = (blockCount+(BlockStuff.BulkDrawConst-1))>>BlockStuff.BulkDrawBS;
+								// if (amtthing > ptsList.Count) for (int i = ptsList.Count; i < amtthing; i++) ptsList[i] = new Vector3[ptsListElementLen];
+								// for (int i = 0; i < amtthing; i++) {
+								// 	Vector3[] listToDo = ptsList[i];
+								// 	matThingy.CopyTo(listToDo, 0);
+								// 	positions.CopyTo(listToDo, 4);
+								// }
+								// GL.UseProgram(compShader.Handle);
+								// GL.BindVertexArray(CSVAO);
+								// GL.BindBuffer(BufferTarget.ShaderStorageBuffer, CSSSBO);
+								// if (amtthing > 1) {
+								// 	throw new Exception("oops too many, haven't gotten around to this yet. probably should.");
+								// } else {
+								// 	// Vector3[] arr = ptsList[0];
+								// 	// StringBuilder s = new("buffer before:\n");
+								// 	// foreach (Vector3 vec in arr)if (vec != (0,0,0)) s.Append(vec);
+								// 	// GL.BufferSubData(BufferTarget.ShaderStorageBuffer, 0, (BlockStuff.BulkDrawConst+4), arr);
+								// 	// GL.DispatchCompute(BlockStuff.BulkDrawConst, 1, 1);
+								// 	// GL.GetBufferSubData(BufferTarget.ShaderStorageBuffer, 0, (BlockStuff.BulkDrawConst+4) * sizeof(float) * 3, arr);
+								// 	// s.Append("\n\nbuffer after:\n");
+								// 	// foreach (Vector3 vec in arr)if (vec != (0,0,0)) s.Append(vec);
+								// 	// s.Append('\n');
+								// 	// Console.Write(s.ToString());
+								// 	Vector3[] arr = ptsList[0];
+								// 	if ((frame&3)==0){
+								// 		StringBuilder s = new("buffer before:\n");
+								// 		for (int i = 0; i < 128; i++)s.Append(arr[i]);
+								// 		s.Append('\n');
+								// 		Console.Write(s.ToString());ASJFDKJDFKSDJ = true;}
+								// 	GL.BufferSubData(BufferTarget.ShaderStorageBuffer, 0, (BlockStuff.BulkDrawConst+4), arr);
+								// 	GL.DispatchCompute(BlockStuff.BulkDrawConst, 1, 1);
+								// }
 							} else {
 								DragStart = mousePos;
 								Dragging = true;
@@ -2927,18 +3172,12 @@ namespace GameEngineThing {
 							Dragging = false;
 						}
 						if (ks[Keys.Enter]) {
-							{List<IBlock> BlockList = BlockStuff.AllBlocks;
-							for (int i = BlockList.Count-1; i > -1; i--) {
-								if (BlockList[i].IsSelected) BlockList.RemoveAt(i);
-							}}
-							{List<IBindableBlock> BlockList = BindableBlockStuff.AllBindableBlocks;
-							for (int i = BlockList.Count-1; i > -1; i--) {
-								if (BlockList[i].IsSelected) BlockList.RemoveAt(i);
-							}}
-							{List<Gate> BlockList = Gate.AllGates;
-							for (int i = BlockList.Count-1; i > -1; i--) {
-								if (BlockList[i].IsSelected) BlockList.RemoveAt(i);
-							}}
+							{ List<IBlock> BlockList = BlockStuff.AllBlocks;
+							for (int i = BlockList.Count-1; i > -1; i--) if ((BlockList[i].SelState&BlockState.Selected)>0) BlockList.RemoveAt(i); }
+							{ List<IBindableBlock> BlockList = BindableBlockStuff.AllBindableBlocks;
+							for (int i = BlockList.Count-1; i > -1; i--) if ((BlockList[i].SelState&BlockState.Selected)>0) BlockList.RemoveAt(i); }
+							{ List<Gate> BlockList = Gate.AllGates;
+							for (int i = BlockList.Count-1; i > -1; i--) if ((BlockList[i].SelState&BlockState.Selected)>0) BlockList.RemoveAt(i); }
 						}
 						break;
 					case 2: // build
@@ -2946,6 +3185,56 @@ namespace GameEngineThing {
 					case 3: // paint
 						break;
 					case 4: // bind
+						{
+							(float x0,float y0,float z0,float w0,float x1,float y1,float z1,float w1,float x2,float y2,float z2,float w2,float x3,float y3,float z3,float w3)=
+							(view.Row0.X,view.Row0.Y,view.Row0.Z,view.Row0.W,view.Row1.X,view.Row1.Y,view.Row1.Z,view.Row1.W,view.Row2.X,view.Row2.Y,view.Row2.Z,view.Row2.W,view.Row3.X,view.Row3.Y,view.Row3.Z,view.Row3.W);
+							(float mx, float my) = mousePos/CliSz;
+							mx = mx*2-1;my = my*-2+1; // idk for some reason the y axis is flipped
+							float maxDist = 0.03125f;
+							maxDist *= maxDist;
+							List<IBindableBlock> BlockList = BindableBlockStuff.AllBindableBlocks;
+							IBindableBlock selBlock = null;
+							int AmtOfBlocks = BlockList.Count;
+							float best = float.PositiveInfinity;
+							for (int i = AmtOfBlocks-1; i > -1; i--) {
+								IBindableBlock block = BlockList[i];
+								block.SelState &= ~BlockState.Highlighted;
+								(float x, float y, float z) = block.Pos;
+								float w = x*w0+y*w1+z*w2+w3, wi = 1f/w;
+								(x,y,z)=((x*x0+y*x1+z*x2+x3)*wi,
+								(x*y0+y*y1+z*y2+y3)*wi,
+								(x*z0+y*z1+z*z2+z3)*wi);
+								// x /= w; y /= w; z /= w; // OH, OH, OH MY GOD YEAAAH BOIIIIIIIIIIIII YEUUREUUUEUREUEEEAAEAAAAHHHSHSSSS HOLY [__] YES OMG FINALLY HOLY COW WOW SDJFKJSDF AAAAAAAAAAAA
+								// // sdfjsdfjsjdflkdjks
+
+								// block.IsSelected = z > -w && (x > sx ^ x > ex) && (y > sy ^ y > ey);
+								if (z > -1) {
+									float a = x - mx;
+									a *= a;
+									float b = y - my;
+									b *= b;
+									float c = a + b;
+									if (c<maxDist) {
+										float v = (.0625f*z*z)+c;
+										if (v < best) {
+											selBlock = block;
+											best = v;
+										}
+									}
+								}
+							}
+							if (selBlock != null) {
+								selBlock.SelState |= BlockState.Highlighted;
+								Console.WriteLine("block in highlight!");
+								if (ms.IsButtonPressed(MouseButton.Left)) {
+									selBlock.SelState |= BlockState.Selected;
+									if (ShiftSelect) BindToolBindList.Add(selBlock); else BindToolSelList.Add(selBlock);
+								}
+								if (ms.IsButtonPressed(MouseButton.Right)) {
+									selBlock.ForceToggle();
+								}
+							}
+						}
 						break;
 					case 5: // scale
 						break;
@@ -2963,7 +3252,7 @@ namespace GameEngineThing {
 					case Keys.D1: ToolEquipped = (ToolEquipped == 1) ? 0 : 1; return;
 					case Keys.D2: ToolEquipped = (ToolEquipped == 2) ? 0 : 2; return;
 					case Keys.D3: ToolEquipped = (ToolEquipped == 3) ? 0 : 3; return;
-					case Keys.D4: ToolEquipped = (ToolEquipped == 4) ? 0 : 4; return;
+					case Keys.D4: ToolEquipped = (ToolEquipped == 4) ? 0 : 4; BindToolSelList = []; BindToolBindList = []; return;
 					case Keys.D5: ToolEquipped = (ToolEquipped == 5) ? 0 : 5; return;
 					case Keys.D6: ToolEquipped = (ToolEquipped == 6) ? 0 : 6; return;
 					case Keys.D7: ToolEquipped = (ToolEquipped == 7) ? 0 : 7; return;
@@ -2982,7 +3271,30 @@ namespace GameEngineThing {
 						}
 						break;
 					case 3: break;
-					case 4: break;
+					case 4:
+						switch (e.Key) {
+							case Keys.Enter:
+								Console.Write("binding thing\nsel list count: "+BindToolSelList.Count+"\nbind list count: "+BindToolBindList.Count+'\n');
+								if (e.Control) {
+									// b1 is SelList, b2 is BindList; b1 -> b2
+									HashSet<IBindableBlock> b1 = [], b2 = [];
+									foreach (IBindableBlock a in BindToolSelList) b1.Add(a);
+									foreach (IBindableBlock a in BindToolBindList) b2.Add(a);
+
+									foreach (IBindableBlock b in b1) b.Outputs.UnionWith(b2);
+									foreach (IBindableBlock b in b2) b.Inputs.UnionWith(b1);
+								} else {
+									int doTo = Math.Min(BindToolSelList.Count, BindToolBindList.Count);
+									for (int i = 0; i < doTo; i++) {
+										IBindableBlock block1 = BindToolSelList[i], block2 = BindToolBindList[i];
+										block1.Outputs.Add(block2);
+										block2.Inputs.Add(block1);
+									}
+								}
+								BindToolSelList = []; BindToolBindList = [];
+								break;
+						}
+						break;
 					case 5: break;
 					case 6: break;
 					case 7: break;
@@ -2994,14 +3306,17 @@ namespace GameEngineThing {
 					case 0: break;
 					case 1: break;
 					case 2:
-							Vector3 position = game._player.RootPosition;
-							_ = new Gate(position);
-							Console.WriteLine("New gate made @ "+position);
-							foreach (IBindableBlock b in BindableBlockStuff.AllBindableBlocks)
-							{
-								Console.WriteLine("bindable block at "+b.Pos);
-								if (b is Gate) Console.WriteLine("b is a gate.");
-							}
+							Vector3 position = game._player.RootPosition+(MathF.FusedMultiplyAdd(Random.Shared.NextSingle(),3,-1.5f),MathF.FusedMultiplyAdd(Random.Shared.NextSingle(),3,-1.5f),MathF.FusedMultiplyAdd(Random.Shared.NextSingle(),3,-1.5f));
+							_ = new Gate(position) {
+								// Clr = ((uint)Random.Shared.Next())&0x00ffffffu
+								Clr = ((uint)Random.Shared.Next())|0xffu
+							};
+							// Console.WriteLine("New gate made @ "+position);
+							// foreach (IBindableBlock b in BindableBlockStuff.AllBindableBlocks)
+							// {
+							// 	Console.WriteLine("bindable block at "+b.Pos);
+							// 	if (b is Gate) Console.WriteLine("b is a gate.");
+							// }
 						break;
 					case 3: break;
 					case 4: break;
@@ -3041,13 +3356,14 @@ namespace GameEngineThing {
 				_ = new Gate(position, rotation);
 			}
 			public static float[] verts = [
-				0,-.2f,1, 0,0,  1,-.2f,1, 1,0,  0,.2f,1, 0,1,   1,-.2f,1, 1,0,  1,.2f,1, 1,1,  0,.2f,1, 0,1, // front
-				0,-.2f,0, 0,0,  0,.2f,0, 0,1,  1,-.2f,0, 1,0,   1,-.2f,0, 1,0,  0,.2f,0, 0,1,  1,.2f,0, 1,1, // back
-				1,-.2f,0, 0,0,  1,.2f,0, 0,1,  1,-.2f,1, 1,0,   1,-.2f,1, 1,0,  1,.2f,0, 0,1,  1,.2f,1, 1,1, // right
-				0,-.2f,0, 1,0,  0,-.2f,1, 0,0,  0,.2f,0, 1,1,   0,-.2f,1, 0,0,  0,.2f,1, 0,1,  0,.2f,0, 1,1, // left
-				0,.2f,1, 0,1,  0,.2f,0, 0,0,  1,.2f,1, 1,1,   1,.2f,1, 1,1,  0,.2f,0, 0,0,  1,.2f,0, 1,0, // top
-				0,-.2f,1, 0,0,  1,-.2f,1, 1,0,  0,-.2f,0, 0,1,   1,-.2f,1, 1,0,  1,-.2f,0, 1,1,  0,-.2f,0, 0,1, // bottom
+				-.5f,-.2f,.5f, 0,0,  .5f,-.2f,.5f, 1,0,  -.5f,.2f,.5f, 0,1,   .5f,-.2f,.5f, 1,0,  .5f,.2f,.5f, 1,1,  -.5f,.2f,.5f, 0,1, // front
+				-.5f,-.2f,-.5f, 0,0,  -.5f,.2f,-.5f, 0,1,  .5f,-.2f,-.5f, 1,0,   .5f,-.2f,-.5f, 1,0,  -.5f,.2f,-.5f, 0,1,  .5f,.2f,-.5f, 1,1, // back
+				.5f,-.2f,-.5f, 0,0,  .5f,.2f,-.5f, 0,1,  .5f,-.2f,.5f, 1,0,   .5f,-.2f,.5f, 1,0,  .5f,.2f,-.5f, 0,1,  .5f,.2f,.5f, 1,1, // right
+				-.5f,-.2f,-.5f, 1,0,  -.5f,-.2f,.5f, 0,0,  -.5f,.2f,-.5f, 1,1,   -.5f,-.2f,.5f, 0,0,  -.5f,.2f,.5f, 0,1,  -.5f,.2f,-.5f, 1,1, // left
+				-.5f,.2f,.5f, 0,1,  -.5f,.2f,-.5f, 0,0,  .5f,.2f,.5f, 1,1,   .5f,.2f,.5f, 1,1,  -.5f,.2f,-.5f, 0,0,  .5f,.2f,-.5f, 1,0, // top
+				-.5f,-.2f,.5f, 0,0,  .5f,-.2f,.5f, 1,0,  -.5f,-.2f,-.5f, 0,1,   .5f,-.2f,.5f, 1,0,  .5f,-.2f,-.5f, 1,1,  -.5f,-.2f,-.5f, 0,1, // bottom
 			];
+			public static int instanceVBO2;
 			public static void L(Game game) {
 				VAO = GL.GenVertexArray();
 				GL.BindVertexArray(VAO);
@@ -3063,7 +3379,7 @@ namespace GameEngineThing {
 
 				instanceVBO = GL.GenBuffer();
 				GL.BindBuffer(BufferTarget.ArrayBuffer, instanceVBO);
-				GL.BufferData(BufferTarget.ArrayBuffer, sizeof(float) * 9 * BlockStuff.BulkDrawConst, /*pos*/ 0, BufferUsageHint.DynamicDraw);
+				GL.BufferData(BufferTarget.ArrayBuffer, sizeof(float) * 12 * BlockStuff.BulkDrawConst, /*pos*/ 0, BufferUsageHint.DynamicDraw);
 
 				GL.EnableVertexAttribArray(2);
 				GL.VertexAttribPointer(2, 4, VertexAttribPointerType.Float, false, 12 * sizeof(float), 0);
@@ -3076,84 +3392,274 @@ namespace GameEngineThing {
 				GL.VertexAttribDivisor(3, 1);
 				GL.VertexAttribDivisor(4, 1);
 
+				instanceVBO2 = GL.GenBuffer();
+				GL.BindBuffer(BufferTarget.ArrayBuffer, instanceVBO2);
+				// GL.BufferData(BufferTarget.ArrayBuffer, sizeof(byte) * 3 * BlockStuff.BulkDrawConst, /*pos*/ 0, BufferUsageHint.DynamicDraw);
+				GL.BufferData(BufferTarget.ArrayBuffer, sizeof(uint) * BlockStuff.BulkDrawConst, /*pos*/ 0, BufferUsageHint.DynamicDraw);
+				GL.EnableVertexAttribArray(5);
+				GL.VertexAttribPointer(5, 4, VertexAttribPointerType.UnsignedByte, false, sizeof(uint), 0);
+				GL.VertexAttribDivisor(5, 1);
+
 				// // unbind
 				// GL.BindBuffer(BufferTarget.ArrayBuffer, 0);
 				// GL.BindVertexArray(0);
 				// eh it'll be fineeee without unbind here lol
 			}
-			public static int Frame = 0;
 			public static void R() {
 				GL.BindVertexArray(VAO);
-				GL.BindBuffer(BufferTarget.ArrayBuffer, instanceVBO);
-				float[] blockdata = new float[BlockStuff.BulkDrawConst*9];
+				float[] blockdata = new float[BlockStuff.BulkDrawConst*12];
+				// byte[] colordata = new byte[BlockStuff.BulkDrawConst*3]; // todo replace with uint because yes. and transparency. 2026/4/9
+				uint[] colordata = new uint[BlockStuff.BulkDrawConst];
 				int count = AllGates.Count;
+				if ((frame&255)==0)Console.WriteLine("Instance count: "+count);
+				int precalcdframething = (frame&7)<<3;
 				if (count > BlockStuff.BulkDrawConst) {
-					throw new Exception("bruhh i haven't gotten around to doing this yet..");
+					// throw new Exception("bruhh i haven't gotten around to doing this yet..");
+					int amtThing = count>>BlockStuff.BulkDrawBS;
+					for (int j = 0; j < amtThing; j++) {
+						for (int i=0, i2=j<<BlockStuff.BulkDrawBS, i3=0; i3<BlockStuff.BulkDrawConst;i+=12,i2++,i3++) {
+							Gate gate = AllGates[i2];
+							uint clr = gate.Clr;
+							// (colordata[i3], colordata[i3 + 1], colordata[i3 + 2]) = (precalcdframething + ((int)gate.SelState & 7)) switch
+							// { // oh [__] 64 cases
+							//     4 or 5 or 6 or 7 or 20 or 21 or 22 or 23 or 36 or 37 or 38 or 39 or 52 or 53 or 54 or 55 => ((byte,byte,byte))(0,255,0),
+							//     1 or 3 or 5 or 7 or 9 or 11 or 13 or 15 or 33 or 35 or 37 or 39 or 41 or 43 or 45 or 47 => ((byte)(((clr & 0x000000ffu)-255f)*.5f+255f),(byte)((((clr&0x0000ff00u)>>8)-255f)*.5f+255f),(byte)((((clr&0x00ff0000u)>>16)-255f)*.75f+255f)),
+							//     2 or 3 or 6 or 7 or 34 or 35 or 38 or 39 => ((byte, byte, byte))(51, 51, 204),
+							//     _ => ((byte)(clr&0x000000ffu),(byte)((clr&0x0000ff00u)>>8),(byte)((clr&0x00ff0000u)>>16)),
+							// };
+							colordata[i3] = (precalcdframething + ((uint)gate.SelState & 7)) switch {
+								4 or 5 or 6 or 7 or 20 or 21 or 22 or 23 or 36 or 37 or 38 or 39 or 52 or 53 or 54 or 55 => 0x00ff00ff,
+								// 1 or 3 or 5 or 7 or 9 or 11 or 13 or 15 or 33 or 35 or 37 or 39 or 41 or 43 or 45 or 47 => (((clr & 0x000000ffu)+255)>>1)|((((clr&0x0000ff00u)>>8)+255)>>1)|(((((clr&0x00ff0000u)>>16)+85)*3)>>2),
+								1 or 3 or 5 or 7 or 9 or 11 or 13 or 15 or 33 or 35 or 37 or 39 or 41 or 43 or 45 or 47 => (((((clr&0xff000000u)>>24)+255u)>>1)<<24)|((((clr&0x00ff0000u)+16711680u)>>17)<<16)|(((((clr&0x0000ff00u)*3)+65280u)>>10)<<8)|(clr&0xffu),
+								2 or 3 or 6 or 7 or 34 or 35 or 38 or 39 => 0x3333ccff, // 3333cc
+								_ => clr,
+							};
+							(float x, float y, float z) = gate.Rot;
+							// float thisT = frame+Random.Shared.NextSingle();
+							// x += MathF.Sin(thisT*.01f)*.05f;
+							// y += MathF.Sin(thisT*.01f+MathF.PI/3f)*.05f;
+							// z += MathF.Sin(thisT*.01f+MathF.PI/1.5f)*.05f;
+							x = MathF.FusedMultiplyAdd(MathF.Sin(frame*.01f),.05f,x);
+							y = MathF.FusedMultiplyAdd(MathF.Sin(MathF.FusedMultiplyAdd(frame,.01f,MathF.PI/3f)),.05f,y);
+							z = MathF.FusedMultiplyAdd(MathF.Sin(MathF.FusedMultiplyAdd(frame,.01f,MathF.PI/1.5f)),.05f,z);
+							float num = MathF.Cos(x),
+							num2 = MathF.Sin(x),
+							num3 = MathF.Cos(y),
+							num4 = MathF.Sin(y),
+							num5 = MathF.Cos(z),
+							num6 = MathF.Sin(z);
+							(float x8, float y8, float z8) = gate.Pos;
+							float n4xn5 = num4*num5;
+							float x2 = MathF.FusedMultiplyAdd(num2,n4xn5,-num*num6);
+							float x3 = MathF.FusedMultiplyAdd(num,n4xn5,num2*num6);
+							// (blockdata[i],blockdata[i+1],blockdata[i+2],blockdata[i+3])=(num3*num5,x2,x3,x8);
+							// (blockdata[i+4],blockdata[i+5],blockdata[i+6],blockdata[i+7])=(num3*num6,x2*num6+num*num5,x3*num6-num2*num5,y8);
+							// (blockdata[i+8],blockdata[i+9],blockdata[i+10],blockdata[i+11])=(-num4,num2*num3,num*num3,z8);
+// 							new float[12] {num3*num5,x2,x3,x8,
+// num3*num6,x2*num6+num*num5,x3*num6-num2*num5,y8,
+// -num4,num2*num3,num*num3,z8}.CopyTo(blockdata, i);
+							blockdata[i] = num3*num5;
+							blockdata[i+1] = x2;
+							blockdata[i+2] = x3;
+							blockdata[i+3] = x8;
+							blockdata[i+4] = num3*num6;
+							blockdata[i+5] = MathF.FusedMultiplyAdd(x2,num6,num*num5);
+							blockdata[i+6] = MathF.FusedMultiplyAdd(x3,num6,-num2*num5);
+							blockdata[i+7] = y8;
+							blockdata[i+8] = -num4;
+							blockdata[i+9] = num2*num3;
+							blockdata[i+10] = num*num3;
+							blockdata[i+11] = z8;
+						}
+						GL.BindBuffer(BufferTarget.ArrayBuffer, instanceVBO);
+						GL.BufferSubData(BufferTarget.ArrayBuffer, 0, sizeof(float)*12*BlockStuff.BulkDrawConst, blockdata);
+						GL.BindBuffer(BufferTarget.ArrayBuffer, instanceVBO2);
+						// GL.BufferSubData(BufferTarget.ArrayBuffer, 0, sizeof(byte)*3*BlockStuff.BulkDrawConst, colordata);
+						GL.BufferSubData(BufferTarget.ArrayBuffer, 0, sizeof(uint)*BlockStuff.BulkDrawConst, colordata);
+						GL.DrawArraysInstanced(PrimitiveType.Triangles, 0, 36, BlockStuff.BulkDrawConst);
+					}
+					int amt = count&(BlockStuff.BulkDrawConst-1);
+					if (amt > 0) {
+						for (int i=0,i2=amtThing<<BlockStuff.BulkDrawBS,i3=0; i2 < count; i+=12,i2++,i3++) {
+							// (blockdata[i], blockdata[i+1], blockdata[i+2]) = AllGates[i2].Pos;
+							// (blockdata[i+3], blockdata[i+4], blockdata[i+5]) = AllGates[i2].Rot;
+							// (blockdata[i+6], blockdata[i+7], blockdata[i+8]) = AllGates[i2].Clr;
+							Gate gate = AllGates[i2];
+							uint clr = gate.Clr;
+							colordata[i3] = (precalcdframething + ((uint)gate.SelState & 7)) switch {
+								4 or 5 or 6 or 7 or 20 or 21 or 22 or 23 or 36 or 37 or 38 or 39 or 52 or 53 or 54 or 55 => 0x00ff00ff,
+								// 1 or 3 or 5 or 7 or 9 or 11 or 13 or 15 or 33 or 35 or 37 or 39 or 41 or 43 or 45 or 47 => (((clr & 0x000000ffu)+255)>>1)|((((clr&0x0000ff00u)>>8)+255)>>1)|(((((clr&0x00ff0000u)>>16)+85)*3)>>2),
+								1 or 3 or 5 or 7 or 9 or 11 or 13 or 15 or 33 or 35 or 37 or 39 or 41 or 43 or 45 or 47 => (((((clr&0xff000000u)>>24)+255u)>>1)<<24)|((((clr&0x00ff0000u)+16711680u)>>17)<<16)|(((((clr&0x0000ff00u)*3)+65280u)>>10)<<8)|(clr&0xffu),
+								2 or 3 or 6 or 7 or 34 or 35 or 38 or 39 => 0x3333ccff, // 3333cc
+								_ => clr,
+							};
+							// (float x, float y, float z) = gate.Rot;
+							// float thisT = frame+Random.Shared.NextSingle();
+							// x += MathF.Sin(thisT*.01f)*.05f;
+							// y += MathF.Sin(thisT*.01f+MathF.PI/3f)*.05f;
+							// z += MathF.Sin(thisT*.01f+MathF.PI/1.5f)*.05f;
+							(float x, float y, float z) = gate.Rot;
+							x = MathF.FusedMultiplyAdd(MathF.Sin(frame*.01f),.05f,x);
+							y = MathF.FusedMultiplyAdd(MathF.Sin(MathF.FusedMultiplyAdd(frame,.01f,MathF.PI/3f)),.05f,y);
+							z = MathF.FusedMultiplyAdd(MathF.Sin(MathF.FusedMultiplyAdd(frame,.01f,MathF.PI/1.5f)),.05f,z);
+							float num = MathF.Cos(x),
+							num2 = MathF.Sin(x),
+							num3 = MathF.Cos(y),
+							num4 = MathF.Sin(y),
+							num5 = MathF.Cos(z),
+							num6 = MathF.Sin(z);
+							(float x8, float y8, float z8) = gate.Pos;
+							float n4xn5 = num4*num5;
+							float x2 = MathF.FusedMultiplyAdd(num2,n4xn5,-num*num6);
+							float x3 = MathF.FusedMultiplyAdd(num,n4xn5,num2*num6);
+							blockdata[i] = num3*num5;
+							blockdata[i+1] = x2;
+							blockdata[i+2] = x3;
+							blockdata[i+3] = x8;
+							blockdata[i+4] = num3*num6;
+							blockdata[i+5] = MathF.FusedMultiplyAdd(x2,num6,num*num5);
+							blockdata[i+6] = MathF.FusedMultiplyAdd(x3,num6,-num2*num5);
+							blockdata[i+7] = y8;
+							blockdata[i+8] = -num4;
+							blockdata[i+9] = num2*num3;
+							blockdata[i+10] = num*num3;
+							blockdata[i+11] = z8;
+						}
+						GL.BindBuffer(BufferTarget.ArrayBuffer, instanceVBO);
+						GL.BufferSubData(BufferTarget.ArrayBuffer, 0, sizeof(float)*12*amt, blockdata);
+						GL.BindBuffer(BufferTarget.ArrayBuffer, instanceVBO2);
+						GL.BufferSubData(BufferTarget.ArrayBuffer, 0, sizeof(uint)*count, colordata);
+						GL.DrawArraysInstanced(PrimitiveType.Triangles, 0, 36, amt);}
 				} else {
-					for (int i = 0, i2=0; i < count*12; i+=12,i2++) {
+					for (int i = 0, i2=0; i2 < count; i+=12,i2++) {
 						// (blockdata[i], blockdata[i+1], blockdata[i+2]) = AllGates[i2].Pos;
 						// (blockdata[i+3], blockdata[i+4], blockdata[i+5]) = AllGates[i2].Rot;
 						// (blockdata[i+6], blockdata[i+7], blockdata[i+8]) = AllGates[i2].Clr;
 						Gate gate = AllGates[i2];
+						uint clr = gate.Clr;
+						// float r,g,b;
+						// switch (precalcdframething+((int)gate.SelState&7)) { // oh [__] 64 cases
+						// 	case 4 or 5 or 6 or 7 or 20 or 21 or 22 or 23 or 36 or 37 or 38 or 39 or 52 or 53 or 54 or 55:
+						// 		(r,g,b)=(0,1,0);
+						// 		break;
+						// 	case 1 or 3 or 5 or 7 or 9 or 11 or 13 or 15 or 33 or 35 or 37 or 39 or 41 or 43 or 45 or 47:
+						// 		r=((clr&0x000000ffu)-255f)*.5f+255f;g=(((clr&0x0000ff00u)>>8)-255f)*.5f+255f;b=(((clr&0x00ff0000u)>>16)-255f)*.75f+255f;
+						// 		break;
+						// 	case 2 or 3 or 6 or 7 or 34 or 35 or 38 or 39:
+						// 		(r,g,b)=(.2f,.2f,.8f);
+						// 		break;
+						// 	default:
+						// 		r=clr&0x000000ffu;g=(clr&0x0000ff00u)>>8;b=(clr&0x00ff0000u)>>16;
+						// 		break;
+						// }
+						// if (gate.State && ((frame&1)==0)) {
+						// } else if ((gate.SelState&BlockState.Selected)>0 && ((frame&2)==0)) {
+						// /*} else */if ((gate.SelState&BlockState.Highlighted)>0 && ((frame&4)==0)) {
+						// } else {
+						// }
+						// if (Frame%256==0) Console.WriteLine("RGB:"+r+','+g+','+b+';');
+						// (colordata[i3], colordata[i3+1], colordata[i3+2]) = ((byte)r,(byte)g,(byte)b);
+						colordata[i2] = (precalcdframething + ((uint)gate.SelState & 7)) switch {
+							4 or 5 or 6 or 7 or 20 or 21 or 22 or 23 or 36 or 37 or 38 or 39 or 52 or 53 or 54 or 55 => 0x00ff00ff,
+							// 1 or 3 or 5 or 7 or 9 or 11 or 13 or 15 or 33 or 35 or 37 or 39 or 41 or 43 or 45 or 47 => (((clr & 0x000000ffu)+255)>>1)|((((clr&0x0000ff00u)>>8)+255)>>1)|(((((clr&0x00ff0000u)>>16)+85)*3)>>2),
+							1 or 3 or 5 or 7 or 9 or 11 or 13 or 15 or 33 or 35 or 37 or 39 or 41 or 43 or 45 or 47 => (((((clr&0xff000000u)>>24)+255u)>>1)<<24)|((((clr&0x00ff0000u)+16711680u)>>17)<<16)|(((((clr&0x0000ff00u)*3)+65280u)>>10)<<8)|(clr&0xffu),
+							2 or 3 or 6 or 7 or 34 or 35 or 38 or 39 => 0x3333ccff, // 3333cc
+							_ => clr,
+						};
 						(float x, float y, float z) = gate.Rot;
-						float thisT = Frame+Random.Shared.NextSingle();
-						x += MathF.Sin(thisT*.01f)*.05f;
-						y += MathF.Sin(thisT*.01f+MathF.PI/3f)*.05f;
-						z += MathF.Sin(thisT*.01f+MathF.PI/1.5f)*.05f;
+						x = MathF.FusedMultiplyAdd(MathF.Sin(frame*.01f),.05f,x);
+						y = MathF.FusedMultiplyAdd(MathF.Sin(MathF.FusedMultiplyAdd(frame,.01f,MathF.PI/3f)),.05f,y);
+						z = MathF.FusedMultiplyAdd(MathF.Sin(MathF.FusedMultiplyAdd(frame,.01f,MathF.PI/1.5f)),.05f,z);
 						float num = MathF.Cos(x),
 						num2 = MathF.Sin(x),
 						num3 = MathF.Cos(y),
 						num4 = MathF.Sin(y),
 						num5 = MathF.Cos(z),
 						num6 = MathF.Sin(z);
-						float x2 = num2 * num4, x3 = num * num4;
+						// float x2 = num2 * num4, x3 = num * num4;
+						// (float x8, float y8, float z8) = gate.Pos;
+						// x2 = x2*num5-num*num6;
+						// float y2 = x2*num6+num*num5;
+						// float z2 = num2*num3;
+						// x3 = x3*num5+num2*num6;
+						// float y3 = x3*num6-num2*num5;
+						// float z3 = num*num3;
+						// // Matrix4 result = new(
+						// // 	num3*num5,num3*num6,-num4,0,
+						// // 	x2,y2,z2,0,
+						// // 	x3,y3,z3,0,
+						// // 	x8,y8,z8,1
+						// // );
+						// (blockdata[i],blockdata[i+1],blockdata[i+2],blockdata[i+3])=(num3*num5,x2,x3,x8);
+						// (blockdata[i+4],blockdata[i+5],blockdata[i+6],blockdata[i+7])=(num3*num6,y2,y3,y8);
+						// (blockdata[i+8],blockdata[i+9],blockdata[i+10],blockdata[i+11])=(-num4,z2,z3,z8);
 						(float x8, float y8, float z8) = gate.Pos;
-						x2 = x2*num5-num*num6;
-						float y2 = x2*num6+num*num5;
-						float z2 = num2*num3;
-						x3 = x3*num5+num2*num6;
-						float y3 = x3*num6-num2*num5;
-						float z3 = num*num3;
-						// Matrix4 result = new(
-						// 	num3*num5,num3*num6,-num4,0,
-						// 	x2,y2,z2,0,
-						// 	x3,y3,z3,0,
-						// 	x8,y8,z8,1
-						// );
-						(blockdata[i],blockdata[i+1],blockdata[i+2],blockdata[i+3])=(num3*num5,x2,x3,x8);
-						(blockdata[i+4],blockdata[i+5],blockdata[i+6],blockdata[i+7])=(num3*num6,y2,y3,y8);
-						(blockdata[i+8],blockdata[i+9],blockdata[i+10],blockdata[i+11])=(-num4,z2,z3,z8);
+						float n4xn5 = num4*num5;
+						float x2 = MathF.FusedMultiplyAdd(num2,n4xn5,-num*num6);
+						float x3 = MathF.FusedMultiplyAdd(num,n4xn5,num2*num6);
+						blockdata[i] = num3*num5;
+						blockdata[i+1] = x2;
+						blockdata[i+2] = x3;
+						blockdata[i+3] = x8;
+						blockdata[i+4] = num3*num6;
+						blockdata[i+5] = MathF.FusedMultiplyAdd(x2,num6,num*num5);
+						blockdata[i+6] = MathF.FusedMultiplyAdd(x3,num6,-num2*num5);
+						blockdata[i+7] = y8;
+						blockdata[i+8] = -num4;
+						blockdata[i+9] = num2*num3;
+						blockdata[i+10] = num*num3;
+						blockdata[i+11] = z8;
 					}
+					GL.BindBuffer(BufferTarget.ArrayBuffer, instanceVBO);
 					GL.BufferSubData(BufferTarget.ArrayBuffer, 0, sizeof(float)*12*count, blockdata);
+					GL.BindBuffer(BufferTarget.ArrayBuffer, instanceVBO2);
+					GL.BufferSubData(BufferTarget.ArrayBuffer, 0, sizeof(uint)*count, colordata);
 					GL.DrawArraysInstanced(PrimitiveType.Triangles, 0, 36, count);
 				}
-				Frame++;
 			}
 			public override bool OnUpdate() {
 				bool NewState;
 				switch (Type) {
 					case GateType.And:
 						NewState = true;
-						foreach (IBindableBlock block in Inputs) if (!block.State) {NewState = false; break;}
+						foreach (IBindableBlock block in Inputs) if ((block.SelState&BlockState.On)==0) {NewState = false; break;}
 						break;
 					case GateType.Or:
 						NewState = false;
-						foreach (IBindableBlock block in Inputs) if (block.State) {NewState = true; break;}
+						foreach (IBindableBlock block in Inputs) if ((block.SelState&BlockState.On)>0) {NewState = true; break;}
 						break;
 					case GateType.Xor:
 						NewState = true;
-						foreach (IBindableBlock block in Inputs) NewState ^= block.State;
+						foreach (IBindableBlock block in Inputs) NewState ^= (block.SelState&BlockState.On)>0;
 						break;
 					default: throw new Exception();
 				}
-				if (State ^ NewState ^ Not) {
-					State ^= true;
-					foreach (IBindableBlock block in Outputs) {
-						BindableBlockStuff.QueueBlock(block);
-					}
+				if (((SelState&BlockState.On)>0) ^ NewState ^ Not) {
+					// State ^= true;
+					SelState ^= BlockState.On;
+					ForceEvent();
 					return true;
 				}
 				return false;
+			}
+			public override void ForceEvent() {
+				foreach (IBindableBlock block in Outputs) BindableBlockStuff.QueueBlock(block);
+			}
+			public override void ForceSet(bool state) {
+				if (((SelState&BlockState.On)>0) ^ state) {
+					SelState^=BlockState.On;
+					ForceEvent();
+				}
+			}
+			public override void ForceToggle() {
+				SelState ^= BlockState.On;
+				ForceEvent();
+			}
+			public override void QuietForceSet(bool state) {
+				if (((SelState&BlockState.On)>0)^state)SelState^=BlockState.On;
+			}
+			public override void QuietForceToggle() {
+				SelState ^= BlockState.On;
 			}
 		}
 		public Shader shader;
@@ -3177,6 +3683,7 @@ namespace GameEngineThing {
 			GL.UseProgram(shader.Handle);
 			// GenDefaultWorld();
 			foreach (Type type in BlockStuff.AllBlockTypes) type.GetMethod("L")?.Invoke(null, [game]);
+			Tools.OnLoad(game);
 			GL.BindVertexArray(0);
 			// cubeVAO = GL.GenVertexArray();
 			// GL.BindVertexArray(cubeVAO);
@@ -3206,30 +3713,32 @@ namespace GameEngineThing {
 
 		}
 		Game game;
+		public static Matrix4 currentView;
 		public override void OnRenderFrame(Game game, double dt) {
 			base.OnRenderFrame(game, dt);
 			GL.UseProgram(shader.Handle);
-			GL.UniformMatrix4(GL.GetUniformLocation(shader.Handle, "view"), true, ref game._camera.View);
-			foreach (var BlockType in BlockStuff.BlockRenderBehavior) {
-				BlockType.Value();
+			currentView = game._camera.View;
+			GL.UniformMatrix4(GL.GetUniformLocation(shader.Handle, "view"), true, ref currentView);
+			foreach (var BlockRenderAction in BlockStuff.BlockRenderBehavior.Values) {
+				BlockRenderAction();
 			}
+			Tools.OnRenderFrame(game);
 		}
 		public override void OnUpdateFrame(Game game, double dt) {
 			base.OnUpdateFrame(game, dt);
-			frame++;
 			BindableBlockStuff.OnUpdateFrame();
-
 			Tools.OnUpdateFrame(game);
+			frame++;
 		}
 		public override void OnKeyDown(KeyboardKeyEventArgs e) {
 			base.OnKeyDown(e);
 			Tools.OnKeyDown(e);
 		}
-        public override void OnMouseDown(MouseButtonEventArgs e)
-        {
-            base.OnMouseDown(e);
+		public override void OnMouseDown(MouseButtonEventArgs e)
+		{
+			base.OnMouseDown(e);
 			Tools.OnMouseDown(e, game);
-        }
+		}
 	}
 	public class RandomProgramStuff : IMinigame {
 		public const string GameIdentifier = "randomprogramstuff";
@@ -3279,6 +3788,35 @@ namespace GameEngineThing {
 				Console.Write("\nWeapon order:\n");
 				for (int i = 0; i < thingyy; i++) Console.Write(weaponlist[i]+", avg dmg: "+avgdmglist[i]);
 				Console.Write("Done! :3\n");
+			},
+			["divmultbench"] = delegate() {
+				Console.Write("Division and multiplication benchmark thing\n");
+				for (int _i = 0; _i < 10; _i++){
+					long t0 = Stopwatch.GetTimestamp();
+					float[] numbers = new float[10000000];
+					for (int i = 0; i < 10000000; i++) numbers[i] = Random.Shared.NextSingle()*16-8;
+					float[] numbers0 = new float[10000000];
+					for (int i = 0; i < 10000000; i++) numbers0[i] = Random.Shared.NextSingle()*16-8;
+					float[] numbers1 = (float[])numbers.Clone(), numbers2 = (float[])numbers.Clone();
+					long t1 = Stopwatch.GetTimestamp();
+					Console.Write("\nTime to prepare: "+((t1-t0)/(double)Stopwatch.Frequency));
+					long t2 = Stopwatch.GetTimestamp();
+					for (int i = 0; i < 10000000; i++) {
+						numbers1[i] /= numbers0[i];
+					}
+					long t3 = Stopwatch.GetTimestamp();
+					Console.Write("\nDivision: "+((t3-t2)/(double)Stopwatch.Frequency));
+					long t4 = Stopwatch.GetTimestamp();
+					for (int i = 0; i < 10000000; i++) {
+						numbers2[i] *= numbers0[i];
+					}
+					long t5 = Stopwatch.GetTimestamp();
+					Console.Write("\nMult: "+((t5-t4)/(double)Stopwatch.Frequency)+'\n');
+					double total = 1;
+					foreach (float n in numbers0) {total = total*n+Random.Shared.NextSingle();}
+					Console.Write(total+'\n');
+				}
+				Console.Write("done\nenter to continue\n");
 			}
 		};
 		public override void OnLoad(Game game) {
