@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
+using System.Runtime.CompilerServices;
 using System.Text;
 using OpenTK.Mathematics;
 using OpenTK.Windowing.Common;
@@ -263,6 +264,7 @@ namespace GameEngineThing
 			["loafLegacyNoLR"] = new(XPA, 286, 0, 9f, 8f, 2f, 0f, 1f, 0f),
 			["unknown"] = new(XPA, 0, 32, 16f, 16f, 0, 1),
 			["note"] = new(XPA, 16, 32, 16f, 16f, 0, 1),
+			["0x0ON"] = new(XPA, 1.5f, 0.5f, 0f, 0f, 0f, 0f),
 		};
 		private static readonly Dictionary<string, string> SCharsDuplicates = new()
 		{
@@ -297,26 +299,26 @@ namespace GameEngineThing
 		public static readonly float[] CubeV = [
 		//   positions            texture coords
 			// first 3 faces            btm -> bottom, top -> top, r -> right, l -> left, bk -> back, fr -> front
-			 .5f, -.5f, -.5f,   0f, 0f,  //  btm - r - bk
-			 .5f, -.5f,  .5f,   0f, 1f,  //  top - r - bk
-			-.5f, -.5f, -.5f,   1f, 0f,  //  btm - l - bk
-			-.5f, -.5f,  .5f,   1f, 1f,  //  top - l - bk
+			 .5f, -.5f,  .5f,   0f, 0f,  //  btm - r - fr
+			 .5f, -.5f, -.5f,   0f, 1f,  //  top - r - fr
+			-.5f, -.5f,  .5f,   1f, 0f,  //  btm - l - fr
+			-.5f, -.5f, -.5f,   1f, 1f,  //  top - l - fr
 
-			-.5f,  .5f, -.5f,   2f, 0f,  //  btm - l - fr
-			-.5f,  .5f,  .5f,   2f, 1f,  //  top - l - fr
-			 .5f,  .5f, -.5f,   3f, 0f,  //  btm - r - fr
-			 .5f,  .5f,  .5f,   3f, 1f,  //  top - r - fr
+			-.5f,  .5f,  .5f,   2f, 0f,  //  btm - l - bk
+			-.5f,  .5f, -.5f,   2f, 1f,  //  top - l - bk
+			 .5f,  .5f,  .5f,   3f, 0f,  //  btm - r - bk
+			 .5f,  .5f, -.5f,   3f, 1f,  //  top - r - bk
 
 			// second 3 faces
-			-.5f, -.5f, -.5f,   0f, 0f,  //  btm - l - bk
-			-.5f,  .5f, -.5f,   0f, 1f,  //  btm - l - fr
-			 .5f, -.5f, -.5f,   1f, 0f,  //  btm - r - bk
-			 .5f,  .5f, -.5f,   1f, 1f,  //  btm - r - fr
-			
-			 .5f, -.5f,  .5f,   2f, 0f,  //  top - r - bk
-			 .5f,  .5f,  .5f,   2f, 1f,  //  top - r - fr
-			-.5f, -.5f,  .5f,   3f, 0f,  //  top - l - bk
-			-.5f,  .5f,  .5f,   3f, 1f,  //  top - l - fr
+			-.5f, -.5f,  .5f,   0f, 0f,  //  btm - l - fr
+			-.5f,  .5f,  .5f,   0f, 1f,  //  btm - l - bk
+			 .5f, -.5f,  .5f,   1f, 0f,  //  btm - r - fr
+			 .5f,  .5f,  .5f,   1f, 1f,  //  btm - r - bk
+
+			 .5f, -.5f, -.5f,   2f, 0f,  //  top - r - fr
+			 .5f,  .5f, -.5f,   2f, 1f,  //  top - r - bk
+			-.5f, -.5f, -.5f,   3f, 0f,  //  top - l - fr
+			-.5f,  .5f, -.5f,   3f, 1f,  //  top - l - bk
 		];
 		public static readonly uint[] CubeI = [ // 0, 1, 2,  5, 6, 7...
 		   0,1,2, 1,2,3,
@@ -335,32 +337,32 @@ namespace GameEngineThing
 		];
 		public static readonly uint[] TetrahedronI = [0, 1, 2, 0, 1, 3, 0, 2, 3, 1, 2, 3];
 		public static readonly float[] PlrTorsoV = [
-			-.5f, -.5f, -.5f,   60/2048f, 128/2048f, -.5f, -.3f, -.5f,   64/2048f, 128/2048f,
-			 .5f, -.5f, -.5f,   60/2048f, 148/2048f,  .5f, -.3f, -.5f,   64/2048f, 148/2048f,
-			 .5f, -.5f,  .5f,   60/2048f, 128/2048f,  .5f, -.3f,  .5f,   64/2048f, 128/2048f,
-			-.5f, -.5f,  .5f,   60/2048f, 148/2048f, -.5f, -.3f,  .5f,   64/2048f, 148/2048f,
+			-.5f, -.5f,  .5f,   60/2048f, 128/2048f, -.5f, -.3f,  .5f,   64/2048f, 128/2048f,
+			 .5f, -.5f,  .5f,   60/2048f, 148/2048f,  .5f, -.3f,  .5f,   64/2048f, 148/2048f,
+			 .5f, -.5f, -.5f,   60/2048f, 128/2048f,  .5f, -.3f, -.5f,   64/2048f, 128/2048f,
+			-.5f, -.5f, -.5f,   60/2048f, 148/2048f, -.5f, -.3f, -.5f,   64/2048f, 148/2048f,
 
-			-.5f, -.5f, -.5f,   40/2048f, 128/2048f,  .5f, -.5f, -.5f,   60/2048f, 128/2048f,
-			 .5f, -.5f,  .5f,   60/2048f, 148/2048f, -.5f, -.5f,  .5f,   40/2048f, 148/2048f,
-			-.5f, -.3f, -.5f,   40/2048f, 128/2048f,  .5f, -.3f, -.5f,   60/2048f, 128/2048f,
-			 .5f, -.3f,  .5f,   60/2048f, 148/2048f, -.5f, -.3f,  .5f,   40/2048f, 148/2048f,
-
-
-			-.5f,  .5f, -.5f,   60/2048f, 128/2048f, -.5f,  .3f, -.5f,   64/2048f, 128/2048f,
-			 .5f,  .5f, -.5f,   60/2048f, 148/2048f,  .5f,  .3f, -.5f,   64/2048f, 148/2048f,
-			 .5f,  .5f,  .5f,   60/2048f, 128/2048f,  .5f,  .3f,  .5f,   64/2048f, 128/2048f,
-			-.5f,  .5f,  .5f,   60/2048f, 148/2048f, -.5f,  .3f,  .5f,   64/2048f, 148/2048f,
-
-			-.5f,  .5f, -.5f,   40/2048f, 128/2048f,  .5f,  .5f, -.5f,   60/2048f, 128/2048f,
-			 .5f,  .5f,  .5f,   60/2048f, 148/2048f, -.5f,  .5f,  .5f,   40/2048f, 148/2048f,
-			-.5f,  .3f, -.5f,   40/2048f, 128/2048f,  .5f,  .3f, -.5f,   60/2048f, 128/2048f,
-			 .5f,  .3f,  .5f,   60/2048f, 148/2048f, -.5f,  .3f,  .5f,   40/2048f, 148/2048f,
+			-.5f, -.5f,  .5f,   40/2048f, 128/2048f,  .5f, -.5f,  .5f,   60/2048f, 128/2048f,
+			 .5f, -.5f, -.5f,   60/2048f, 148/2048f, -.5f, -.5f, -.5f,   40/2048f, 148/2048f,
+			-.5f, -.3f,  .5f,   40/2048f, 128/2048f,  .5f, -.3f,  .5f,   60/2048f, 128/2048f,
+			 .5f, -.3f, -.5f,   60/2048f, 148/2048f, -.5f, -.3f, -.5f,   40/2048f, 148/2048f,
 
 
-			-.375f, -.35f, -.375f,   64/2048f, 128/2048f, -.375f,  .35f, -.375f,   64/2048f, 142/2048f,
-			 .375f, -.35f, -.375f,   79/2048f, 128/2048f,  .375f,  .35f, -.375f,   79/2048f, 142/2048f,
-			 .375f, -.35f,  .375f,   64/2048f, 128/2048f,  .375f,  .35f,  .375f,   64/2048f, 142/2048f,
-			-.375f, -.35f,  .375f,   79/2048f, 128/2048f, -.375f,  .35f,  .375f,   79/2048f, 142/2048f,
+			-.5f,  .5f,  .5f,   60/2048f, 128/2048f, -.5f,  .3f,  .5f,   64/2048f, 128/2048f,
+			 .5f,  .5f,  .5f,   60/2048f, 148/2048f,  .5f,  .3f,  .5f,   64/2048f, 148/2048f,
+			 .5f,  .5f, -.5f,   60/2048f, 128/2048f,  .5f,  .3f, -.5f,   64/2048f, 128/2048f,
+			-.5f,  .5f, -.5f,   60/2048f, 148/2048f, -.5f,  .3f, -.5f,   64/2048f, 148/2048f,
+
+			-.5f,  .5f,  .5f,   40/2048f, 128/2048f,  .5f,  .5f,  .5f,   60/2048f, 128/2048f,
+			 .5f,  .5f, -.5f,   60/2048f, 148/2048f, -.5f,  .5f, -.5f,   40/2048f, 148/2048f,
+			-.5f,  .3f,  .5f,   40/2048f, 128/2048f,  .5f,  .3f,  .5f,   60/2048f, 128/2048f,
+			 .5f,  .3f, -.5f,   60/2048f, 148/2048f, -.5f,  .3f, -.5f,   40/2048f, 148/2048f,
+
+
+			-.375f, -.35f,  .375f,   64/2048f, 128/2048f, -.375f,  .35f,  .375f,   64/2048f, 142/2048f,
+			 .375f, -.35f,  .375f,   79/2048f, 128/2048f,  .375f,  .35f,  .375f,   79/2048f, 142/2048f,
+			 .375f, -.35f, -.375f,   64/2048f, 128/2048f,  .375f,  .35f, -.375f,   64/2048f, 142/2048f,
+			-.375f, -.35f, -.375f,   79/2048f, 128/2048f, -.375f,  .35f, -.375f,   79/2048f, 142/2048f,
 		];
 		public static readonly uint[] PlrTorsoI = [
 			0,1,2, 1,2,3,  2,3,4, 3,4,5,  4,5,6, 5,6,7,  6,7,0, 7,0,1,
@@ -370,14 +372,14 @@ namespace GameEngineThing
 			32,33,34, 33,34,35,  34,35,36, 35,36,37,  36,37,38, 37,38,39,  38,39,32, 39,32,33,
 		];
 		public static readonly float[] PlrArmV = [
-			-.25f,  .2f, -.25f,   40/2048f, 188/2048f,   -.25f, -1f, -.25f,   40/2048f, 148/2048f,
-			 .25f,  .2f, -.25f,   60/2048f, 188/2048f,    .25f, -1f, -.25f,   60/2048f, 148/2048f,
-			 .25f,  .2f,  .25f,   40/2048f, 188/2048f,    .25f, -1f,  .25f,   40/2048f, 148/2048f,
-			-.25f,  .2f,  .25f,    0/2048f, 188/2048f,   -.25f, -1f,  .25f,    0/2048f, 148/2048f,
-			-.25f,  .2f,  .25f,   60/2048f, 188/2048f,   -.25f, -1f,  .25f,   60/2048f, 148/2048f,
+			-.25f,  .25f, -.25f,   40/2048f, 188/2048f,   -.25f, -1f, -.25f,   40/2048f, 148/2048f,
+			 .25f,  .25f, -.25f,   60/2048f, 188/2048f,    .25f, -1f, -.25f,   60/2048f, 148/2048f,
+			 .25f,  .25f,  .25f,   40/2048f, 188/2048f,    .25f, -1f,  .25f,   40/2048f, 148/2048f,
+			-.25f,  .25f,  .25f,    0/2048f, 188/2048f,   -.25f, -1f,  .25f,    0/2048f, 148/2048f,
+			-.25f,  .25f,  .25f,   60/2048f, 188/2048f,   -.25f, -1f,  .25f,   60/2048f, 148/2048f,
 
-			-.25f,  .2f, -.25f,   20/2048f, 128/2048f,    .25f,  .2f, -.25f,   40/2048f, 128/2048f,
-			 .25f,  .2f,  .25f,   40/2048f, 148/2048f,   -.25f,  .2f,  .25f,   20/2048f, 148/2048f,
+			-.25f,  .25f, -.25f,   20/2048f, 128/2048f,    .25f,  .25f, -.25f,   40/2048f, 128/2048f,
+			 .25f,  .25f,  .25f,   40/2048f, 148/2048f,   -.25f,  .25f,  .25f,   20/2048f, 148/2048f,
 			-.25f, -1f, -.25f,    0/2048f, 128/2048f,    .25f, -1f, -.25f,   20/2048f, 128/2048f,
 			 .25f, -1f,  .25f,   20/2048f, 148/2048f,   -.25f, -1f,  .25f,    0/2048f, 148/2048f,
 		];
@@ -515,8 +517,33 @@ namespace GameEngineThing
 			g switch { < 2 and > 1 => v + (1 - g) * sv, < 2 => v, _ => v - sv },
 			b switch { < 2 and > 1 => v + (1 - b) * sv, < 2 => v, _ => v - sv }); // good luck trying to figure this out lol. also idk it this even is optimized..
 		}
-		public static Vector3 HueToRGB(float hue)
-		{
+		/// <summary>
+		/// HUE IS FROM 0-6 INSTEAD OF 0-1 ON THIS SPECIFIC ONE AND v IS FROM 0-255(?), REMEMBER!!!
+		/// </summary>
+		/// <param name="h"></param>
+		/// <param name="sv"></param>
+		/// <param name="v"></param>
+		/// <returns></returns>
+		public static uint HueTo0ABGR_uint(float h) {
+			// 0 is red, 2 is green, 4 is blue, in-betweens are a mix and values where 4<h<6 are a mix of red and blue.
+			// 1 is yellow, 3 is cyan, 5 is magenta.
+			return h switch {
+				0 or 6 => 0x000000FFu,
+				1 => 0x0000FFFFu,
+				2 => 0x0000FF00u,
+				3 => 0x00FFFF00u,
+				4 => 0x00FF0000u,
+				5 => 0x00FF00FFu,
+				< 1 => 255u | ((uint)(h * 255) << 8),
+				< 2 => (255u << 8) | (uint)(255 * (2 - h)),
+				< 3 => (255u << 8) | ((uint)(255 * (h - 2)) << 16),
+				< 4 => (255u << 16) | ((uint)(255 * (4 - h)) << 8),
+				< 5 => (255u << 16) | (uint)(255 * (h - 4)),
+				> 5 => 255u | ((uint)(255 * (6 - h)) << 16),
+				_ => 0u,
+			};
+		}
+		public static Vector3 HueToRGB(float hue) {
 			// 0 is red, 1/3 is green, 2/3 is blue, in-betweens are a mix and values where 2/3<h<1 it is a mix of red and blue.
 			// 1/6 is yellow, 1/2 is cyan, 5/6 is magenta.
 			hue *= 6;
@@ -537,58 +564,379 @@ namespace GameEngineThing
 		// 		(rg < 2) ? ((rg > 1) ? (2 - rg) : 1) : 0,
 		// 		(rb < 2) ? ((rb > 1) ? (2 - rb) : 1) : 0);
 		// }
-		public static Matrix4 CreateRotationXYZ(Vector3 input)
-		{
-			// Matrix4 result;
-			(float x, float y, float z) = input;
+		public static Matrix4 CreateRotationXYZ(Vector3 input) {
+			CreateRotationXYZ(input, out Matrix4 result);
+			return result;
+		}
+		public static void CreateRotationXYZ(Vector3 input, out Matrix4 result) {
+			float num = MathF.Cos(input.X),
+			num2 = MathF.Sin(input.X),
+			num3 = MathF.Cos(input.Y),
+			num4 = MathF.Sin(input.Y),
+			num5 = MathF.Cos(input.Z),
+			num6 = MathF.Sin(input.Z);
+			float x2 = num2 * num4, x3 = num * num4;
+			result.Row0.X=num3*num5;
+			result.Row0.Y=num3*num6;
+			result.Row0.Z=-num4;
+			result.Row0.W=0;
+			result.Row1.X=x2*num5-num*num6;
+			result.Row1.Y=x2*num6+num*num5;
+			result.Row1.Z=num2*num3;
+			result.Row1.W=0;
+			result.Row2.X=x3*num5+num2*num6;
+			result.Row2.Y=x3*num6-num2*num5;
+			result.Row2.Z=num*num3;
+			result.Row2.W=0;
+			result.Row3.X=0;
+			result.Row3.Y=0;
+			result.Row3.Z=0;
+			result.Row3.W=1;
+		}
+		public static Matrix4 CreateRotationXYZ(float x, float y, float z) {
+			CreateRotationXYZ(x,y,z,out Matrix4 result);
+			return result;
+		}
+		public static void CreateRotationXYZ(float x, float y, float z, out Matrix4 result) {
 			float num = MathF.Cos(x),
 			num2 = MathF.Sin(x),
 			num3 = MathF.Cos(y),
 			num4 = MathF.Sin(y),
 			num5 = MathF.Cos(z),
 			num6 = MathF.Sin(z);
-			// Matrix4 result = new(1, 0, 0, 0,
-			// 0, num, num2, 0,
-			// 0, -num2, num, 0,
-			// 0, 0, 0, 1);
-			// Matrix4 result = new(num3,0,-num4,0,
-			// num2 * num4,num,num2 * num3,0,
-			// num * num4,-num2,num * num3,0,
-			// 0,0,0,1);
 			float x2 = num2 * num4, x3 = num * num4;
-			// Matrix4 result = new(num3 * num5,num3 * num6,-num4,0,
-			// x2 * num5 - num * num6,x2 * num6 + num * num5,num2*num3,0,
-			// x3 * num5 + num2 * num6,x3 * num6 - num2 * num5,num*num3,0,
-			// 0,0,0,1);
+			result.Row0.X=num3*num5;
+			result.Row0.Y=num3*num6;
+			result.Row0.Z=-num4;
+			result.Row0.W=0;
+			result.Row1.X=x2*num5-num*num6;
+			result.Row1.Y=x2*num6+num*num5;
+			result.Row1.Z=num2*num3;
+			result.Row1.W=0;
+			result.Row2.X=x3*num5+num2*num6;
+			result.Row2.Y=x3*num6-num2*num5;
+			result.Row2.Z=num*num3;
+			result.Row2.W=0;
+			result.Row3.X=0;
+			result.Row3.Y=0;
+			result.Row3.Z=0;
+			result.Row3.W=1;
+		}
+		public static void StolenCreateScale(float x, float y, float z, out Matrix4 result)
+		{
+			result = Matrix4.Identity;
+			result.Row0.X = x;
+			result.Row1.Y = y;
+			result.Row2.Z = z;
+		}
+		public static void StolenCreateTranslation(float x, float y, float z, out Matrix4 result)
+		{
+			result = Matrix4.Identity;
+			result.Row3.X = x;
+			result.Row3.Y = y;
+			result.Row3.Z = z;
+		}
+		public static void StolenMatrix4Mult(in Matrix4 left, in Matrix4 right, out Matrix4 result)
+		{
+			float x = left.Row0.X;
+			float y = left.Row0.Y;
+			float z = left.Row0.Z;
+			float w = left.Row0.W;
+			float x2 = left.Row1.X;
+			float y2 = left.Row1.Y;
+			float z2 = left.Row1.Z;
+			float w2 = left.Row1.W;
+			float x3 = left.Row2.X;
+			float y3 = left.Row2.Y;
+			float z3 = left.Row2.Z;
+			float w3 = left.Row2.W;
+			float x4 = left.Row3.X;
+			float y4 = left.Row3.Y;
+			float z4 = left.Row3.Z;
+			float w4 = left.Row3.W;
+			float x5 = right.Row0.X;
+			float y5 = right.Row0.Y;
+			float z5 = right.Row0.Z;
+			float w5 = right.Row0.W;
+			float x6 = right.Row1.X;
+			float y6 = right.Row1.Y;
+			float z6 = right.Row1.Z;
+			float w6 = right.Row1.W;
+			float x7 = right.Row2.X;
+			float y7 = right.Row2.Y;
+			float z7 = right.Row2.Z;
+			float w7 = right.Row2.W;
+			float x8 = right.Row3.X;
+			float y8 = right.Row3.Y;
+			float z8 = right.Row3.Z;
+			float w8 = right.Row3.W;
+			result.Row0.X = x * x5 + y * x6 + z * x7 + w * x8;
+			result.Row0.Y = x * y5 + y * y6 + z * y7 + w * y8;
+			result.Row0.Z = x * z5 + y * z6 + z * z7 + w * z8;
+			result.Row0.W = x * w5 + y * w6 + z * w7 + w * w8;
+			result.Row1.X = x2 * x5 + y2 * x6 + z2 * x7 + w2 * x8;
+			result.Row1.Y = x2 * y5 + y2 * y6 + z2 * y7 + w2 * y8;
+			result.Row1.Z = x2 * z5 + y2 * z6 + z2 * z7 + w2 * z8;
+			result.Row1.W = x2 * w5 + y2 * w6 + z2 * w7 + w2 * w8;
+			result.Row2.X = x3 * x5 + y3 * x6 + z3 * x7 + w3 * x8;
+			result.Row2.Y = x3 * y5 + y3 * y6 + z3 * y7 + w3 * y8;
+			result.Row2.Z = x3 * z5 + y3 * z6 + z3 * z7 + w3 * z8;
+			result.Row2.W = x3 * w5 + y3 * w6 + z3 * w7 + w3 * w8;
+			result.Row3.X = x4 * x5 + y4 * x6 + z4 * x7 + w4 * x8;
+			result.Row3.Y = x4 * y5 + y4 * y6 + z4 * y7 + w4 * y8;
+			result.Row3.Z = x4 * z5 + y4 * z6 + z4 * z7 + w4 * z8;
+			result.Row3.W = x4 * w5 + y4 * w6 + z4 * w7 + w4 * w8;
+		}
+		public static Matrix4 Unoptimized_CreateScaleRotXYZTrans(float sx, float sy, float sz, float rx, float ry, float rz, float tx, float ty, float tz) {
+			Matrix4 result;
+			result = new Matrix4(sx,0,0,0,
+			0,sy,0,0,
+			0,0,sz,0,
+			0,0,0,1) * CreateRotationXYZ(rx,ry,rz) * new Matrix4(1,0,0,0,
+			0,1,0,0,
+			0,0,1,0,
+			tx,ty,tz,1);
+			return result;
+		}
+		public static Matrix4 CreateScaleRotXYZ(float sx, float sy, float sz, float rx, float ry, float rz, float tx, float ty, float tz) {
+			float num = MathF.Cos(rx),
+			num2 = MathF.Sin(rx),
+			num3 = MathF.Cos(ry),
+			num4 = MathF.Sin(ry),
+			num5 = MathF.Cos(rz),
+			num6 = MathF.Sin(rz);
+			float _x2 = num2 * num4, _x3 = num * num4;
+			return new Matrix4(sx * num3*num5,sx * num3*num6,sx * -num4,0,
+			sy * (_x2*num5-num*num6),sy * (_x2*num6+num*num5),sy * num2*num3,0,
+			sz * (_x3*num5+num2*num6),sz * (_x3*num6-num2*num5),sz * num*num3,0,
+			0,0,0,1);
+		}
+		public static Matrix4 CreateScaleRotXYZTrans(float sx, float sy, float sz, float rx, float ry, float rz, float tx, float ty, float tz) {
+			float num = MathF.Cos(rx),
+			num2 = MathF.Sin(rx),
+			num3 = MathF.Cos(ry),
+			num4 = MathF.Sin(ry),
+			num5 = MathF.Cos(rz),
+			num6 = MathF.Sin(rz);
+			float _x2 = num2 * num4, _x3 = num * num4;
+			return new Matrix4(sx*num3*num5,sx*num3*num6,sx*-num4,0,
+			sy*(_x2*num5-num*num6),sy*(_x2*num6+num*num5),sy*num2*num3,0,
+			sz*(_x3*num5+num2*num6),sz*(_x3*num6-num2*num5),sz*num*num3,0,
+			tx,ty,tz,1);
+		}
+		public static Matrix4 CreateScaleRotXYZTrans(Vector3 scale, Vector3 rot, Vector3 trans) {
+			float num = MathF.Cos(rot.X),
+			num2 = MathF.Sin(rot.X),
+			num3 = MathF.Cos(rot.Y),
+			num4 = MathF.Sin(rot.Y),
+			num5 = MathF.Cos(rot.Z),
+			num6 = MathF.Sin(rot.Z);
+			float _x2 = num2 * num4, _x3 = num * num4;
+			return new Matrix4(scale.X*num3*num5,scale.X*num3*num6,scale.X*-num4,0,
+			scale.Y*(_x2*num5-num*num6),scale.Y*(_x2*num6+num*num5),scale.Y*num2*num3,0,
+			scale.Z*(_x3*num5+num2*num6),scale.Z*(_x3*num6-num2*num5),scale.Z*num*num3,0,
+			trans.X,trans.Y,trans.Z,1);
+		}
+		public static void CreateScaleRotXYZTrans(float sx, float sy, float sz, float rx, float ry, float rz, float tx, float ty, float tz, out Matrix4 result) {
+			float num = MathF.Cos(rx),
+			num2 = MathF.Sin(rx),
+			num3 = MathF.Cos(ry),
+			num4 = MathF.Sin(ry),
+			num5 = MathF.Cos(rz),
+			num6 = MathF.Sin(rz);
+			float _x2 = num2 * num4, _x3 = num * num4;
+			result.Row0.X=sx*num3*num5;
+			result.Row0.Y=sx*num3*num6;
+			result.Row0.Z=sx*-num4;
+			result.Row1.W=0;
+			result.Row1.X=sy*(_x2*num5-num*num6);
+			result.Row1.Y=sy*(_x2*num6+num*num5);
+			result.Row1.Z=sy*num2*num3;
+			result.Row2.W=0;
+			result.Row2.X=sz*(_x3*num5+num2*num6);
+			result.Row2.Y=sz*(_x3*num6-num2*num5);
+			result.Row2.Z=sz*num*num3;
+			result.Row0.W=0;
+			result.Row3.X=tx;
+			result.Row3.Y=ty;
+			result.Row3.Z=tz;
+			result.Row3.W=1;
+		}
+		public static void CreateScaleRotXYZTrans(Vector3 scale, Vector3 rot, Vector3 trans, out Matrix4 result) {
+			float num = MathF.Cos(rot.X),
+			num2 = MathF.Sin(rot.X),
+			num3 = MathF.Cos(rot.Y),
+			num4 = MathF.Sin(rot.Y),
+			num5 = MathF.Cos(rot.Z),
+			num6 = MathF.Sin(rot.Z);
+			float _x2 = num2 * num4, _x3 = num * num4;
+			result.Row0.X=scale.X*num3*num5;
+			result.Row0.Y=scale.X*num3*num6;
+			result.Row0.Z=scale.X*-num4;
+			result.Row0.W=0;
+			result.Row1.X=scale.Y*(_x2*num5-num*num6);
+			result.Row1.Y=scale.Y*(_x2*num6+num*num5);
+			result.Row1.Z=scale.Y*num2*num3;
+			result.Row1.W=0;
+			result.Row2.X=scale.Z*(_x3*num5+num2*num6);
+			result.Row2.Y=scale.Z*(_x3*num6-num2*num5);
+			result.Row2.Z=scale.Z*num*num3;
+			result.Row2.W=0;
+			result.Row3.X=trans.X;
+			result.Row3.Y=trans.Y;
+			result.Row3.Z=trans.Z;
+			result.Row3.W=1;
+		}
+		public static Matrix4 CreateRotXYZTrans(float rx, float ry, float rz, float tx, float ty, float tz) {
+			float num = MathF.Cos(rx),
+			num2 = MathF.Sin(rx),
+			num3 = MathF.Cos(ry),
+			num4 = MathF.Sin(ry),
+			num5 = MathF.Cos(rz),
+			num6 = MathF.Sin(rz);
+			float _x2 = num2 * num4, _x3 = num * num4;
+			return new Matrix4(num3*num5,num3*num6,-num4,0,
+			_x2*num5-num*num6,_x2*num6+num*num5,num2*num3,0,
+			_x3*num5+num2*num6,_x3*num6-num2*num5,num*num3,0,
+			tx,ty,tz,1);
+		}
+		/// <summary>
+		/// raycasts to the xz plane with a matrix4.
+		/// </summary>
+		/// <param name="mat">the matrix used. Example in the intended use case: the inverse of the view matrix.</param>
+		/// <param name="x">x coordinate.</param>
+		/// <param name="y">y coordinate.</param>
+		/// <returns>a tuple of 2 floats, the first being x and the second being y.</returns>
+		public static (float, float) RaycastToXZPlane(Matrix4 mat, float x, float y) {
+			float shared0 = MathF.FusedMultiplyAdd(x, mat.Row0.X, MathF.FusedMultiplyAdd(y, mat.Row1.X, mat.Row3.X));
+			float shared1 = MathF.FusedMultiplyAdd(x, mat.Row0.Y, MathF.FusedMultiplyAdd(y, mat.Row1.Y, mat.Row3.Y));
+			float shared2 = MathF.FusedMultiplyAdd(x, mat.Row0.Z, MathF.FusedMultiplyAdd(y, mat.Row1.Z, mat.Row3.Z));
+			float shared3 = MathF.FusedMultiplyAdd(x, mat.Row0.W, MathF.FusedMultiplyAdd(y, mat.Row1.W, mat.Row3.W));
+			float s1 = 1f/(shared3 - mat.Row2.W);
+			float x1 = (shared0 - mat.Row2.X)*s1;
+			float y1 = (shared1 - mat.Row2.Y)*s1;
+			float z1 = (shared2 - mat.Row2.Z)*s1;
+			float s2 = 1f/shared3;
+			float n = y1/MathF.FusedMultiplyAdd(-shared1,s2,y1); // it's big brain time - markiplier or sm
+			return (MathF.FusedMultiplyAdd(n,MathF.FusedMultiplyAdd(shared0,s2,-x1),x1), MathF.FusedMultiplyAdd(n,MathF.FusedMultiplyAdd(shared2,s2,-z1),z1));
+		}
+		public static void RaycastToXZPlane(Matrix4 mat, float x, float y, out float resultX, out float resultY) {
+			float shared0 = MathF.FusedMultiplyAdd(x, mat.Row0.X, MathF.FusedMultiplyAdd(y, mat.Row1.X, mat.Row3.X));
+			float shared1 = MathF.FusedMultiplyAdd(x, mat.Row0.Y, MathF.FusedMultiplyAdd(y, mat.Row1.Y, mat.Row3.Y));
+			float shared2 = MathF.FusedMultiplyAdd(x, mat.Row0.Z, MathF.FusedMultiplyAdd(y, mat.Row1.Z, mat.Row3.Z));
+			float shared3 = MathF.FusedMultiplyAdd(x, mat.Row0.W, MathF.FusedMultiplyAdd(y, mat.Row1.W, mat.Row3.W));
+			float s1 = 1f/(shared3 - mat.Row2.W);
+			float x1 = (shared0 - mat.Row2.X)*s1;
+			float y1 = (shared1 - mat.Row2.Y)*s1;
+			float z1 = (shared2 - mat.Row2.Z)*s1;
+			float s2 = 1f/shared3;
+			float n = y1/MathF.FusedMultiplyAdd(-shared1,s2,y1); // it's big brain time - markiplier or sm
+			resultX=MathF.FusedMultiplyAdd(n,MathF.FusedMultiplyAdd(shared0,s2,-x1),x1);
+			resultY=MathF.FusedMultiplyAdd(n,MathF.FusedMultiplyAdd(shared2,s2,-z1),z1);
+		}
+		public static Vector3 RaycastToXZPlane_Vec3(Matrix4 mat, float x, float y) {
+			float shared0 = MathF.FusedMultiplyAdd(x, mat.Row0.X, MathF.FusedMultiplyAdd(y, mat.Row1.X, mat.Row3.X));
+			float shared1 = MathF.FusedMultiplyAdd(x, mat.Row0.Y, MathF.FusedMultiplyAdd(y, mat.Row1.Y, mat.Row3.Y));
+			float shared2 = MathF.FusedMultiplyAdd(x, mat.Row0.Z, MathF.FusedMultiplyAdd(y, mat.Row1.Z, mat.Row3.Z));
+			float shared3 = MathF.FusedMultiplyAdd(x, mat.Row0.W, MathF.FusedMultiplyAdd(y, mat.Row1.W, mat.Row3.W));
+			float s1 = 1f/(shared3 - mat.Row2.W);
+			float x1 = (shared0 - mat.Row2.X)*s1;
+			float y1 = (shared1 - mat.Row2.Y)*s1;
+			float z1 = (shared2 - mat.Row2.Z)*s1;
+			float s2 = 1f/shared3;
+			float n = y1/MathF.FusedMultiplyAdd(-shared1,s2,y1); // it's big brain time - markiplier or sm
+			return (MathF.FusedMultiplyAdd(n,MathF.FusedMultiplyAdd(shared0,s2,-x1),x1), 0, MathF.FusedMultiplyAdd(n,MathF.FusedMultiplyAdd(shared2,s2,-z1),z1));
+		}
+		public static void RaycastToXZPlane(Matrix4 mat, float x, float y, out Vector3 result) {
+			float shared0 = MathF.FusedMultiplyAdd(x, mat.Row0.X, MathF.FusedMultiplyAdd(y, mat.Row1.X, mat.Row3.X));
+			float shared1 = MathF.FusedMultiplyAdd(x, mat.Row0.Y, MathF.FusedMultiplyAdd(y, mat.Row1.Y, mat.Row3.Y));
+			float shared2 = MathF.FusedMultiplyAdd(x, mat.Row0.Z, MathF.FusedMultiplyAdd(y, mat.Row1.Z, mat.Row3.Z));
+			float shared3 = MathF.FusedMultiplyAdd(x, mat.Row0.W, MathF.FusedMultiplyAdd(y, mat.Row1.W, mat.Row3.W));
+			float s1 = 1f/(shared3 - mat.Row2.W);
+			float x1 = (shared0 - mat.Row2.X)*s1;
+			float y1 = (shared1 - mat.Row2.Y)*s1;
+			float z1 = (shared2 - mat.Row2.Z)*s1;
+			float s2 = 1f/shared3;
+			float n = y1/MathF.FusedMultiplyAdd(-shared1,s2,y1); // it's big brain time - markiplier or sm
+			result.X=MathF.FusedMultiplyAdd(n,MathF.FusedMultiplyAdd(shared0,s2,-x1),x1);
+			result.Y=0;
+			result.Z=MathF.FusedMultiplyAdd(n,MathF.FusedMultiplyAdd(shared2,s2,-z1),z1);
+		}
+		public static void NormalizeVec(float x, float y, float z, out Vector3 result) {
+			float num = 1f / MathF.Sqrt(x*x+y*y+z*z);
+			result.X = x * num;
+			result.Y = y * num;
+			result.Z = z * num;
+		}
+		public static void NormalizeVec(Vector3 input, out Vector3 result) {
+			float num = 1f / MathF.Sqrt(input.X*input.X+input.Y*input.Y+input.Z*input.Z);
+			result.X = input.X * num;
+			result.Y = input.Y * num;
+			result.Z = input.Z * num;
+		}
+		public static void NormalizeAndScaleVec(float x, float y, float z, float scale, out Vector3 result) {
+			float num = scale / MathF.Sqrt(x*x+y*y+z*z);
+			result.X = x * num;
+			result.Y = y * num;
+			result.Z = z * num;
+		}
+		public static void NormalizeAndScaleVec(Vector3 input, float scale, out Vector3 result) {
+			float num = scale / MathF.Sqrt(input.X*input.X+input.Y*input.Y+input.Z*input.Z);
+			result.X = input.X * num;
+			result.Y = input.Y * num;
+			result.Z = input.Z * num;
+		}
+		public static void HSVToRGB(float h, float sv, float v, out float r, out float g, out float b)
+		{
+			sv *= v;
+			// 0 is red, 1/3 is green, 2/3 is blue, in-betweens are a mix and values where 2/3<h<1 it is a mix of red and blue.
+			// 1/6 is yellow, 1/2 is cyan, 5/6 is magenta.
+			float _r = Math.Abs((h *= 6) - 3); // raw red; before processing.
+			float _g = Math.Abs(h - 2); // raw green; before processing.
+			float _b = Math.Abs(h - 4); // raw blue; before processing.
 
-			// result *= new Matrix4(num3, 0, -num4, 0,
-			// 0, 1, 0, 0,
-			// num4, 0, num3, 0,
-			// 0, 0, 0, 1);
-			// result *= new Matrix4(num5, num6, 0, 0,
-			// -num6, num5, 0, 0,
-			// 0, 0, 1, 0,
-			// 0, 0, 0, 1);
-			// return result;
-			return new(num3*num5,num3*num6,-num4,0,
-			x2*num5-num*num6,x2*num6+num*num5,num2*num3,0,
-			x3*num5+num2*num6,x3*num6-num2*num5,num*num3,0,
-			0,0,0,1);
+			r = _r switch { < 2 and > 1 => (_r - 2) * sv + v, < 2 => v - sv, _ => v };
+			g = _g switch { < 2 and > 1 => (1 - _g) * sv + v, < 2 => v, _ => v - sv };
+			b = _b switch { < 2 and > 1 => (1 - _b) * sv + v, < 2 => v, _ => v - sv }; // good luck trying to figure this out lol. also idk it this even is optimized..
 		}
-		public static Matrix4 CreateRotationXYZ(float x, float y, float z)
+		public static void HSVToRGB(ref float h, ref float s, ref float v)
 		{
-			float num = MathF.Cos(x),
-			num2 = MathF.Sin(x),
-			num3 = MathF.Cos(y),
-			num4 = MathF.Sin(y),
-			num5 = MathF.Cos(z),
-			num6 = MathF.Sin(z);
-			float x2 = num2 * num4, x3 = num * num4;
-			return new(num3*num5,num3*num6,-num4,0,
-			x2*num5-num*num6,x2*num6+num*num5,num2*num3,0,
-			x3*num5+num2*num6,x3*num6-num2*num5,num*num3,0,
-			0,0,0,1);
+			float sv = s * v;
+			// 0 is red, 1/3 is green, 2/3 is blue, in-betweens are a mix and values where 2/3<h<1 it is a mix of red and blue.
+			// 1/6 is yellow, 1/2 is cyan, 5/6 is magenta.
+			float _r = Math.Abs((h *= 6) - 3); // raw red; before processing.
+			float _g = Math.Abs(h - 2); // raw green; before processing.
+			float _b = Math.Abs(h - 4); // raw blue; before processing.
+
+			h = _r switch { < 2 and > 1 => (_r - 2) * sv + v, < 2 => v - sv, _ => v };
+			s = _g switch { < 2 and > 1 => (1 - _g) * sv + v, < 2 => v, _ => v - sv };
+			v = _b switch { < 2 and > 1 => (1 - _b) * sv + v, < 2 => v, _ => v - sv }; // good luck trying to figure this out lol. also idk it this even is optimized..
 		}
+		public static Matrix4 LerpMatrices(Matrix4 inp, Matrix4 in2, float t) {
+			Matrix4 res;
+			float oneMinusT = 1f-t;
+			res.Row0.X = in2.Row0.X*t+inp.Row0.X*oneMinusT;
+			res.Row0.Y = in2.Row0.Y*t+inp.Row0.Y*oneMinusT;
+			res.Row0.Z = in2.Row0.Z*t+inp.Row0.Z*oneMinusT;
+			res.Row0.W = in2.Row0.W*t+inp.Row0.W*oneMinusT;
+			res.Row1.X = in2.Row1.X*t+inp.Row1.X*oneMinusT;
+			res.Row1.Y = in2.Row1.Y*t+inp.Row1.Y*oneMinusT;
+			res.Row1.Z = in2.Row1.Z*t+inp.Row1.Z*oneMinusT;
+			res.Row1.W = in2.Row1.W*t+inp.Row1.W*oneMinusT;
+			res.Row2.X = in2.Row2.X*t+inp.Row2.X*oneMinusT;
+			res.Row2.Y = in2.Row2.Y*t+inp.Row2.Y*oneMinusT;
+			res.Row2.Z = in2.Row2.Z*t+inp.Row2.Z*oneMinusT;
+			res.Row2.W = in2.Row2.W*t+inp.Row2.W*oneMinusT;
+			res.Row3.X = in2.Row3.X*t+inp.Row3.X*oneMinusT;
+			res.Row3.Y = in2.Row3.Y*t+inp.Row3.Y*oneMinusT;
+			res.Row3.Z = in2.Row3.Z*t+inp.Row3.Z*oneMinusT;
+			res.Row3.W = in2.Row3.W*t+inp.Row3.W*oneMinusT;
+			return res;
+		}
+		[UnsafeAccessor(UnsafeAccessorKind.Field, Name = "_keys")]
+		public extern static ref System.Collections.BitArray GetKSBitArray(OpenTK.Windowing.GraphicsLibraryFramework.KeyboardState @this);
+		[UnsafeAccessor(UnsafeAccessorKind.Field, Name = "_array")]
+		public extern static ref byte[] GetBitArrayByteArray(System.Collections.BitArray @this);
 		public static Dictionary<string, Action<Game, string>> chatCommands = [];
 		public static Dictionary<string, Action<Game>> noInputChatCommands = [];
 		/// <summary>
@@ -605,26 +953,14 @@ namespace GameEngineThing
 				game.ReopenData = game._chattingText;
 				game.WillReopen = true;
 				game.Close(); };
-			noInputChatCommands["debugtxt"] = noInputChatCommands["debugtext"] = noInputChatCommands["dbtxt"] = delegate (Game game) {
-				Console.WriteLine("debug txt entered debugging thing idk\nPrevious thing: " + game._debugFlags.HasFlag(DebugFlags.debugText));
-				// if (game._debugFlags.HasFlag(DebugFlags.debugText))
-				// 	game._debugFlags &= ~DebugFlags.debugText; else game._debugFlags |= DebugFlags.debugText;
-					game._debugFlags ^= DebugFlags.debugText;
-				Console.WriteLine("Now: " + game._debugFlags.HasFlag(DebugFlags.debugText)); };
-			noInputChatCommands["debuglog"] = delegate (Game game) {
-				Console.WriteLine("debug logging entered debugging thing idk\nPrevious: " + game._debugFlags.HasFlag(DebugFlags.debugLogging));
-				// if (game._debugFlags.HasFlag(DebugFlags.debugLogging))
-				// 	game._debugFlags &= ~DebugFlags.debugLogging; else game._debugFlags |= DebugFlags.debugLogging;
-				game._debugFlags ^= DebugFlags.debugLogging;
-				Console.WriteLine("Now: " + game._debugFlags.HasFlag(DebugFlags.debugText)); };
 			noInputChatCommands["showvsync"] = delegate (Game game) {
-				Console.WriteLine("Vsync mode right now: " + game.VSync); };
+				Console.Write("Vsync mode right now: " + game.VSync+'\n'); };
 			noInputChatCommands["vsyncon"] = delegate (Game game) { game.VSync = VSyncMode.On; };
 			noInputChatCommands["vsyncoff"] = delegate (Game game) { game.VSync = VSyncMode.Off; };
 			noInputChatCommands["vsyncadapt"] = delegate (Game game) { game.VSync = VSyncMode.Adaptive; };
 			noInputChatCommands["stoprecording"] = delegate (Game game) {
-				Console.WriteLine("Stopping recording hopefully."); game.StopRecording(); Console.WriteLine("Stopped recording hopefully..."); };
-			noInputChatCommands["reopen"] = delegate (Game game) {  game.WillReopen = true; game.Close(); };
+				Console.Write("Stopping recording hopefully.\n"); game.StopRecording(); Console.Write("Stopped recording hopefully...\n"); };
+			noInputChatCommands["reopen"] = delegate (Game game) { game.WillReopen = true; game.Close(); };
 			noInputChatCommands["playerrendertoggle"] = delegate (Game game) { game.renderPlayer = !game.renderPlayer; };
 
 			chatCommands["reopen"] = delegate (Game game, string str) {
@@ -672,8 +1008,8 @@ hi this is the help command idk. This is carbohydrated-engine, a "game engine" w
 """);break;
 					case " record args":
 						Console.WriteLine("""
-args are made by:\n
-"-n -f rawvideo -pix_fmt bgra -s " + w + 'x' + h + " -r " + resfps.ToString("N4")) + " -i - -vf \"vflip\" -an -c:v libx265 -preset slow -crf 25 -pix_fmt yuv420p \" + p + '\"'
+args are made by:
+"-n -f rawvideo -pix_fmt bgra -s " + w + 'x' + h + " -r " + resfps.ToString("N4")) + " -i - -vf \"vflip\" -an -c:v libx265 -preset slow -crf 25 -pix_fmt yuv420p \"" + p + '\"'
 
 so, with 1920x1080 display at 60 output fps and 30 input fps and path "miwocivsnvafd.mp4" it would be:
 
@@ -757,6 +1093,177 @@ yep
 				try { game.profilerFrameTimes = new double[Math.Min(Convert.ToUInt32(str), 1048576)]; game.profilerIndex = 0; }
 				catch (FormatException ex) { Console.WriteLine("Incorrect formatting. " + ex.Message); }
 				catch (OverflowException ex) { Console.WriteLine("Overflow. ARE YOU TRYING TO CRASH YOUR COMPUTER OR SOMETHING??? (automatically capped at 1048576, but this error only appears above ~4.2B) " + ex.Message); } };
+			chatCommands["setmaxfps "] = delegate (Game game, string str) {
+				try {
+					double maxfps = Convert.ToSingle(str);
+					game.UpdateFrequency = maxfps;
+					Console.Write("you entered: "+maxfps+"; game fps: "+game.UpdateFrequency+"; note that OpenTK says it's automatically capped to 500Hz max and nums <1 get set to 0Hz.\n");
+				} catch (Exception ex) {Console.Write("bruh what you typed was invalid/incorrect ig\n"+ex.Message+'\n');}
+			};
+			chatCommands["test "] = delegate (Game game, string str) {
+				long ts = Stopwatch.GetTimestamp();
+				try {
+					ReadOnlySpan<char> s = str.AsSpan();
+					var args = s.Split(' ');args.MoveNext();
+					string testIdentifier = str[args.Current.Start.Value..args.Current.End.Value];args.MoveNext();
+					switch (testIdentifier) {
+						case "ann0":
+							try {
+								double secondsToDisappear = Convert.ToDouble(str[args.Current.Start.Value..args.Current.End.Value]);args.MoveNext();
+								float r = Convert.ToSingle(str[args.Current.Start.Value..args.Current.End.Value]);args.MoveNext();
+								float g = Convert.ToSingle(str[args.Current.Start.Value..args.Current.End.Value]);args.MoveNext();
+								float b = Convert.ToSingle(str[args.Current.Start.Value..args.Current.End.Value]);args.MoveNext();
+								float a = Convert.ToSingle(str[args.Current.Start.Value..args.Current.End.Value]);args.MoveNext();
+								uint bgColor = Convert.ToUInt32(str[args.Current.Start.Value..args.Current.End.Value]);args.MoveNext();
+								AnnouncementsManager.Announcements.Add(new AnnouncementsManager.Announcement(str[args.Current.Start.Value..],(long)(secondsToDisappear*Stopwatch.Frequency)+ts,(r,g,b,a),bgColor));
+							}catch{Console.Write("""
+something went wrong uhh...
+note: this one's format is:
+$"{double secondsToDisappear} {float r} {float g} {float b} {float a} {uint bgColor} {string msg}"
+r,g,b,a are text color, and bgColor has, from greatest to least, ABGR order.
+This means that changing the alpha value would make a bigger change to the magnitude of the number than changing blue,
+changing blue more than changing green, and changing green more than changing red.
+
+""");}
+							break;
+						case "ann1":
+							try {
+								double secondsToDisappear = Convert.ToDouble(str[args.Current.Start.Value..args.Current.End.Value]);args.MoveNext();
+								float r = Convert.ToSingle(str[args.Current.Start.Value..args.Current.End.Value]);args.MoveNext();
+								float g = Convert.ToSingle(str[args.Current.Start.Value..args.Current.End.Value]);args.MoveNext();
+								float b = Convert.ToSingle(str[args.Current.Start.Value..args.Current.End.Value]);args.MoveNext();
+								float a = Convert.ToSingle(str[args.Current.Start.Value..args.Current.End.Value]);args.MoveNext();
+								uint bgColor = Convert.ToUInt32(str[args.Current.Start.Value..args.Current.End.Value]);args.MoveNext();
+								bool st = Convert.ToBoolean(str[args.Current.Start.Value..args.Current.End.Value]);args.MoveNext();
+								AnnouncementsManager.Announcements.Add(new AnnouncementsManager.Announcement(str[args.Current.Start.Value..],(long)(secondsToDisappear*Stopwatch.Frequency)+ts,(r,g,b,a),bgColor,st));
+							} catch {Console.Write("""
+something went wrong uhh...
+oh yeah and this one's format is:
+
+$"{double secondsToDisappear} {float r} {float g} {float b} {float a} {uint bgColor} {bool specialText} {string msg}"
+
+r,g,b,a are text color, and bgColor has, from greatest to least, ABGR order.
+This means that changing the alpha value would make a bigger change to the magnitude of the number than changing blue,
+which would change the magnitude more than changing green, which would change the magnitude more than changing red.)
+special text is like \insertNameOfSpecialCharHere| and \insertSpecilName\insertSpecilName|
+(disclaimer: those above may not be actual in-game special text names.)
+
+""");}
+							break;
+						case "ann2":
+							try {
+								double secondsToDisappear = Convert.ToDouble(str[args.Current.Start.Value..args.Current.End.Value]);args.MoveNext();
+								float r = Convert.ToSingle(str[args.Current.Start.Value..args.Current.End.Value]);args.MoveNext();
+								float g = Convert.ToSingle(str[args.Current.Start.Value..args.Current.End.Value]);args.MoveNext();
+								float b = Convert.ToSingle(str[args.Current.Start.Value..args.Current.End.Value]);args.MoveNext();
+								float a = Convert.ToSingle(str[args.Current.Start.Value..args.Current.End.Value]);args.MoveNext();
+								uint bgColor = Convert.ToUInt32(str[args.Current.Start.Value..args.Current.End.Value]);args.MoveNext();
+								bool st = Convert.ToBoolean(str[args.Current.Start.Value..args.Current.End.Value]);args.MoveNext();
+								float fot = Convert.ToSingle(str[args.Current.Start.Value..args.Current.End.Value]);args.MoveNext();
+								AnnouncementsManager.Announcements.Add(new AnnouncementsManager.Announcement(str[args.Current.Start.Value..],(long)(secondsToDisappear*Stopwatch.Frequency)+ts,(r,g,b,a),bgColor,st,fot));
+							} catch {Console.Write("""
+something went wrong uhh...
+oh yeah and this one's format is:
+
+$"{double secondsToDisappear} {float r} {float g} {float b} {float a} {uint bgColor} {bool specialText} {float fadeOutTime} {string msg}"
+
+r,g,b,a are text color, and bgColor has, from greatest to least, ABGR order.
+This means that changing the alpha value would make a bigger change to the magnitude of the number than changing blue,
+which would change the magnitude more than changing green, which would change the magnitude more than changing red.)
+special text is like \insertNameOfSpecialCharHere| and \insertSpecilName\insertSpecilName|
+(disclaimer: those above may not be actual in-game special text names.)
+
+""");}
+							break;
+						case "setcamoffy":
+							try {
+								float newCamOffY = Convert.ToSingle(str[args.Current.Start.Value..args.Current.End.Value]);
+								Game.currentGame._player.CamTargetOffset.Y =newCamOffY;
+								Console.Write("Set cam offset y to "+newCamOffY+", hopefully! :3\n");
+							} catch {Console.Write("""
+bruh you did something wrong ig idk.
+btw this function sets the camera offset y from the player's origin position.
+""");}
+							break;
+						case "plr":
+							Console.Write("""
+available plr test commands:
+setrsy
+
+""");
+							try {
+								string switchStr = str[args.Current.Start.Value..args.Current.End.Value];args.MoveNext();
+								switch (switchStr) {
+									case "setrsx":
+										game._player.RootScale.X = Convert.ToSingle(str[args.Current.Start.Value..args.Current.End.Value]);args.MoveNext();
+										break;
+									case "setrsy":
+										game._player.RootScale.Y = Convert.ToSingle(str[args.Current.Start.Value..args.Current.End.Value]);args.MoveNext();
+										break;
+									case "setrsz":
+										game._player.RootScale.Z = Convert.ToSingle(str[args.Current.Start.Value..args.Current.End.Value]);args.MoveNext();
+										break;
+									case "setrs":
+										game._player.RootScale.X = Convert.ToSingle(str[args.Current.Start.Value..args.Current.End.Value]);args.MoveNext();
+										game._player.RootScale.Y = Convert.ToSingle(str[args.Current.Start.Value..args.Current.End.Value]);args.MoveNext();
+										game._player.RootScale.Z = Convert.ToSingle(str[args.Current.Start.Value..args.Current.End.Value]);args.MoveNext();
+										break;
+									default:
+										Console.Write("sdfjsldfjksdfklsjdklsdjfsjdkjfsd\n");
+										break;
+								}
+							} catch {Console.Write("you did smth wrong ig idk\n");}
+							break;
+						case "bab":
+							Console.Write("""
+bab command. uhhh
+available commands:
+spamgates
+
+""");
+							try {
+								string switchStr = str[args.Current.Start.Value..args.Current.End.Value];args.MoveNext();
+								switch (switchStr) {
+									case "spamgates":
+										uint amt = Convert.ToUInt32(str[args.Current.Start.Value..args.Current.End.Value]);args.MoveNext();
+										Matrix4 viewInv = Matrix4.Invert(BABFTE.currentView);
+										Action<Vector3> thingy = BABFTE.Tools.PlaceBlockDict[BABFTE.Tools.BuildToolBlock];
+										var NextSingle = Random.Shared.NextSingle;
+										for (uint i = amt; i > 0; i--)thingy(RaycastToXZPlane_Vec3(viewInv,NextSingle()*2-1,NextSingle()*-2+1));
+										Console.Write("spammed "+amt+" gates if i made this right!\n");
+										break;
+									default:
+										Console.Write("(actually doing nothing):3\n");
+										break;
+								}
+							} catch {Console.Write("you did smth wrong ig idk\n");}
+							break;
+						case "help":
+							StringBuilder sBuilder = new("""
+hi this is the test command. idk this can probably do test stuff.
+current list as of 2026/5/27 (NOT updated automatically i may forgor something.):
+ann0
+ann1
+ann2
+setcamoffy
+plr
+bab
+
+oh yeah here's a list of all the chat commands:
+
+NO-INPUT:
+
+""");
+							foreach (string strThing in noInputChatCommands.Keys) sBuilder.Append(strThing+'\n');
+							sBuilder.Append("\nINPUT:\n");
+							foreach (string strThing in chatCommands.Keys) sBuilder.Append(strThing+'\n');
+							sBuilder.Append("\n\ndone");
+							Console.Write(sBuilder);
+							break;
+						default:Console.Write('\"'+testIdentifier+"\"; that isn't a valid test.. see 'help' for valid tests.\n");break;
+					}
+				} catch {}
+			};
 			// code based off https://stackoverflow.com/questions/73003523/how-to-get-all-inherited-classes by Gec
 			var assemblies = AppDomain.CurrentDomain.GetAssemblies();
 			foreach (var assembly in assemblies)
@@ -770,20 +1277,14 @@ yep
 							foreach (var a in dict) {MinigameInitializers[a.Key] = a.Value;}
 						} else Console.WriteLine("well this minigame has screwed up at least one thing.."+type.FullName);
 					}
-			StringBuilder sb = new("MinigameInitializers list:\n");
-			foreach (var a in MinigameInitializers) {
-				sb.Append(a.Key+'\n');
-			}
+			{StringBuilder sb = new("MinigameInitializers list:\n");
+			foreach (var a in MinigameInitializers) sb.Append(a.Key+'\n');
 			sb.Append("EverySingleMinigame:\n");
-			foreach (var a in EverySingleMinigame) {
-				sb.Append(a.FullName+'\n');
-			}
+			foreach (var a in EverySingleMinigame) sb.Append(a.FullName+'\n');
 			sb.Append("AllMinigames:\n");
-			foreach ((Type type, string name) in AllMinigames) {
-				sb.Append(name+"; FullName: "+type.FullName+'\n');
-			}
+			foreach ((Type type, string name) in AllMinigames) sb.Append(name+"; FullName: "+type.FullName+'\n');
 			sb.Append("\ndone\n");
-			Console.Write(sb);sb.Clear();
+			Console.Write(sb);}
 			
 
 			// chatCommands["what"] = delegate (Game game, string str) { Console.WriteLine("Hello, World!"); };
@@ -791,14 +1292,4 @@ yep
 			// /*template*/
 		}
 	}
-	public struct Announcement(string msg, long dsts, Vector3 textColor, Vector3 bgColor, float bgTransparency, bool st = false, float fot = 1)
-    {
-		public string Message = msg;
-		public long DisappearTimestamp = dsts;
-		public Vector3 TextColor = textColor;
-		public Vector3 BGColor = bgColor;
-		public float BGTransparency = bgTransparency;
-		public bool SpecialText = st;
-		public float FadeOutTime = fot;
-    }
 }

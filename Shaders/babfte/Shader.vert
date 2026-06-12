@@ -5,6 +5,7 @@ layout (location = 2) in vec4 aCl1;
 layout (location = 3) in vec4 aCl2;
 layout (location = 4) in vec4 aCl3;
 layout (location = 5) in vec4 aClr;
+layout (location = 6) in float aState;
 out vec2 texCoord;
 out vec4 color;
 
@@ -14,6 +15,6 @@ void main()
 {
 	mat4 model = mat4(aCl1, aCl2, aCl3, vec4(0.0,0.0,0.0,1.0));
     gl_Position = vec4(aPos, 1.0) * model * view;
-    texCoord = aTexCoord;
-    color = aClr.wzyx/255.5;
+    texCoord = aTexCoord+vec2(aState*.015625,.125);
+    color = aClr.wzyx/255.0;
 }

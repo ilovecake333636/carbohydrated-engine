@@ -90,6 +90,9 @@ namespace GameEngineThing {
 		public sbyte P1State = 0;
 		public sbyte P2State = 0;
 		public ObjectMesh _cube, _plane;
+		public struct GameKeyState1(Keys key, bool down) {
+			public Keys Key = key;
+			public bool Down = down;}
 		public List<GameKeyState1> KeyInputQueue = [];
 		public Pong() { }
 		public Pong(Vector3 pos, Vector3 scale, Vector3 rot) {
@@ -103,15 +106,15 @@ namespace GameEngineThing {
 			for (int i = 0; i < KeyInputQueue.Count; i++) {
 				GameKeyState1 e = KeyInputQueue[i];
 				if (e.Down) {
-					if (e.Key == P1DownBind) { P1DownDown = 1; }
-					if (e.Key == P1UpBind) { P1UpDown = 1; }
-					if (e.Key == P2DownBind) { P2DownDown = 1; }
-					if (e.Key == P2UpBind) { P2UpDown = 1; }}
+					if (e.Key == P1DownBind) P1DownDown = 1;
+					if (e.Key == P1UpBind) P1UpDown = 1;
+					if (e.Key == P2DownBind) P2DownDown = 1;
+					if (e.Key == P2UpBind) P2UpDown = 1;}
 				else {
-					if (e.Key == P1DownBind) { P1DownDown = 0; }
-					if (e.Key == P1UpBind) { P1UpDown = 0; }
-					if (e.Key == P2DownBind) { P2DownDown = 0; }
-					if (e.Key == P2UpBind) { P2UpDown = 0; }}}
+					if (e.Key == P1DownBind) P1DownDown = 0;
+					if (e.Key == P1UpBind) P1UpDown = 0;
+					if (e.Key == P2DownBind) P2DownDown = 0;
+					if (e.Key == P2UpBind) P2UpDown = 0;}}
 			P1State = (sbyte)(P1UpDown - P1DownDown);
 			P2State = (sbyte)(P2UpDown - P2DownDown);
 			KeyInputQueue = [];
@@ -168,18 +171,17 @@ namespace GameEngineThing {
 		public string ScoreText => "Score: " + P1Score + " - " + P2Score;
 		public void UpdateTransformation(Matrix4 Transformation) {
 			this.Transformation = Transformation;}
-		public void UpdateTransformation() {
-			Transformation = Matrix4.CreateRotationX(Rot.X) * Matrix4.CreateRotationY(Rot.Y) * Matrix4.CreateRotationZ(Rot.Z) * Matrix4.CreateScale(Scale) * Matrix4.CreateTranslation(Pos);}
+		public void UpdateTransformation() {DataStuff.CreateScaleRotXYZTrans(Scale, Rot, Pos, out Transformation);}
 		public void UpdatePos(Vector3 pos) {
 			Pos = pos;
-			Transformation = Matrix4.CreateRotationX(Rot.X) * Matrix4.CreateRotationY(Rot.Y) * Matrix4.CreateRotationZ(Rot.Z) * Matrix4.CreateScale(Scale) * Matrix4.CreateTranslation(Pos);}
+			DataStuff.CreateScaleRotXYZTrans(Scale, Rot, Pos, out Transformation);}
 		public void UpdateRot(Vector3 rot) {
 			if (AngleMode) Rot = rot * ((float)Math.PI / 180f);
 			else Rot = rot;
-			Transformation = Matrix4.CreateRotationX(Rot.X) * Matrix4.CreateRotationY(Rot.Y) * Matrix4.CreateRotationZ(Rot.Z) * Matrix4.CreateScale(Scale) * Matrix4.CreateTranslation(Pos);}
+			DataStuff.CreateScaleRotXYZTrans(Scale, Rot, Pos, out Transformation);}
 		public void UpdateScale(Vector3 scale) {
 			Scale = scale;
-			Transformation = Matrix4.CreateRotationX(Rot.X) * Matrix4.CreateRotationY(Rot.Y) * Matrix4.CreateRotationZ(Rot.Z) * Matrix4.CreateScale(Scale) * Matrix4.CreateTranslation(Pos);}
+			DataStuff.CreateScaleRotXYZTrans(Scale, Rot, Pos, out Transformation);}
 		public void Loss(byte Player1Side) {}
 		public override void OnLoad(Game game)
 		{
@@ -191,12 +193,13 @@ namespace GameEngineThing {
 			base.OnRenderFrame(game, dt);
 			Render(game._shader, true);
 			// _textRenderer.RenderText(this, _textShader, _pongGame.ScoreText, Vector2i.Zero, new(0f, .45f), new(6f), new(0f, 1f, 0f), 10f, _clientSize, FontCharFillerThing.FontCharDeeta, false);
-			game._textRenderer.Render(new TxtOptions(Vector2i.Zero, new(0f, .45f), new(4f), new(0f, 1f, 0f), 10f, FontCharFillerThing.FontCharDeeta, false), game, ScoreText); }
+			game._textRenderer.RenderText(game, game._textShader, ScoreText, (0,0), (0f,.45f), (4f,4f), (0f,1f,0f), 10f, game._clientSize, FontCharFillerThing.FontCharDeeta, false);
+			}
 		public override void OnUpdateFrame(Game game, double dt)
 		{
 			base.OnUpdateFrame(game, dt);
 			UpdateRot(new Vector3(270f, (float)game._gameTime * 15f, 0f));
-			Update(1 / game._gameTickSpeed);
+			Update(game._tickSpeedInv);
 		}
 		public override void OnKeyDown(KeyboardKeyEventArgs e)
 		{
@@ -259,7 +262,7 @@ namespace GameEngineThing {
 		public long[] ModChartLongs;
 		public Vector2i[] ModChartV2is;}
 	// public class RhythmGame {
-	// 	public uint KeyCount { get; private set; }
+	// 	public uint KeyCount;
 	// 	public RhythmGame(uint keys) {
 	// 		KeyCount = keys;}
 	// 	public RhythmGame() {
@@ -349,7 +352,7 @@ namespace GameEngineThing {
 		// 	};InGameConstructorthings["fnf"] = InGameConstructorthings["mania"];
 		// }
 		public Keys[] keybinds;
-		public uint KeyCount { get; private set; }
+		public uint KeyCount;
 		public Text gameRenderer;
 		public bool Playing = true;
 		public long timeAtPause = 0;
@@ -626,8 +629,6 @@ namespace GameEngineThing {
 			if (I != 0) {
 				GL.BufferSubData(BufferTarget.ArrayBuffer, 0, sizeof(float) * I, v);
 				GL.DrawElements(PrimitiveType.Triangles, I * 3 / 8, DrawElementsType.UnsignedInt, 0); }
-			// GL.BindBuffer(BufferTarget.ArrayBuffer, 0);
-			// GL.BindVertexArray(0);
 
 			gameRenderer.RenderText(game, game._textShader, "Map time: " + time + "\n" + lingeringTxt, new(0), new(-.5f, 0.3f), new(8), new(1, 0, 1), 10f, game._clientSize, FontCharFillerThing.FontCharDeeta, false);
 			if (DisplayFullInfo) {
@@ -1109,7 +1110,7 @@ namespace GameEngineThing {
 		};
 		public const string GameIdentifier = "old:miner";
 		public static void StartInit() {
-			DataStuff.chatCommands["oldmininggame "] = DataStuff.chatCommands["miner "] = delegate (Game game, string str) {
+			DataStuff.chatCommands["oldmininggame "] = delegate (Game game, string str) {
 				int i;
 				bool ret = true;
 				for (i = 0; i < game._currentMinigames.Count; i++) if (game._currentMinigames[i] is OldMiningGame) { ret = false; break; }
@@ -1252,7 +1253,7 @@ namespace GameEngineThing {
 			for (int i = 0; i < 100; i++){shader.SetVector2("offsets[" + i + "]", translations[i]);}*/}
 		public override void OnLoad(Game game) {
 			base.OnLoad(game);
-			game._camera.IsFlying = true;
+			game._player.IsFlying = true;
 			game._camera.MaxDist = 1024;
 			shader = new("Shaders/miningGame/shader.vert", "Shaders/miningGame/shader.frag");
 			GL.UseProgram(shader.Handle);
@@ -1278,13 +1279,7 @@ namespace GameEngineThing {
 
 			GL.EnableVertexAttribArray(2);
 			GL.VertexAttribIPointer(2, 3, VertexAttribIntegerType.Int, 3 * sizeof(int), 0);
-			GL.BindBuffer(BufferTarget.ArrayBuffer, 0);
 			GL.VertexAttribDivisor(2, 1);
-
-			// unbind to prevent later code from accidentally modifying this VAO/EBO
-			GL.BindBuffer(BufferTarget.ArrayBuffer, 0);
-			GL.BindVertexArray(0);
-			// GL.BindBuffer(BufferTarget.ElementArrayBuffer, 0);
 		}
 		public override void OnRenderFrame(Game game, double dt) {// 1154
 			base.OnRenderFrame(game, dt);
@@ -1779,31 +1774,24 @@ namespace GameEngineThing {
 				game._gameModes.Add(GameIdentifier);}
 		};
 		public const string GameIdentifier = "miner";
-		public static readonly Action<Game> FlySillyBehavior = delegate (Game game){
-			Camera cam = game._camera;
+		public static readonly Action<Player, Game, byte[]> FlySillyBehavior = delegate (Player plr, Game game, byte[] ksData){
 			var ks = game.KeyboardState;
-			float movAmt = cam.CamSpeed / game._gameTickSpeed;
-			Player player = game._player;
+			float movAmt = plr.Walkspeed / game._gameTickSpeed;
 			long frameCount = game._frameCount;
-			player.RootPosition += cam.Direction*((ks[Keys.S]?movAmt:0)-(ks[Keys.W]?movAmt:0))+
-			cam.Right*((ks[Keys.D]?movAmt:0)-(ks[Keys.A]?movAmt:0))+
-			cam.Up*(((ks[Keys.Space] || ks[Keys.E])?movAmt:0)-((ks[Keys.LeftShift] || ks[Keys.Q])?movAmt:0));
-			bool silly = (frameCount & 256) == 0;//(float ax, float ay, float az) = player.RootRotation;
-			Vector3 scale = player.RootScale, rot = player.RootRotation, pos = player.RootPosition;
+			plr.RootPosition += game._camera.Direction*((ks[Keys.S]?movAmt:0)-(ks[Keys.W]?movAmt:0))+
+			game._camera.Right*((ks[Keys.D]?movAmt:0)-(ks[Keys.A]?movAmt:0))+
+			game._camera.Up*(((ks[Keys.Space] || ks[Keys.E])?movAmt:0)-((ks[Keys.LeftShift] || ks[Keys.Q])?movAmt:0));
+			bool silly = (frameCount & 256) == 0;//(float ax, float ay, float az) = plr.RootRotation;
 			if (silly) {
-				scale += (MathF.Sin(frameCount*0.0017f)*1.5f,MathF.Sin(frameCount*0.0022f)*1.5f,MathF.Sin(frameCount*0.0031f)*1.5f);
-				rot += (MathF.Sin(frameCount*.009f)*5,MathF.Sin(frameCount*.012f)*5,MathF.Sin(frameCount*.006f)*5);
-				pos += (MathF.Sin(frameCount*0.0012f),MathF.Sin(frameCount*0.00133f),MathF.Sin(frameCount*0.00162f));
-				for (int i = 0; i < player.Limbs.Length; i++) {
-					player.LimbRotations[i] = (Random.Shared.NextSingle()*MathF.PI,Random.Shared.NextSingle()*MathF.PI,Random.Shared.NextSingle()*MathF.PI);
-				}
+				plr.RootScale += (MathF.Sin(frameCount*0.0017f)*1.5f,MathF.Sin(frameCount*0.0022f)*1.5f,MathF.Sin(frameCount*0.0031f)*1.5f);
+				plr.RootRotation += (MathF.Sin(frameCount*.009f)*5,MathF.Sin(frameCount*.012f)*5,MathF.Sin(frameCount*.006f)*5);
+				for (int i = 0; i < plr.Limbs.Length; i++) plr.LimbRotations[i] = (Random.Shared.NextSingle()*MathF.Tau,Random.Shared.NextSingle()*MathF.Tau,Random.Shared.NextSingle()*MathF.Tau);
 			}
-			player.RootModel = Matrix4.CreateScale(scale) * DataStuff.CreateRotationXYZ(rot) * Matrix4.CreateTranslation(pos);
-			player.UpdateLimbs();
+			plr.UpdateMats();
 		};
 		public static void StartInit() {
-			DataStuff.noInputChatCommands["flysilly"] = delegate (Game game) { game.FlyBehavior = FlySillyBehavior; };
-			DataStuff.noInputChatCommands["flyunsilly"] = delegate (Game game) { game.FlyBehavior = Game.DefaultFlyBehavior; };
+			DataStuff.noInputChatCommands["/flysilly"] = delegate (Game game) { game._player.moveBehavior = FlySillyBehavior; };
+			DataStuff.noInputChatCommands["/flyunsilly"] = delegate (Game game) { game._player.moveBehavior = Player.defaultMoveBehavior; };
 			DataStuff.chatCommands["mininggame "] = DataStuff.chatCommands["miner "] = delegate (Game game, string str) {
 				int i;
 				bool ret = true;
@@ -1846,9 +1834,7 @@ namespace GameEngineThing {
 			if (v != value[key2]) { value[key2] = v; CDT[key1] = 1u; }
 		}
 		public MiningGame() { }
-		int cubeVAO;
-		int cubeVBO;
-		int instanceVBO;
+		int cubeVAO, cubeVBO, instanceVBO;
 		static float[] cubeVerts = [
 			0,0,1, 0,15f/128,  1,0,1, 1f/128,15f/128,  0,1,1, 0,16f/128,   1,0,1, 1f/128,15f/128,  1,1,1, 1f/128,16f/128,  0,1,1, 0,16f/128, // front
 			0,0,0, 0,15f/128,  0,1,0, 0,16f/128,  1,0,0, 1f/128,15f/128,   1,0,0, 1f/128,15f/128,  0,1,0, 0,16f/128,  1,1,0, 1f/128,16f/128, // back
@@ -1937,7 +1923,7 @@ namespace GameEngineThing {
 			Console.WriteLine("sphere gen took " + Stopwatch.GetElapsedTime(bruh).TotalMilliseconds + "ms.");}
 		public override void OnLoad(Game game) {
 			base.OnLoad(game);
-			game._camera.IsFlying = true;
+			game._player.IsFlying = true;
 			game._camera.MaxDist = 1024;
 			shader = new("Shaders/miningGame/shader.vert", "Shaders/miningGame/shader.frag");
 			GL.UseProgram(shader.Handle);
@@ -1962,13 +1948,7 @@ namespace GameEngineThing {
 
 			GL.EnableVertexAttribArray(2);
 			GL.VertexAttribIPointer(2, 3, VertexAttribIntegerType.Int, 3 * sizeof(int), 0);
-			GL.BindBuffer(BufferTarget.ArrayBuffer, 0);
 			GL.VertexAttribDivisor(2, 1);
-
-			// unbind
-			// GL.BindBuffer(BufferTarget.ArrayBuffer, 0);
-			GL.BindVertexArray(0);
-			// GL.BindBuffer(BufferTarget.ElementArrayBuffer, 0);
 		}
 		public override void OnRenderFrame(Game game, double dt) {// 1154
 			base.OnRenderFrame(game, dt);
@@ -2394,9 +2374,6 @@ namespace GameEngineThing {
 				GL.VertexAttribPointer(3, 2, VertexAttribPointerType.Float, false, 9 * sizeof(float), 7 * sizeof(float));
 
 				Meshes.Add(this);
-				GL.BindBuffer(BufferTarget.ArrayBuffer, 0);
-				GL.BindVertexArray(0);
-				GL.BindBuffer(BufferTarget.ElementArrayBuffer, 0);
 				MeshCount++; }
 			public void Bind() { GL.BindVertexArray(VertexArrayObject); }
 			public void UpdMeshV() {
@@ -2695,29 +2672,11 @@ namespace GameEngineThing {
 			}
 		};
 		public ObjectMesh _tetrahedron, _cube, _plane;
-		public List<TxtOptions> TextThingies = [];
-#nullable enable
-		public void TextThingiesRender(Text textRenderer, int i, Game game, string text, Shader? shader = null, Vector2i? windowSize = null) {
-			textRenderer.Render(TextThingies[i], game, text, shader ?? game._textShader, windowSize ?? game._clientSize); }
-#nullable disable
-		public override void OnLoad(Game game)
-		{
+		public override void OnLoad(Game game) {
 			base.OnLoad(game);
 			_tetrahedron = new ObjectMesh(new Vector3(0f, 10f, 0f), Vector3.Zero, Vector3.One, DataStuff.TetrahedronV, DataStuff.TetrahedronI);
 			_cube = new ObjectMesh((2,0,0), Vector3.Zero, Vector3.One, DataStuff.CubeV, DataStuff.CubeI);
 			_plane = new ObjectMesh(Vector3.Zero, Vector3.Zero, Vector3.One, DataStuff.PlaneV, DataStuff.PlaneI);
-
-			const float _lineHeight = 10f;
-			// _textRenderer.NewTxtThing(new TxtOptions(posOffset, posScale, textScale, color, lineHeight, windowSize, fontCharData, useSpecialChar));
-			TextThingies.Add(new TxtOptions(Vector2i.Zero, new(-.9f, .9f), new(5), Vector3.One, _lineHeight, FontCharFillerThing.FontCharDeeta, true));
-			TextThingies.Add(new TxtOptions(Vector2i.Zero, new(-.5f, .9f), new(5), Vector3.One, _lineHeight, FontCharFillerThing.FontCharDeeta, true));
-			TextThingies.Add(new TxtOptions(Vector2i.Zero, new(-.9f, .9f), new(2), Vector3.One, _lineHeight, FontCharFillerThing.FontCharDeeta, true));
-			TextThingies.Add(new TxtOptions(Vector2i.Zero, new(-.9f, .9f), new(1), Vector3.One, _lineHeight, FontCharFillerThing.FontCharDeeta, true));
-			TextThingies.Add(new TxtOptions(Vector2i.Zero, new(-.9f, -.9f), new(10), new(1f, .5f, 1f), _lineHeight, FontCharFillerThing.FontCharDeeta, true));
-			TextThingies.Add(new TxtOptions(Vector2i.Zero, new(-.9f, -.4f), new(10), new(1f, .5f, 1f), _lineHeight, FontCharFillerThing.FontCharDeeta, true));
-			TextThingies.Add(new TxtOptions(Vector2i.Zero, new(-.9f, -.6f), new(1), new(1f, .5f, 1f), _lineHeight, FontCharFillerThing.FontCharDeeta, true));
-
-			TextThingies.Add(new TxtOptions(Vector2i.Zero, new(-.96f + (float)Math.Sin(game._gameTime) * .05f, -.5f), Vector2.Zero, new(Random.Shared.Next(0, 100) / 100f), _lineHeight, FontCharFillerThing.FontCharDeeta, true));
 		}
 		public override void OnRenderFrame(Game game, double dt)
 		{
@@ -2727,37 +2686,34 @@ namespace GameEngineThing {
 			float sinGameTime = (float)Math.Sin(game._gameTime);
 			Matrix4 Scale = Matrix4.CreateScale(new Vector3(sinGameTime + 1f));
 			Matrix4[] models = [
-				Scale * Matrix4.CreateTranslation(new Vector3(-10f, 0f, 0f)),
-				Scale * Matrix4.CreateTranslation(new Vector3(10f, 0f, 0f)),
-				Scale * Matrix4.CreateTranslation(new Vector3(0f, 10f, 0f)),
-				Scale * Matrix4.CreateTranslation(new Vector3(0f, -10f, 0f)),
-				Scale * Matrix4.CreateTranslation(new Vector3(0f, 0f, 10f)),
-				Scale * Matrix4.CreateTranslation(new Vector3(0f, 0f, -10f)),
+				Scale * Matrix4.CreateTranslation(-10f, 0f, 0f),
+				Scale * Matrix4.CreateTranslation(10f, 0f, 0f),
+				Scale * Matrix4.CreateTranslation(0f, 10f, 0f),
+				Scale * Matrix4.CreateTranslation(0f, -10f, 0f),
+				Scale * Matrix4.CreateTranslation(0f, 0f, 10f),
+				Scale * Matrix4.CreateTranslation(0f, 0f, -10f),
 			];
 			_cube.DrawWithModels(game._shader, models, false);
 			// for (int i = 0; i < models.Length; i++) game._cube.DrawWithModel(game._shader, models[i], false);
 			Text _tr = game._textRenderer;
-			TextThingiesRender(_tr, 0, game, $"FPS: {1 / game._dT:N4}");
-			TextThingiesRender(_tr, 1, game, "FPS: {1 / _dT:N4}");
-			TextThingiesRender(_tr, 2, game, "FPS: " + (1 / game._dT));
-			TextThingiesRender(_tr, 3, game, $"FPS: {1 / game._dT:N4}");
-			TextThingiesRender(_tr, 4, game, "abcdefghijklmnopqrstuvwxyz a b      d!? b");
-			TxtOptions txtOptions = TextThingies[4];
-			txtOptions.posScaleX = (float)Math.Sin(game._gameTime);
-			_tr.Render(txtOptions, game, "abcdefghijklmnopqrstuvwxyz a b      d!? b");
-			TextThingiesRender(_tr, 5, game, "FPS");
-			TextThingiesRender(_tr, 6, game, "The FitnessGram(TM) Pacer Test is an aerobic capacity test that progressively gets harder as it continues.\nThe thirty meter pacer test begins in 20 seconds.\nWhen you hear this signal a lap is completed if you don't complete the lap in time you get a strike if you get two strikes you are out\nblah blah when you hear this sound it starts on your mark get ready start\nthe quick brown fox jumped over the lazy dog THE QUICK BROWN FOX JUMPED OVER THE LAZY DOG 0123456789\n?!?!?![]{}-=_+`~!@#$%^&*();':\",.<>/\\|        cabbage");
-			txtOptions = TextThingies[7];
+			FontCharacterData fcd = FontCharFillerThing.FontCharDeeta;
+			_tr.RenderText(game, game._textShader, "FPS: "+(1 / game._dT).ToString("N4"), (0,0), (-.9f,.9f), (5f,5f), (1f,1f,1f), 10f, game._clientSize, fcd, true);
+			_tr.RenderText(game, game._textShader, "FPS: {1 / _dT:N4}", (0,0), (-.5f,.9f), (5f,5f), (1f,1f,1f), 10f, game._clientSize, fcd, true);
+			_tr.RenderText(game, game._textShader, "FPS: "+(1 / game._dT), (0,0), (-.9f,.9f), (2f,2f), (1f,1f,1f), 10f, game._clientSize, fcd, true);
+			_tr.RenderText(game, game._textShader, "FPS: "+(1 / game._dT).ToString("N4"), (0,0), (-.9f,.9f), (1f,1f), (1f,1f,1f), 10f, game._clientSize, fcd, true);
+			_tr.RenderText(game, game._textShader, "abcdefghijklmnopqrstuvwxyz a b      d!? b", (0,0), (-.9f,-.9f), (10f,10f), (1f,.5f,1f), 10f, game._clientSize, fcd, true);
+			_tr.RenderText(game, game._textShader, "abcdefghijklmnopqrstuvwxyz a b      d!? b", (0,0), ((float)Math.Sin(game._gameTime),-.9f), (10f,10f), (1f,.5f,1f), 10f, game._clientSize, fcd, true);
+			_tr.RenderText(game, game._textShader, "FPS", (0,0), (-.9f,-.4f), (10f,10f), (1f,.5f,1f), 10f, game._clientSize, fcd, true);
+			_tr.RenderText(game, game._textShader, """
+The FitnessGram(TM) Pacer Test is an aerobic capacity test that progressively gets harder as it continues.
+The thirty meter pacer test begins in 20 seconds.
+When you hear this signal a lap is completed if you don't complete the lap in time you get a strike if you get two strikes you are out
+blah blah when you hear this sound it starts on your mark get ready start
+the quick brown fox jumped over the lazy dog THE QUICK BROWN FOX JUMPED OVER THE LAZY DOG 0123456789
+?!?!?![]{}-=_+`~!@#$%^&*();':",.<>/\|        cabbage
+""", (0,0), (-.9f,-.6f), (1f,1f), (1f,.5f,1f), 10f, game._clientSize, fcd, true);
 			float xOffset = (float)Math.Sin(game._gameTime) * .025f - .48f;
-			for (int i = 20; i > 0; i--) {
-				if (i == 15) { i -= 4; continue; }
-				txtOptions.posScaleX = xOffset;
-				txtOptions.posScaleY = i * .05f - .25f;
-				txtOptions.textScaleX = i * .5f;
-				txtOptions.textScaleY = i * .5f;
-				txtOptions.color = new(Random.Shared.Next(0, 100) / 100f);
-				_tr.Render(txtOptions, game, i + "FPS: " + 1 / game._dT);}
-			_tr.AnnouncementsRender(game._announcementsThing, game, game._textShader, 10f, game._clientSize);
+			for (int i = 20; i > 0; i--) _tr.RenderText(game, game._textShader,i + "FPS: "+1 / game._dT, (0,0), (xOffset,i * .05f - .25f), (i*.5f,i*.5f), new(Random.Shared.Next(0, 100) / 100f), 10f, game._clientSize, fcd, true);
 		}
 		public override void OnUpdateFrame(Game game, double dt)
 		{
@@ -2775,12 +2731,11 @@ namespace GameEngineThing {
 			_plane?.Dispose();
 		}
 	}
-	public class BABFTE : IMinigame
-	{
+	public class BABFTE : IMinigame {
 		public const string GameIdentifier = "babfte";
 		public static Dictionary<string, Action<Game>> InGameConstructorthings = new() {
 			["bab"] = delegate (Game game) {
-				game._currentMinigames.Add(new BABFTE());
+				game._currentMinigames = [new BABFTE()];
 				game._gameModes.Add(GameIdentifier);
 			}
 		};
@@ -2798,6 +2753,374 @@ namespace GameEngineThing {
 			InGameConstructorthings["logicgates"]=
 			InGameConstructorthings["logic gates"]=
 			InGameConstructorthings["build a boat for treasure logic gates"]=InGameConstructorthings["bab"];
+			DataStuff.chatCommands["bab "] = delegate (Game g, string s) {
+				long randomTimestamplol = Stopwatch.GetTimestamp();
+				StringBuilder writeString = new("bab command lol\n");
+				if (s.Length > 5) {
+					switch (s[..5]) {
+						case "save ": {
+								writeString.Append("attempting to save..\n");
+								string path = "data/babfte/saves/"+s[5..];
+								ulong tryNum = 0;
+								if (Directory.Exists(path)) {
+									writeString.Append("path exists; all files:\n");
+									string[] allFilesInPath = Directory.GetFiles(path);
+									int pathlenp1 = path.Length+1;
+									HashSet<ulong> nums = [];
+									foreach (string _s in allFilesInPath) {
+										writeString.Append(_s+'\n');
+										try {ulong thisNum = Convert.ToUInt64(_s[pathlenp1..]); nums.Add(thisNum);} catch {}
+									}
+									if (nums.Contains(tryNum)) {
+										do {
+											tryNum = ((ulong)Random.Shared.NextInt64()<<1)^((ulong)Random.Shared.NextInt64());
+										} while (nums.Contains(tryNum));
+									}
+									writeString.Append("will try with filename "+tryNum);
+								} else {
+									writeString.Append("path doesn't exist; will save as 0");
+									Directory.CreateDirectory(path);
+								}
+								Dictionary<ulong,uint> IndexTranslator = []; // The reason for this is because some items may have been deleted and stuff and the ids are spaced out so like uh.
+								uint indextranslatorindex = 0;
+								uint bindableblockcount = 0;
+								uint gatecount = 0;
+								List<BiBS.Gate> CleanGatesList = [];
+								foreach (IBlock block in BlockStuff.AllBlocks)
+									if (block != null && block.ID > 0) {
+										IndexTranslator[block.ID] = indextranslatorindex++;
+										if (block is IBindableBlock bindableBlock) {
+											bindableblockcount++;
+											if (bindableBlock is BiBS.Gate gate) {
+												gatecount++;
+												CleanGatesList.Add(gate);
+											}
+										}
+									}
+								List<uint> thingy = [
+									4294967295, // save version
+									indextranslatorindex, // amount of blocks
+									bindableblockcount, // amount of bindable blocks
+									gatecount, // amount of gates
+								];
+								int thingyPtr = 4;
+								float[] vecs = new float[9];
+								uint[] vectouint = new uint[9];
+								for (int i = 0; i < gatecount; i++) {
+									BiBS.Gate gate = CleanGatesList[i];
+									thingy.Add(IndexTranslator[gate.ID]);
+									thingy.Add((uint)gate.Type|((uint)gate.State<<3)|((uint)gate.OutlineState<<5));
+									thingy.Add(gate.Clr);
+									(vecs[0], vecs[1], vecs[2]) = gate.Pos;
+									(vecs[3], vecs[4], vecs[5]) = gate.Rot;
+									(vecs[6], vecs[7], vecs[8]) = gate.Size;
+									System.Buffer.BlockCopy(vecs, 0, vectouint, 0, 36);
+									thingy.AddRange(vectouint);
+									thingyPtr += 12;
+								}
+								for (int i = 0; i < gatecount; i++) {
+									BiBS.Gate gate = CleanGatesList[i];
+									// int countPtr = thingyPtr;
+									thingy.Add(0);
+									thingy.Add(0);// thingyPtr += 2;
+									uint inpCount = 0, outCount = 0;
+									foreach (IBindableBlock _gate in gate.InputsArray)
+										if (_gate != null && _gate.ID > 0) {
+											thingy.Add(IndexTranslator[_gate.ID]); inpCount++;
+										}
+									foreach (IBindableBlock _gate in gate.OrigOrderOutputs)
+										if (_gate != null && _gate.ID > 0) {
+											thingy.Add(IndexTranslator[_gate.ID]); outCount++;
+										}
+									thingy[thingyPtr] = inpCount;
+									thingy[thingyPtr+1] = outCount;
+									thingyPtr += (int)(inpCount+outCount+2u);
+								}
+								byte[] actualData = new byte[thingy.Count<<2];
+								System.Buffer.BlockCopy(thingy.ToArray(), 0, actualData, 0, actualData.Length);
+								writeString.Append("\nsaving uint list len: "+actualData.Length+"\ntime so far: "+((double)(Stopwatch.GetTimestamp()-randomTimestamplol)/Stopwatch.Frequency));
+								File.WriteAllBytes(path+'/'+tryNum, actualData);
+								writeString.Append("\ntime: "+((double)(Stopwatch.GetTimestamp()-randomTimestamplol)/Stopwatch.Frequency)+'\n');
+								break;
+							}
+						case "load ": {
+								writeString.Append("attempting to load..\n");
+								string path = "data/babfte/saves/"+s[5..];
+								if (File.Exists(path)) {
+									System.Threading.Tasks.Task<byte[]> deetaGetter = File.ReadAllBytesAsync(path);
+									writeString.Append("file ("+path+") exists!\n");
+									int pathlen = path.Length;
+									foreach (IBindableBlock b in BiBS.AllBindableBlocks) {
+										b.Inputs = null;
+										b.InputsArray = null;
+										b.OutputsHashSet = null;
+										b.OrigOrderOutputs = null;
+										b.CorrectedOrderOutputs = null;
+									}
+									BiBS.Gate.AllGates = [Tools.GhostBlockGateIshIDK];
+									BiBS.AllBindableBlocks.Clear();
+									BiBS.CalcQueue.Clear();
+									BiBS.NextCalcQueue.Clear();
+									BiBS.SubCalcQueue = [];
+									BlockStuff.AllBlocks.Clear();
+									Tools.BindToolBindList.Clear();
+									Tools.BindToolSelList.Clear();
+									Tools.SelectedBlocks.Clear();
+									GC.Collect();
+
+									deetaGetter.Wait();
+									byte[] data = deetaGetter.Result; deetaGetter.Dispose();
+									uint[] dAsUint = new uint[data.Length>>2];
+									System.Buffer.BlockCopy(data,0,dAsUint,0,data.Length);
+									// Dictionary<ulong,uint> IndexTranslator = []; // The reason for this is because some items may have been deleted and stuff and the ids are spaced out so like uh.
+									// uint indextranslatorindex = 1;
+									// uint bindableblockcount = 0;
+									// uint gatecount = 0;
+									// List<Gate> CleanGatesList = [];
+									// foreach (IBlock block in BlockStuff.AllBlocks) {
+									// 	if (block != null && block.ID > 0) {
+									// 		IndexTranslator[block.ID] = indextranslatorindex++;
+									// 		if (block is IBindableBlock bindableBlock) {
+									// 			bindableblockcount++;
+									// 			if (bindableBlock is Gate gate) {
+									// 				gatecount++;
+									// 				CleanGatesList.Add(gate);
+									// 			}
+									// 		}
+									// 	}
+									// }
+									uint Ver = dAsUint[0],
+									BlockCount = dAsUint[1],
+									BindableBlockCount = dAsUint[2],
+									GateCount = dAsUint[3];
+									IBlock.IDPtr = BlockCount;
+									int thingyPtr = 4;
+									float[] floats = new float[9];
+									BiBS.Gate[] gatesArrayThing = new BiBS.Gate[GateCount];
+									for (int i = 0; i < GateCount; i++) {
+										uint deetaThingy = dAsUint[thingyPtr+1];
+										System.Buffer.BlockCopy(dAsUint, (thingyPtr<<2)+12, floats, 0, 36);
+										uint id = dAsUint[thingyPtr];
+										BiBS.Gate gate = gatesArrayThing[id] = new() {
+											ID = id,
+											Type = (GateType)(deetaThingy&7u),
+											TypeXorOn = (GateType)(deetaThingy&7u),
+											State = (BlockState)((deetaThingy>>3)&3),
+											OutlineState = (OutlineType)((deetaThingy>>5)&3),
+											Clr = dAsUint[thingyPtr+2],
+											Pos = (floats[0],floats[1],floats[2]),
+											Rot = (floats[3],floats[4],floats[5]),
+											Size = (floats[6],floats[7],floats[8]),
+										};
+										BlockStuff.AllBlocks.Add(gate);
+										BiBS.AllBindableBlocks.Add(gate);
+										BiBS.Gate.AllGates.Add(gate);
+										thingyPtr += 12;
+									}
+									for (int i = 0; i < GateCount; i++) {
+										BiBS.Gate gate = gatesArrayThing[i];
+										uint inpCount = dAsUint[thingyPtr], outCount = dAsUint[++thingyPtr];
+										HashSet<IBindableBlock> gateInps = gate.Inputs;
+										for (int j = (int)inpCount; j > 0; j--) gateInps.Add(gatesArrayThing[dAsUint[++thingyPtr]]);
+										for (int j = 0; j < (int)outCount; j++) {
+											BiBS.Gate outputGate = gatesArrayThing[dAsUint[++thingyPtr]];
+											gate.OrigOrderOutputs.Add(outputGate);
+											gate.OutputsHashSet.Add(outputGate);
+										}
+										thingyPtr++;
+									}
+									BiBS.RefreshAllBindOrderStuffs();
+									writeString.Append("\nloaded hopefully...\ntime: "+((double)(Stopwatch.GetTimestamp()-randomTimestamplol)/Stopwatch.Frequency)+'\n');
+								}
+								break;
+							}
+						case "svrl ": {
+								writeString.Append("attempting to save..\n");
+								string path = "data/babfte/saves/"+s[5..];
+								ulong tryNum = 0;
+								if (Directory.Exists(path)) {
+									writeString.Append("path exists; all files:\n");
+									string[] allFilesInPath = Directory.GetFiles(path);
+									int pathlenp1 = path.Length+1;
+									HashSet<ulong> nums = [];
+									foreach (string _s in allFilesInPath) {
+										writeString.Append(_s+'\n');
+										try {ulong thisNum = Convert.ToUInt64(_s[pathlenp1..]); nums.Add(thisNum);} catch {}
+									}
+									if (nums.Contains(tryNum)) {
+										do {
+											tryNum = ((ulong)Random.Shared.NextInt64()<<1)^((ulong)Random.Shared.NextInt64());
+										} while (nums.Contains(tryNum));
+									}
+									writeString.Append("will try with filename "+tryNum);
+								} else {
+									writeString.Append("path doesn't exist; will save as 0");
+									Directory.CreateDirectory(path);
+								}
+								Dictionary<ulong,uint> IndexTranslator = []; // The reason for this is because some items may have been deleted and stuff and the ids are spaced out so like uh.
+								uint indextranslatorindex = 0;
+								uint bindableblockcount = 0;
+								uint gatecount = 0;
+								List<BiBS.Gate> CleanGatesList = [];
+								foreach (IBlock block in BlockStuff.AllBlocks)
+									if (block != null && block.ID > 0) {
+										IndexTranslator[block.ID] = indextranslatorindex++;
+										if (block is IBindableBlock bindableBlock) {
+											bindableblockcount++;
+											if (bindableBlock is BiBS.Gate gate) {
+												gatecount++;
+												CleanGatesList.Add(gate);
+											}
+										}
+									}
+								List<uint> thingy = [
+									4294967295, // save version
+									indextranslatorindex, // amount of blocks
+									bindableblockcount, // amount of bindable blocks
+									gatecount, // amount of gates
+								];
+								int thingyPtr = 4;
+								float[] vecs = new float[9];
+								uint[] vectouint = new uint[9];
+								for (int i = 0; i < gatecount; i++) {
+									BiBS.Gate gate = CleanGatesList[i];
+									thingy.Add(IndexTranslator[gate.ID]);
+									thingy.Add((uint)gate.Type|((uint)gate.State<<3)|((uint)gate.OutlineState<<5));
+									thingy.Add(gate.Clr);
+									(vecs[0], vecs[1], vecs[2]) = gate.Pos;
+									(vecs[3], vecs[4], vecs[5]) = gate.Rot;
+									(vecs[6], vecs[7], vecs[8]) = gate.Size;
+									System.Buffer.BlockCopy(vecs, 0, vectouint, 0, 36);
+									thingy.AddRange(vectouint);
+									thingyPtr += 12;
+								}
+								for (int i = 0; i < gatecount; i++) {
+									BiBS.Gate gate = CleanGatesList[i];
+									// int countPtr = thingyPtr;
+									thingy.Add(0);
+									thingy.Add(0);// thingyPtr += 2;
+									uint inpCount = 0, outCount = 0;
+									foreach (IBindableBlock _gate in gate.InputsArray)
+										if (_gate != null && _gate.ID > 0) {
+											thingy.Add(IndexTranslator[_gate.ID]); /*thingyPtr++;*/ inpCount++;
+										}
+									foreach (IBindableBlock _gate in gate.OrigOrderOutputs)
+										if (_gate != null && _gate.ID > 0) {
+											thingy.Add(IndexTranslator[_gate.ID]); /*thingyPtr++;*/ outCount++;
+										}
+									thingy[thingyPtr] = inpCount;
+									thingy[thingyPtr+1] = outCount;
+									thingyPtr += (int)(inpCount+outCount+2u);
+								}
+								byte[] actualData = new byte[thingy.Count<<2];
+								System.Buffer.BlockCopy(thingy.ToArray(), 0, actualData, 0, actualData.Length);
+								writeString.Append("\nsaving uint list len: "+actualData.Length+"\ntime so far: "+((double)(Stopwatch.GetTimestamp()-randomTimestamplol)/Stopwatch.Frequency));
+								File.WriteAllBytes(path+'/'+tryNum, actualData);
+								writeString.Append("\ntime: "+((double)(Stopwatch.GetTimestamp()-randomTimestamplol)/Stopwatch.Frequency)+'\n');
+
+
+
+								writeString.Append("attempting to reload..\n");
+								foreach (IBindableBlock b in BiBS.AllBindableBlocks) {
+									b.Inputs = null;
+									b.InputsArray = null;
+									b.OutputsHashSet = null;
+									b.OrigOrderOutputs = null;
+									b.CorrectedOrderOutputs = null;
+								}
+								BiBS.Gate.AllGates = [Tools.GhostBlockGateIshIDK];
+								BiBS.AllBindableBlocks.Clear();
+								BiBS.CalcQueue.Clear();
+								BiBS.NextCalcQueue.Clear();
+								BiBS.SubCalcQueue = [];
+								BlockStuff.AllBlocks.Clear();
+								Tools.BindToolBindList.Clear();
+								Tools.BindToolSelList.Clear();
+								Tools.SelectedBlocks.Clear();
+								GC.Collect();
+
+								uint[] dAsUint = [.. thingy];
+								// uint Ver = dAsUint[0],
+								// BlockCount = dAsUint[1],
+								// BindableBlockCount = dAsUint[2],
+								// GateCount = dAsUint[3];
+								IBlock.IDPtr = dAsUint[1];
+								thingyPtr = 4;
+								float[] floats = new float[9];
+								BiBS.Gate[] gatesArrayThing = new BiBS.Gate[gatecount];
+								for (int i = 0; i < gatecount; i++) {
+									uint deetaThingy = dAsUint[thingyPtr+1];
+									System.Buffer.BlockCopy(dAsUint, (thingyPtr<<2)+12, floats, 0, 36);
+									uint id = dAsUint[thingyPtr];
+									BiBS.Gate gate = gatesArrayThing[id] = new() {
+										ID = id,
+										Type = (GateType)(deetaThingy&7u),
+										TypeXorOn = (GateType)(deetaThingy&7u),
+										State = (BlockState)((deetaThingy>>3)&3),
+										OutlineState = (OutlineType)((deetaThingy>>5)&3),
+										Clr = dAsUint[thingyPtr+2],
+										Pos = (floats[0],floats[1],floats[2]),
+										Rot = (floats[3],floats[4],floats[5]),
+										Size = (floats[6],floats[7],floats[8]),
+									};
+									BlockStuff.AllBlocks.Add(gate);
+									BiBS.AllBindableBlocks.Add(gate);
+									BiBS.Gate.AllGates.Add(gate);
+									thingyPtr += 12;
+								}
+								for (int i = 0; i < gatecount; i++) {
+									BiBS.Gate gate = gatesArrayThing[i];
+									uint inpCount = dAsUint[thingyPtr], outCount = dAsUint[++thingyPtr];
+									HashSet<IBindableBlock> gateInps = gate.Inputs;
+									for (int j = (int)inpCount; j > 0; j--) gateInps.Add(gatesArrayThing[dAsUint[++thingyPtr]]);
+									for (int j = (int)outCount; j > 0; j--) {
+										BiBS.Gate outputGate = gatesArrayThing[dAsUint[++thingyPtr]];
+										gate.OrigOrderOutputs.Add(outputGate);
+										gate.OutputsHashSet.Add(outputGate);
+									}
+									thingyPtr++;
+								}
+								BiBS.RefreshAllBindOrderStuffs();
+								writeString.Append("\nloaded hopefully...\ntotal time: "+((double)(Stopwatch.GetTimestamp()-randomTimestamplol)/Stopwatch.Frequency)+'\n');
+								break;
+							}
+						case "setg ":
+							if (s.Length > 10) {
+								switch (s[5..10]) {
+									case "bupf ":
+										try {
+											int a = Convert.ToInt32(s[10..]);
+											BiBS.BlockUpdatesPerFrame = a;
+											BiBS.ProcessMode = 0;
+											writeString.Append("should have set block updates/frame to "+a+" if i've done this right..\n");
+										} catch {writeString.Append("bruh you did smth wrong..\n");} break;
+									case "stpf ":
+										try {
+											int a = Convert.ToInt32(s[10..]);
+											BiBS.BlockUpdatesPerFrame = a;
+											BiBS.ProcessMode = 1;
+											writeString.Append("should have set subtick updates/frame to "+a+" if i've done this right..\n");
+										} catch {writeString.Append("bruh you did smth wrong..\n");} break;
+									case "tupf ":
+										try {
+											int a = Convert.ToInt32(s[10..]);
+											BiBS.BlockUpdatesPerFrame = a;
+											BiBS.ProcessMode = 2;
+											writeString.Append("should have set ticks/frame to "+a+" if i've done this right..\n");
+										} catch {writeString.Append("bruh you did smth wrong..\n");} break;
+									case "efpu ":
+										try {
+											int a = Convert.ToInt32(s[10..]);
+											BiBS.AdditionalFramesPerUpdate = a;
+											writeString.Append("should have set extra frames per update to "+a+" if i've done this right..\n");
+										} catch {writeString.Append("bruh you did smth wrong..\n");} break;
+								}
+							}
+							break;
+					}
+				}
+				Console.Write(writeString.ToString());
+			};
 		}
 		public static int frame;
 		public BABFTE() {
@@ -2807,32 +3130,39 @@ namespace GameEngineThing {
 			public const int BulkDrawBS = 12;
 			public const int BulkDrawConst = 1<<BulkDrawBS; // 4096
 			public static List<IBlock> AllBlocks = [];
-			public static Type[] AllBlockTypes = [typeof(Gate)];
+			public static Type[] AllBlockTypes = [typeof(BiBS.Gate)];
 			public static int[] BlockVAOs;
 			public static int[] BlockVBOs;
 			public static int[] InstanceVBOs;
 			public static Dictionary<Type, Action> BlockRenderBehavior = new() {
-				[typeof(Gate)] = Gate.R
+				[typeof(BiBS.Gate)] = BiBS.Gate.R
 			};
 			public static Action[] BlockRenderBehaviors = [
-				Gate.R
+				BiBS.Gate.R
 			];
 		}
 		public abstract class IBlock {
-			public Vector3 Pos, Rot;
+			public Vector3 Pos, Rot, Size;
 			public uint Clr;
-			public BlockState SelState; // by, like, tools.
+			public BlockState State; // by, like, tools.
+			public OutlineType OutlineState;
 			public static int VAO, VBO, instanceVBO;
+			public static ulong IDPtr = 1;
+			// um uh please don't change this after creation thank you uh.
+			public ulong ID;
 		}
 		[Flags]
 		public enum BlockState {
 			None = 0,
 			Selected = 1, // selected, e.g. drag sel'd or shift-sel'd or clicked or whv.
-			Highlighted = 2, // highlighted, e.g. hovered over w/ mouse.
-			On = 4, // only for ibindableblock idk
+			On = 2, // only for ibindableblock idk
 		}
-		public static class BindableBlockStuff {
-			public static List<IBindableBlock> AllBindableBlocks = [], CalcQueue = [], NextCalcQueue = [];
+		public class BiBS {
+			public static HashSet<IBindableBlock> AllBindableBlocks = [];
+			public static List<IBindableBlock[]> CalcQueue = [], NextCalcQueue = [];
+			public static IBindableBlock[] SubCalcQueue = [];
+			public static int CalcQueueLenMinusTwo, ProcessMode = 0;
+			public static int[] ToggleQueue = [];
 			public static int BlockUpdatesPerFrame = 16;
 			/// <summary>
 			/// 0: each frame;
@@ -2841,49 +3171,477 @@ namespace GameEngineThing {
 			/// </summary>
 			public static int AdditionalFramesPerUpdate = 0;
 			public static int LastUpdateFrame = 0;
-			public static int QueuePtr = 0;
+			public static int QueuePtr = 0, QueueSubPtr = 0, thingy = 0;
 			public static long Tick = 0;
 			public static void QueueBlock(IBindableBlock block) {
-				if (!(block.IsScheduled == Tick)) {
-					CalcQueue.Add(block);
-					block.IsScheduled = Tick;
+				NextCalcQueue.Add([block]);
+			}
+			public static void QueueSet(IBindableBlock block) {
+				NextCalcQueue.Add(block.CorrectedOrderOutputs);
+			}
+			public static void RefreshAllBindOrderStuffs() {
+				int MaxAmt = 0;
+				foreach (IBindableBlock a in AllBindableBlocks) {
+					int amt = a.OrigOrderOutputs.Count;
+					if (amt > MaxAmt) MaxAmt = amt;
+				}
+				IBindableBlock[] Deprioritizeds = new IBindableBlock[MaxAmt];
+				ToggleQueue = new int[MaxAmt];
+				foreach (IBindableBlock a in AllBindableBlocks) {
+					int amt = a.OrigOrderOutputs.Count;
+					a.CorrectedOrderOutputs = new IBindableBlock[amt];
+					if (a.HasAnyOutputBlock = amt > 0) {
+						int i = 0, j = 0;
+						foreach (IBindableBlock b in a.OrigOrderOutputs)
+							if (a.OutputsHashSet.Overlaps(b.OutputsHashSet)) {Deprioritizeds[j]=b; j++;} else
+								{a.CorrectedOrderOutputs[i]=b; i++;}
+						if (j > 0) Array.Copy(Deprioritizeds, 0, a.CorrectedOrderOutputs, i, j);
+					}
+					a.Inputs.CopyTo(a.InputsArray = new IBindableBlock[(a.InpsCountMinusOne = (a.InpsCount = a.Inputs.Count)-1)+1]);
 				}
 			}
 			public static void NewTick() {
 				Tick++;
 				QueuePtr = 0;
+				CalcQueueLenMinusTwo = NextCalcQueue.Count-2;
+				CalcQueue.Clear();
 				(CalcQueue, NextCalcQueue) = (NextCalcQueue, CalcQueue);
+				SubCalcQueue = CalcQueue[0];
+				QueueSubPtr = 0;
+				for (thingy = SubCalcQueue.Length-1; thingy > -1; thingy--) SubCalcQueue[thingy].AddToTQIfCanUpdate();
+				if (QueueSubPtr == 0) NextSubTick();
 			}
-			public static void OnTickUpdate() {
-				int i = QueuePtr;
-				if (CalcQueue.Count < QueuePtr + BlockUpdatesPerFrame+1) { // if true, tick will complete this frame
-					for (; i < CalcQueue.Count; i++) {
-						CalcQueue[i].OnUpdate();
+			public static int NextSubTick() {
+				QueueSubPtr = 0;
+				do {
+					if (QueuePtr > CalcQueueLenMinusTwo) {
+						Tick++;
+						QueuePtr = 0;
+						CalcQueue.Clear();
+						if ((CalcQueueLenMinusTwo = NextCalcQueue.Count-2) == -2) return 1;
+						(CalcQueue, NextCalcQueue) = (NextCalcQueue, CalcQueue);
+					} else QueuePtr++;
+					SubCalcQueue = CalcQueue[QueuePtr];
+					for (thingy = SubCalcQueue.Length-1; thingy > -1; thingy--) SubCalcQueue[thingy].AddToTQIfCanUpdate();
+				} while (QueueSubPtr == 0);
+				return 0;
+			}
+			public static void OnTickUpdateSST() {
+				if (CalcQueue.Count == 0) {if (NextCalcQueue.Count > 0) NewTick(); return;} // :3
+				LastUpdateFrame = frame;
+				// int thingy = SubCalcQueueRealLen - QueueSubPtr - BlockUpdatesPerFrame;
+				// if (thingy < 0) { // queuecount-queueptr is amt of items that have yet to be processed this subtick. that minus BUPF will be the amount left if the normal amt of blocks is processed this subtick.
+				// 	int todo = BlockUpdatesPerFrame - SubCalcQueueRealLen + QueueSubPtr; // me when i count my progresses before they progress
+				// int thingy = SubCalcQueueRealLen - QueueSubPtr - BlockUpdatesPerFrame;
+				// if (thingy < 0) {
+				// 	int todo = -thingy; // these 2 are equivalent lol
+				int amtLeft = QueueSubPtr - BlockUpdatesPerFrame; // amount left in this subtick if bupf things are to be processed rn
+				if (amtLeft < 0) {
+					do {
+						do {QueueSubPtr--;SubCalcQueue[ToggleQueue[QueueSubPtr]].ForceToggle();} while (QueueSubPtr > 0);
+						do {
+							if (QueuePtr > CalcQueueLenMinusTwo) {
+								Tick++;
+								QueuePtr = 0;
+								CalcQueue.Clear();
+								if ((CalcQueueLenMinusTwo = NextCalcQueue.Count-2) == -2) return;
+								(CalcQueue, NextCalcQueue) = (NextCalcQueue, CalcQueue);
+								SubCalcQueue = CalcQueue[0];
+							} else {QueuePtr++; SubCalcQueue = CalcQueue[QueuePtr];}
+							for (thingy = SubCalcQueue.Length-1; thingy > -1; thingy--) SubCalcQueue[thingy].AddToTQIfCanUpdate();
+						} while (QueueSubPtr == 0);
+						amtLeft += QueueSubPtr;
+					} while (amtLeft < 0);
+				}
+				if (amtLeft == 0) {
+					do {QueueSubPtr--;SubCalcQueue[ToggleQueue[QueueSubPtr]].ForceToggle();} while (QueueSubPtr > 0);
+					NextSubTick();}
+				else do {QueueSubPtr--;SubCalcQueue[ToggleQueue[QueueSubPtr]].ForceToggle();} while (QueueSubPtr > amtLeft);
+			}
+			public static void OnTickUpdateST() {
+				if (CalcQueue.Count == 0) {if (NextCalcQueue.Count > 0) NewTick(); return;} // :3
+				LastUpdateFrame = frame;
+				for (int todo = BlockUpdatesPerFrame; todo > 0; todo--){
+					do {QueueSubPtr--;SubCalcQueue[ToggleQueue[QueueSubPtr]].ForceToggle();} while (QueueSubPtr > 0);
+					do {
+						if (QueuePtr > CalcQueueLenMinusTwo) {
+							Tick++;
+							QueuePtr = 0;
+							CalcQueue.Clear();
+							if ((CalcQueueLenMinusTwo = NextCalcQueue.Count-2) == -2) return;
+							(CalcQueue, NextCalcQueue) = (NextCalcQueue, CalcQueue);
+							SubCalcQueue = CalcQueue[0];
+						} else {QueuePtr++; SubCalcQueue = CalcQueue[QueuePtr];}
+						for (thingy = SubCalcQueue.Length-1; thingy > -1; thingy--) SubCalcQueue[thingy].AddToTQIfCanUpdate();
+					} while (QueueSubPtr == 0);
+				}
+			}
+			public static void OnTickUpdateT() {
+				int calcqueuelenminusone = CalcQueue.Count-1;
+				if (calcqueuelenminusone == -1) {if (NextCalcQueue.Count > 0) {
+						Tick++;
+						QueuePtr = 0;
+						(CalcQueue, NextCalcQueue) = (NextCalcQueue, CalcQueue);
+						SubCalcQueue = CalcQueue[0];
+						QueueSubPtr = 0;
+						// for (int i = SubCalcQueue.Length-1; i > -1; i--) if (SubCalcQueue[i].GetUpdateResult()) ToggleQueue[QueueSubPtr++] = i;
+						for (thingy = SubCalcQueue.Length-1; thingy > -1; thingy--) SubCalcQueue[thingy].AddToTQIfCanUpdate();
+					} return;} // :3
+				LastUpdateFrame = frame;
+				for (int todo = BlockUpdatesPerFrame; todo > 0; todo--){
+					while (QueuePtr < calcqueuelenminusone) {
+						while (QueueSubPtr > 0) {QueueSubPtr--;SubCalcQueue[ToggleQueue[QueueSubPtr]].ForceToggle();}
+						QueuePtr++; SubCalcQueue = CalcQueue[QueuePtr];
+						for (thingy = SubCalcQueue.Length-1; thingy > -1; thingy--) SubCalcQueue[thingy].AddToTQIfCanUpdate();
 					}
-					NewTick();
-				} else { // if false, tick won't complete this frame.
-					for (; i < QueuePtr + BlockUpdatesPerFrame; i++) {
-						CalcQueue[i].OnUpdate();
-					}
+					while (QueueSubPtr > 0) {QueueSubPtr--;SubCalcQueue[ToggleQueue[QueueSubPtr]].ForceToggle();}
+					Tick++;
+					QueuePtr = 0;
+					CalcQueue.Clear();
+					if ((calcqueuelenminusone = NextCalcQueue.Count-1) == -1) return;
+					(CalcQueue, NextCalcQueue) = (NextCalcQueue, CalcQueue);
+					SubCalcQueue = CalcQueue[0];
+					for (thingy = SubCalcQueue.Length-1; thingy > -1; thingy--) SubCalcQueue[thingy].AddToTQIfCanUpdate();
 				}
 			}
 			public static void OnUpdateFrame() {
 				if (frame > LastUpdateFrame + AdditionalFramesPerUpdate) {
-					OnTickUpdate(); // block updates
+					switch (ProcessMode) {
+						case 0:
+							OnTickUpdateSST();
+							break;
+						case 1:
+							OnTickUpdateST();
+							break;
+						case 2:
+							OnTickUpdateT();
+							break;
+						default:
+							throw new Exception("invalid");
+					}
+				} // block updates
+			}
+			public class Gate : IBindableBlock {
+				public static List<Gate> AllGates = [];
+				public GateType Type;
+				public GateType TypeXorOn;
+				// /// <summary>
+				// /// True: Not enabled. False: Not disabled.
+				// /// </summary>
+				// public bool Not;
+				/// <summary>
+				/// creates a gate and does absolutely NOTHING else, doesn't even add it to the lists or add an ID.
+				/// </summary>
+				public Gate() {}
+				public Gate(Vector3 position) {
+					Pos = position; Size = (1f,.4f,1f); ID = IDPtr++;
+					BlockStuff.AllBlocks.Add(this);
+					BiBS.AllBindableBlocks.Add(this);
+					AllGates.Add(this);
+				}
+				public Gate(Vector3 position, Vector3 rotation) {
+					Pos = position; Rot = rotation; Size = (1f,.4f,1f); ID = IDPtr++;
+					BlockStuff.AllBlocks.Add(this);
+					BiBS.AllBindableBlocks.Add(this);
+					AllGates.Add(this);
+				}
+				public Gate(bool ghostIsh) {
+					Size = (1f,.4f,1f);
+					AllGates.Add(this);
+					if (!ghostIsh) { ID = IDPtr++;
+						BlockStuff.AllBlocks.Add(this);
+						BiBS.AllBindableBlocks.Add(this);
+					} else ID = 0;
+				}
+				public static float[] verts = [
+					-.5f,-.5f,.5f, 1/4096f,1/4096f,  .5f,-.5f,.5f, 1/4096f,1/4096f,  -.5f,.5f,.5f, 1/4096f,1/4096f,   .5f,-.5f,.5f, 1/4096f,1/4096f,  .5f,.5f,.5f, 1/4096f,1/4096f,  -.5f,.5f,.5f, 1/4096f,1/4096f, // front
+					-.5f,-.5f,-.5f, 1/4096f,1/4096f,  -.5f,.5f,-.5f, 1/4096f,1/4096f,  .5f,-.5f,-.5f, 1/4096f,1/4096f,   .5f,-.5f,-.5f, 1/4096f,1/4096f,  -.5f,.5f,-.5f, 1/4096f,1/4096f,  .5f,.5f,-.5f, 1/4096f,1/4096f, // back
+					.5f,-.5f,-.5f, 1/4096f,1/4096f,  .5f,.5f,-.5f, 1/4096f,1/4096f,  .5f,-.5f,.5f, 1/4096f,1/4096f,   .5f,-.5f,.5f, 1/4096f,1/4096f,  .5f,.5f,-.5f, 1/4096f,1/4096f,  .5f,.5f,.5f, 1/4096f,1/4096f, // right
+					-.5f,-.5f,-.5f, 1/4096f,1/4096f,  -.5f,-.5f,.5f, 1/4096f,1/4096f,  -.5f,.5f,-.5f, 1/4096f,1/4096f,   -.5f,-.5f,.5f, 1/4096f,1/4096f,  -.5f,.5f,.5f, 1/4096f,1/4096f,  -.5f,.5f,-.5f, 1/4096f,1/4096f, // left
+					-.5f,.5f,.5f, 0,1/64f,  -.5f,.5f,-.5f, 0,0,  .5f,.5f,.5f, 1/64f,1/64f,   .5f,.5f,.5f, 1/64f,1/64f,  -.5f,.5f,-.5f, 0,0,  .5f,.5f,-.5f, 1/64f,0, // top
+					-.5f,-.5f,.5f, 1/4096f,1/4096f,  .5f,-.5f,.5f, 1/4096f,1/4096f,  -.5f,-.5f,-.5f, 1/4096f,1/4096f,   .5f,-.5f,.5f, 1/4096f,1/4096f,  .5f,-.5f,-.5f, 1/4096f,1/4096f,  -.5f,-.5f,-.5f, 1/4096f,1/4096f, // bottom
+				];
+				public static void L(Game game) {
+					VAO = GL.GenVertexArray();
+					GL.BindVertexArray(VAO);
+
+					VBO = GL.GenBuffer();
+					GL.BindBuffer(BufferTarget.ArrayBuffer, VBO);
+					GL.BufferData(BufferTarget.ArrayBuffer, verts.Length * sizeof(float), verts, BufferUsageHint.StaticDraw);
+
+					GL.EnableVertexAttribArray(0);
+					GL.VertexAttribPointer(0, 3, VertexAttribPointerType.Float, false, 5 * sizeof(float), 0);
+					GL.EnableVertexAttribArray(1);
+					GL.VertexAttribPointer(1, 2, VertexAttribPointerType.Float, false, 5 * sizeof(float), 3 * sizeof(float));
+
+					instanceVBO = GL.GenBuffer();
+					GL.BindBuffer(BufferTarget.ArrayBuffer, instanceVBO);
+					GL.BufferData(BufferTarget.ArrayBuffer, (sizeof(float)*12+sizeof(uint)*2)*BlockStuff.BulkDrawConst, 0, BufferUsageHint.DynamicDraw);
+
+					GL.EnableVertexAttribArray(2);
+					GL.EnableVertexAttribArray(3);
+					GL.EnableVertexAttribArray(4);
+					GL.VertexAttribPointer(2, 4, VertexAttribPointerType.Float, false, sizeof(float)*12+sizeof(uint)*2, 0);
+					GL.VertexAttribPointer(3, 4, VertexAttribPointerType.Float, false, sizeof(float)*12+sizeof(uint)*2, 4*sizeof(float));
+					GL.VertexAttribPointer(4, 4, VertexAttribPointerType.Float, false, sizeof(float)*12+sizeof(uint)*2, 8*sizeof(float));
+					GL.EnableVertexAttribArray(5);
+					GL.EnableVertexAttribArray(6);
+					GL.VertexAttribPointer(5, 4, VertexAttribPointerType.UnsignedByte, false, sizeof(float)*12+sizeof(uint)*2, sizeof(float)*12);
+					GL.VertexAttribPointer(6, 1, VertexAttribPointerType.UnsignedByte, false, sizeof(float)*12+sizeof(uint)*2, sizeof(float)*12+sizeof(uint));
+					GL.VertexAttribDivisor(2, 1);
+					GL.VertexAttribDivisor(3, 1);
+					GL.VertexAttribDivisor(4, 1);
+					GL.VertexAttribDivisor(5, 1);
+					GL.VertexAttribDivisor(6, 1);
+
+					// it'll be fineeee without unbind here lol
+				}
+				[System.Runtime.InteropServices.StructLayout(System.Runtime.InteropServices.LayoutKind.Sequential)]
+				public struct Mat3ColAndU32Color {
+					public float m0,m1,m2,m3,m4,m5,m6,m7,m8,m9,m10,m11;
+					public uint clr, state;
+				}
+				public static Mat3ColAndU32Color[] blockDataBuffer = new Mat3ColAndU32Color[BlockStuff.BulkDrawConst];
+				public static void R() {
+					GL.BindVertexArray(VAO);
+					int count = AllGates.Count;
+					if ((frame&255)==0)Console.WriteLine("Instance count: "+count);
+					if (count > BlockStuff.BulkDrawConst) {
+						int amtThing = count>>BlockStuff.BulkDrawBS;
+						int i2 = 0;
+						for (int j = 0; j < amtThing; j++) {
+							for (int i3=0; i3<BlockStuff.BulkDrawConst;i2++,i3++) {
+								Gate gate = AllGates[i2];
+								uint clr = gate.Clr;
+								ref Mat3ColAndU32Color gateData = ref blockDataBuffer[i3];
+								gateData.clr = (((((clr&0xff000000u)>>24)+255u)>>1)<<24)|((((clr&0x00ff0000u)+16711680u)>>17)<<16)|(((((clr&0x0000ff00u)*3)+65280u)>>10)<<8)|(clr&0xffu);
+								Vector3 r = gate.Rot;
+								float sx = gate.Size.X, sy = gate.Size.Y, sz = gate.Size.Z;
+								float num = MathF.Cos(r.X), num2 = MathF.Sin(r.X),
+								num3 = MathF.Cos(r.Y), num4 = MathF.Sin(r.Y),
+								num5 = MathF.Cos(r.Z), num6 = MathF.Sin(r.Z);
+								float _x2 = num2 * num4, _x3 = num * num4;
+								gateData.m0 = sx*num3*num5;
+								gateData.m1 = sy*(_x2*num5-num*num6);
+								gateData.m2 = sz*(_x3*num5+num2*num6);
+								gateData.m3 = gate.Pos.X;
+								gateData.m4 = sx*num3*num6;
+								gateData.m5 = sy*(_x2*num6+num*num5);
+								gateData.m6 = sz*(_x3*num6-num2*num5);
+								gateData.m7 = gate.Pos.Y;
+								gateData.m8 = sx*-num4;
+								gateData.m9 = sy*num2*num3;
+								gateData.m10 = sz*num*num3;
+								gateData.m11 = gate.Pos.Z;
+								gateData.state = (((uint)gate.Type)|(gate.On?8u:0u))&255u;
+							}
+							GL.BindBuffer(BufferTarget.ArrayBuffer, instanceVBO);
+							GL.BufferSubData(BufferTarget.ArrayBuffer, 0, (sizeof(float)*12+sizeof(uint)*2)*BlockStuff.BulkDrawConst, blockDataBuffer);
+							GL.DrawArraysInstanced(PrimitiveType.Triangles, 0, 36, BlockStuff.BulkDrawConst);
+						}
+						int amt = count&(BlockStuff.BulkDrawConst-1);
+						if (amt > 0) {
+							for (int i3=0; i2 < count; i2++,i3++) {
+								Gate gate = AllGates[i2];
+								uint clr = gate.Clr;
+								ref Mat3ColAndU32Color gateData = ref blockDataBuffer[i3];
+								gateData.clr = (((((clr&0xff000000u)>>24)+255u)>>1)<<24)|((((clr&0x00ff0000u)+16711680u)>>17)<<16)|(((((clr&0x0000ff00u)*3)+65280u)>>10)<<8)|(clr&0xffu);
+								(float rx, float ry, float rz) = gate.Rot;
+								(float sx, float sy, float sz) = gate.Size;
+								(float tx, float ty, float tz) = gate.Pos;
+								float num = MathF.Cos(rx), num2 = MathF.Sin(rx),
+								num3 = MathF.Cos(ry), num4 = MathF.Sin(ry),
+								num5 = MathF.Cos(rz), num6 = MathF.Sin(rz);
+								float _x2 = num2 * num4, _x3 = num * num4;
+								gateData.m0 = sx*num3*num5;
+								gateData.m1 = sy*(_x2*num5-num*num6);
+								gateData.m2 = sz*(_x3*num5+num2*num6);
+								gateData.m3 = tx;
+								gateData.m4 = sx*num3*num6;
+								gateData.m5 = sy*(_x2*num6+num*num5);
+								gateData.m6 = sz*(_x3*num6-num2*num5);
+								gateData.m7 = ty;
+								gateData.m8 = sx*-num4;
+								gateData.m9 = sy*num2*num3;
+								gateData.m10 = sz*num*num3;
+								gateData.m11 = tz;
+								gateData.state = (((uint)gate.Type)|(gate.On?8u:0u))&255u;
+							}
+							GL.BindBuffer(BufferTarget.ArrayBuffer, instanceVBO);
+							GL.BufferSubData(BufferTarget.ArrayBuffer, 0, (sizeof(float)*12+sizeof(uint)*2)*amt, blockDataBuffer);
+							GL.DrawArraysInstanced(PrimitiveType.Triangles, 0, 36, amt);}
+					} else {
+						for (int i = 0, i2=0; i2 < count; i+=12,i2++) {
+							Gate gate = AllGates[i2];
+							uint clr = gate.Clr;
+							ref Mat3ColAndU32Color gateData = ref blockDataBuffer[i2];
+							gateData.clr = (((((clr&0xff000000u)>>24)+255u)>>1)<<24)|((((clr&0x00ff0000u)+16711680u)>>17)<<16)|(((((clr&0x0000ff00u)*3)+65280u)>>10)<<8)|(clr&0xffu);
+							(float rx, float ry, float rz) = gate.Rot;
+							(float sx, float sy, float sz) = gate.Size;
+							(float tx, float ty, float tz) = gate.Pos;
+							float num = MathF.Cos(rx), num2 = MathF.Sin(rx),
+							num3 = MathF.Cos(ry), num4 = MathF.Sin(ry),
+							num5 = MathF.Cos(rz), num6 = MathF.Sin(rz);
+							float _x2 = num2 * num4, _x3 = num * num4;
+							gateData.m0 = sx*num3*num5;
+							gateData.m1 = sy*(_x2*num5-num*num6);
+							gateData.m2 = sz*(_x3*num5+num2*num6);
+							gateData.m3 = tx;
+							gateData.m4 = sx*num3*num6;
+							gateData.m5 = sy*(_x2*num6+num*num5);
+							gateData.m6 = sz*(_x3*num6-num2*num5);
+							gateData.m7 = ty;
+							gateData.m8 = sx*-num4;
+							gateData.m9 = sy*num2*num3;
+							gateData.m10 = sz*num*num3;
+							gateData.m11 = tz;
+							gateData.state = (byte)(((int)gate.Type)|(gate.On?8:0));
+						}
+						GL.BindBuffer(BufferTarget.ArrayBuffer, instanceVBO);
+						GL.BufferSubData(BufferTarget.ArrayBuffer, 0, (sizeof(float)*12+sizeof(uint)*2)*count, blockDataBuffer);
+						GL.DrawArraysInstanced(PrimitiveType.Triangles, 0, 36, count);
+					}
+				}
+				public override bool OnUpdate() {
+					bool Changes;
+					switch (TypeXorOn) {
+						case GateType.And: // this is either off and and or on and nand
+							for (int i = InpsCountMinusOne; i > -1; i--) {if (!InputsArray[i].On) {Changes = false; goto thingy;}}
+							Changes = true; break;
+						case GateType.Or:
+							for (int i = InpsCountMinusOne; i > -1; i--) {if (InputsArray[i].On) {Changes = true; goto thingy;}}
+							Changes = false; break;
+						case GateType.Xor: // off xor or on xnor
+							Changes = false;
+							for (int i = InpsCountMinusOne; i > -1; i--) Changes ^= InputsArray[i].On;
+							break;
+						case GateType.Nand:
+							for (int i = InpsCountMinusOne; i > -1; i--) {if (!InputsArray[i].On) {Changes = true; goto thingy;}}
+							Changes = false; break;
+						case GateType.Nor:
+							for (int i = InpsCountMinusOne; i > -1; i--) {if (InputsArray[i].On) {Changes = false; goto thingy;}}
+							Changes = true; break;
+						case GateType.Xnor:
+							Changes = true;
+							for (int i = InpsCountMinusOne; i > -1; i--) Changes ^= InputsArray[i].On;
+							break;
+						default: throw new Exception();
+					}thingy:
+					if (Changes) {
+						On ^= true;
+						TypeXorOn ^= (GateType)4;
+						ForceEvent();
+						return true;
+					}
+					return false;
+				}
+				public override bool GetUpdateResult() {
+					switch (TypeXorOn) {
+						case GateType.And: // this is either off and and or on and nand
+							for (int i = InpsCountMinusOne; i > -1; i--) if (!InputsArray[i].On) return false;
+							return true;
+						case GateType.Or:
+							for (int i = InpsCountMinusOne; i > -1; i--) if (InputsArray[i].On) return true;
+							return false;
+						case GateType.Xor: // off xor or on xnor
+							bool StateChanges = false;
+							for (int i = InpsCountMinusOne; i > -1; i--) StateChanges ^= InputsArray[i].On;
+							return StateChanges;
+						case GateType.Nand:
+							for (int i = InpsCountMinusOne; i > -1; i--) if (!InputsArray[i].On) return true;
+							return false;
+						case GateType.Nor:
+							for (int i = InpsCountMinusOne; i > -1; i--) if (InputsArray[i].On) return false;
+							return true;
+						case GateType.Xnor:
+							bool _StateChanges = true;
+							for (int i = InpsCountMinusOne; i > -1; i--) _StateChanges ^= InputsArray[i].On;
+							return _StateChanges;
+						default: throw new Exception();
+					}
+				}
+				public override void AddToTQIfCanUpdate() {
+					switch (TypeXorOn) {
+						case GateType.And: // this is either off and and or on and nand
+							for (int i = InpsCountMinusOne; i > -1; i--) if (!InputsArray[i].On) return;
+							goto add;
+						case GateType.Or:
+							for (int i = InpsCountMinusOne; i > -1; i--) if (InputsArray[i].On) goto add;
+							return;
+						case GateType.Xor: // off xor or on xnor
+							bool StateChanges = false;
+							for (int i = InpsCountMinusOne; i > -1; i--) StateChanges ^= InputsArray[i].On;
+							if (StateChanges) goto add; return;
+						case GateType.Nand:
+							for (int i = InpsCountMinusOne; i > -1; i--) if (!InputsArray[i].On) goto add;
+							return;
+						case GateType.Nor:
+							for (int i = InpsCountMinusOne; i > -1; i--) if (InputsArray[i].On) return;
+							goto add;
+						case GateType.Xnor:
+							bool _StateChanges = true;
+							for (int i = InpsCountMinusOne; i > -1; i--) _StateChanges ^= InputsArray[i].On;
+							if (_StateChanges) goto add; return;
+						default: throw new Exception();
+					}
+					add:ToggleQueue[QueueSubPtr] = thingy; QueueSubPtr++;
+				}
+				public override void CleanInputs() {
+					foreach (IBindableBlock block in InputsArray) {if(block==null||block.ID==0)Inputs.Remove(block);}
+					Inputs.CopyTo(InputsArray = new IBindableBlock[Inputs.Count]);
+				}
+				public override void ForceEvent() {
+					//foreach (IBindableBlock block in OrigOrderOutputs) BindableBlockStuff.QueueBlock(block);
+					BiBS.NextCalcQueue.Add(CorrectedOrderOutputs);
+				}
+				public override void ForceSet(bool state) {
+					if (On ^ state) {
+						On^=true;
+						TypeXorOn ^= (GateType)4;
+						BiBS.NextCalcQueue.Add(CorrectedOrderOutputs);
+					}
+				}
+				public override void ForceToggle() {
+					On ^= true;
+					TypeXorOn ^= (GateType)4;
+					BiBS.NextCalcQueue.Add(CorrectedOrderOutputs);
+				}
+				public override void QuietForceSet(bool state) {
+					// if (On^state)On^=true;
+					On=state;
+					TypeXorOn = Type^(On?(GateType)4:0);
+				}
+				public override void QuietForceToggle() {
+					On ^= true;
+					TypeXorOn ^= (GateType)4;
 				}
 			}
 		}
 		public abstract class IBindableBlock : IBlock {
-			// public List<IBindableBlock> Inputs, Outputs;
-			public HashSet<IBindableBlock> Inputs = [], Outputs = [];
+			// public List<IBindableBlock> Inputs, OrigOrderOutputs;
+			public HashSet<IBindableBlock> Inputs = [], OutputsHashSet = [];
+			public List<IBindableBlock> OrigOrderOutputs = [];
+			public IBindableBlock[] CorrectedOrderOutputs = [], InputsArray = [];
+			public int InpsCount = 0, InpsCountMinusOne = -1;
+			public bool HasAnyOutputBlock = false;
 			// public bool State;
-			public long IsScheduled = -1L;
+			// public long IsScheduled = -1L;
+			public bool On;
 			public abstract bool OnUpdate();
+			public abstract bool GetUpdateResult();
+			public abstract void AddToTQIfCanUpdate();
+			public abstract void CleanInputs();
 			public abstract void ForceToggle();
 			public abstract void ForceSet(bool state);
 			public abstract void QuietForceToggle();
 			public abstract void QuietForceSet(bool state);
 			public abstract void ForceEvent();
+		}
+		[Flags]
+		public enum OutlineType {
+			None = 0,
+			Selected = 1,
+			Highlighted = 2,
 		}
 		/// <summary>
 		/// all 7 tools lol, babfte probably won't work if there are multiple. lol.
@@ -2894,14 +3652,237 @@ namespace GameEngineThing {
 			// public static CompShader compShader;
 			public static int ToolEquipped = 0;
 			// public static IBlock[] SelectedBlocks;
-			public static Type BuildToolBlock;
+			public static Type BuildToolBlock = typeof(BiBS.Gate);
 			public static Vector2 DragStart;
 			public static bool Dragging;
 			// public const int ptsListElementLen = BlockStuff.BulkDrawConst+4;
 			// public static List<Vector3[]> ptsList = [new Vector3[ptsListElementLen]];
 			// public static int CSVAO,CSSSBO,VAO,VBO;
-			public static Shader BiToolShader;
+			public static Shader BiToolShader, OutlBoxShader;
 			public static int BiToolVAO, BiToolVBO;//, BiToolEBO;
+			public static int OutlBoxVAO, OutlBoxVBO1, OutlBoxVBO2, OutlInstVBO;
+			// public static Dictionary<IBlock, OutlineType> OutlinedObjects = [];
+			public static SelBoxDataStruct[] SelBoxesBuffer = new SelBoxDataStruct[BlockStuff.BulkDrawConst];
+			public static float[] SelBoxPointData = [ // 3x pt s, then 3x pt o
+// GO GO GADGET LUAU SCRIPT!
+// // COMMENTS HERE WERE MADE AFTER.   ALR SO TO UNDERSTAND THIS,   EACH LINE IS ONE VERTEX. EACH LINE MAKES ONE TRIANGLE.
+// // THERE ARE FOUR BASE TRIANGLES.   THE REST IS AUTO-GENERATED THROUGH TERRIBLE Luau CODE.
+// // THE FIRST 2 TRIANGLES MAKE THE FRONT LOWER OUTER TRAPEZOID.   TRI 1: LDF LDF, LDF RUF, RDF LUF   TRI 2: LDF LDF, RDF LUF, RDF RDF
+// // TRIs 3&4 MAKE THE FRONT LOWER INNER RECTANGLE.   TRI 3: LDF RUF, LDF RUB, RDF LUB   TRI 4: LDF RUF, RDF LUB, RDF LUF
+// //  IT IS THEN COPIED BUT ROTATED XY 90 CCW X3 TO MAKE THE FRONT FACE.
+
+// AFTER THAT, IT IS ROTATED XZ 90 CCW X3 TO MAKE THE RIGHT, BACK, AND LEFT SIDES.
+
+// THEN IT ROTATES BACK AND THEN ROTATES YZ 90 CCW TO MAKE TOP.
+
+// THEN IT IS ROTATED YZ 180 TO MAKE THE BOTTOM.
+// /* THE FULL OLD BROKEN Luau SCRIPT IS:
+// for i=1,1 do
+// local inp = {-.5,-.5,-.5,-.02,-.02,-.02,-.5,-.5,-.5,.02,.02,-.02,.5,-.5,-.5,-.02,.02,-.02,-.5,-.5,-.5,-.02,-.02,-.02,.5,-.5,-.5,-.02,.02,-.02,.5,-.5,-.5,.02,-.02,-.02,-.5,-.5,-.5,.02,.02,-.02,-.5,-.5,-.5,.02,.02,.02,.5,-.5,-.5,-.02,.02,.02,-.5,-.5,-.5,.02,.02,-.02,.5,-.5,-.5,-.02,.02,.02,.5,-.5,-.5,-.02,.02,-.02}
+// local num=#inp local numx4 = num*4
+// local function printinp()for i=1,numx4,6 do print(inp[i].."f, "..inp[i+1].."f, "..inp[i+2].."f, "..inp[i+3].."f, "..inp[i+4].."f, "..inp[i+5].."f,")end end
+// for i = 1,numx4,6 do inp[i+num], inp[i+num+1] = -inp[i+1], inp[i] inp[i+num+2] = inp[i+2] inp[i+num+3], inp[i+num+4] = -inp[i+4], inp[i+3] inp[i+num+5] = inp[i+5] end
+// print("\n// FRONT SIDE")printinp()
+// for i = 1,numx4,6 do inp[i+num],inp[i+num+1],inp[i+num+2]=-inp[i+2],inp[i+1],inp[i] inp[i+num+3],inp[i+num+4],inp[i+num+5]=-inp[i+5],inp[i+4],inp[i+3] end
+// print("\n//RIGHT SIDE")printinp()
+// for i = 1,numx4,6 do inp[i+num],inp[i+num+1],inp[i+num+2]=-inp[i+2],inp[i+1],inp[i] inp[i+num+3],inp[i+num+4],inp[i+num+5]=-inp[i+5],inp[i+4],inp[i+3] end
+// print("\n//BACK SIDE")printinp()
+// for i = 1,numx4,6 do inp[i+num],inp[i+num+1],inp[i+num+2]=-inp[i+2],inp[i+1],inp[i] inp[i+num+3],inp[i+num+4],inp[i+num+5]=-inp[i+5],inp[i+4],inp[i+3] end
+// print("\n//LEFT SIDE")printinp()
+// for i = 1,numx4,6 do inp[i+num],inp[i+num+1],inp[i+num+2]=-inp[i+2],inp[i+1],inp[i] inp[i+num+3],inp[i+num+4],inp[i+num+5]=-inp[i+5],inp[i+4],inp[i+3] end
+// for i = 1,numx4,6 do inp[i+num],inp[i+num+1],inp[i+num+2]=inp[i],-inp[i+2],inp[i+1] inp[i+num+3],inp[i+num+4],inp[i+num+5]=inp[i+3],-inp[i+5],inp[i+4] end
+// print("\n//TOP SIDE")printinp()
+// for i = 1,numx4,6 do inp[i+num],inp[i+num+1],inp[i+num+2]=inp[i],-inp[i+1],-inp[i+2] inp[i+num+3],inp[i+num+4],inp[i+num+5]=inp[i+3],-inp[i+4],-inp[i+5] end
+// print("\n//BOTTOM SIDE")printinp()end*/
+// THAT OLD SCRIPT HAD SOME SERIOUS ISSUES AND WAS BROKEN LOL.
+/*NEW SCRIPT:
+for i=1,1 do
+local inp={
+-.5,-.5,-.5,-.02,-.02,-.02,-.5,-.5,-.5,.02,.02,-.02,.5,-.5,-.5,-.02,.02,-.02,
+-.5,-.5,-.5,-.02,-.02,-.02,.5,-.5,-.5,-.02,.02,-.02,.5,-.5,-.5,.02,-.02,-.02,
+-.5,-.5,-.5,.02,.02,-.02,-.5,-.5,-.5,.02,.02,.02,.5,-.5,-.5,-.02,.02,.02,
+-.5,-.5,-.5,.02,.02,-.02,.5,-.5,-.5,-.02,.02,.02,.5,-.5,-.5,-.02,.02,-.02}
+local num=#inp local numx4=num*4
+local function printinp()for i=1,numx4,18 do print(inp[i].."f,"..inp[i+1].."f,"..inp[i+2].."f,"..inp[i+3].."f,"..inp[i+4].."f,"..inp[i+5].."f,   "..inp[i+6].."f,"..inp[i+7].."f,"..inp[i+8].."f,"..inp[i+9].."f,"..inp[i+10].."f,"..inp[i+11].."f,   "..inp[i+12].."f,"..inp[i+13].."f,"..inp[i+14].."f,"..inp[i+15].."f,"..inp[i+16].."f,"..inp[i+17].."f,") end end
+for i=1,numx4,3 do inp[i+num]=-inp[i+1] inp[i+num+1]=inp[i] inp[i+num+2]=inp[i+2]end
+print("\n// FRONT SIDE")printinp()
+local function rot() for i = 1,numx4,3 do inp[i],inp[i+2]=-inp[i+2],inp[i]end end rot()
+print("\n//RIGHT SIDE")printinp()rot()
+print("\n//BACK SIDE")printinp()rot()
+print("\n//LEFT SIDE")printinp()rot()
+for i=2,numx4,3 do inp[i],inp[i+1]=-inp[i+1],inp[i]end
+print("\n//TOP SIDE")printinp()
+for i=2,numx4,3 do inp[i],inp[i+1]=-inp[i],-inp[i+1]end
+print("\n//BOTTOM SIDE")printinp()end*/
+// FRONT SIDE
+-.5f,-.5f,-.5f,-.02f,-.02f,-.02f,   -.5f,-.5f,-.5f,.02f,.02f,-.02f,   .5f,-.5f,-.5f,-.02f,.02f,-.02f,
+-.5f,-.5f,-.5f,-.02f,-.02f,-.02f,   .5f,-.5f,-.5f,-.02f,.02f,-.02f,   .5f,-.5f,-.5f,.02f,-.02f,-.02f,
+-.5f,-.5f,-.5f,.02f,.02f,-.02f,   -.5f,-.5f,-.5f,.02f,.02f,.02f,   .5f,-.5f,-.5f,-.02f,.02f,.02f,
+-.5f,-.5f,-.5f,.02f,.02f,-.02f,   .5f,-.5f,-.5f,-.02f,.02f,.02f,   .5f,-.5f,-.5f,-.02f,.02f,-.02f,
+.5f,-.5f,-.5f,.02f,-.02f,-.02f,   .5f,-.5f,-.5f,-.02f,.02f,-.02f,   .5f,.5f,-.5f,-.02f,-.02f,-.02f,
+.5f,-.5f,-.5f,.02f,-.02f,-.02f,   .5f,.5f,-.5f,-.02f,-.02f,-.02f,   .5f,.5f,-.5f,.02f,.02f,-.02f,
+.5f,-.5f,-.5f,-.02f,.02f,-.02f,   .5f,-.5f,-.5f,-.02f,.02f,.02f,   .5f,.5f,-.5f,-.02f,-.02f,.02f,
+.5f,-.5f,-.5f,-.02f,.02f,-.02f,   .5f,.5f,-.5f,-.02f,-.02f,.02f,   .5f,.5f,-.5f,-.02f,-.02f,-.02f,
+.5f,.5f,-.5f,.02f,.02f,-.02f,   .5f,.5f,-.5f,-.02f,-.02f,-.02f,   -.5f,.5f,-.5f,.02f,-.02f,-.02f,
+.5f,.5f,-.5f,.02f,.02f,-.02f,   -.5f,.5f,-.5f,.02f,-.02f,-.02f,   -.5f,.5f,-.5f,-.02f,.02f,-.02f,
+.5f,.5f,-.5f,-.02f,-.02f,-.02f,   .5f,.5f,-.5f,-.02f,-.02f,.02f,   -.5f,.5f,-.5f,.02f,-.02f,.02f,
+.5f,.5f,-.5f,-.02f,-.02f,-.02f,   -.5f,.5f,-.5f,.02f,-.02f,.02f,   -.5f,.5f,-.5f,.02f,-.02f,-.02f,
+-.5f,.5f,-.5f,-.02f,.02f,-.02f,   -.5f,.5f,-.5f,.02f,-.02f,-.02f,   -.5f,-.5f,-.5f,.02f,.02f,-.02f,
+-.5f,.5f,-.5f,-.02f,.02f,-.02f,   -.5f,-.5f,-.5f,.02f,.02f,-.02f,   -.5f,-.5f,-.5f,-.02f,-.02f,-.02f,
+-.5f,.5f,-.5f,.02f,-.02f,-.02f,   -.5f,.5f,-.5f,.02f,-.02f,.02f,   -.5f,-.5f,-.5f,.02f,.02f,.02f,
+-.5f,.5f,-.5f,.02f,-.02f,-.02f,   -.5f,-.5f,-.5f,.02f,.02f,.02f,   -.5f,-.5f,-.5f,.02f,.02f,-.02f,
+
+//RIGHT SIDE
+.5f,-.5f,-.5f,.02f,-.02f,-.02f,   .5f,-.5f,-.5f,.02f,.02f,.02f,   .5f,-.5f,.5f,.02f,.02f,-.02f,
+.5f,-.5f,-.5f,.02f,-.02f,-.02f,   .5f,-.5f,.5f,.02f,.02f,-.02f,   .5f,-.5f,.5f,.02f,-.02f,.02f,
+.5f,-.5f,-.5f,.02f,.02f,.02f,   .5f,-.5f,-.5f,-.02f,.02f,.02f,   .5f,-.5f,.5f,-.02f,.02f,-.02f,
+.5f,-.5f,-.5f,.02f,.02f,.02f,   .5f,-.5f,.5f,-.02f,.02f,-.02f,   .5f,-.5f,.5f,.02f,.02f,-.02f,
+.5f,-.5f,.5f,.02f,-.02f,.02f,   .5f,-.5f,.5f,.02f,.02f,-.02f,   .5f,.5f,.5f,.02f,-.02f,-.02f,
+.5f,-.5f,.5f,.02f,-.02f,.02f,   .5f,.5f,.5f,.02f,-.02f,-.02f,   .5f,.5f,.5f,.02f,.02f,.02f,
+.5f,-.5f,.5f,.02f,.02f,-.02f,   .5f,-.5f,.5f,-.02f,.02f,-.02f,   .5f,.5f,.5f,-.02f,-.02f,-.02f,
+.5f,-.5f,.5f,.02f,.02f,-.02f,   .5f,.5f,.5f,-.02f,-.02f,-.02f,   .5f,.5f,.5f,.02f,-.02f,-.02f,
+.5f,.5f,.5f,.02f,.02f,.02f,   .5f,.5f,.5f,.02f,-.02f,-.02f,   .5f,.5f,-.5f,.02f,-.02f,.02f,
+.5f,.5f,.5f,.02f,.02f,.02f,   .5f,.5f,-.5f,.02f,-.02f,.02f,   .5f,.5f,-.5f,.02f,.02f,-.02f,
+.5f,.5f,.5f,.02f,-.02f,-.02f,   .5f,.5f,.5f,-.02f,-.02f,-.02f,   .5f,.5f,-.5f,-.02f,-.02f,.02f,
+.5f,.5f,.5f,.02f,-.02f,-.02f,   .5f,.5f,-.5f,-.02f,-.02f,.02f,   .5f,.5f,-.5f,.02f,-.02f,.02f,
+.5f,.5f,-.5f,.02f,.02f,-.02f,   .5f,.5f,-.5f,.02f,-.02f,.02f,   .5f,-.5f,-.5f,.02f,.02f,.02f,
+.5f,.5f,-.5f,.02f,.02f,-.02f,   .5f,-.5f,-.5f,.02f,.02f,.02f,   .5f,-.5f,-.5f,.02f,-.02f,-.02f,
+.5f,.5f,-.5f,.02f,-.02f,.02f,   .5f,.5f,-.5f,-.02f,-.02f,.02f,   .5f,-.5f,-.5f,-.02f,.02f,.02f,
+.5f,.5f,-.5f,.02f,-.02f,.02f,   .5f,-.5f,-.5f,-.02f,.02f,.02f,   .5f,-.5f,-.5f,.02f,.02f,.02f,
+
+//BACK SIDE
+.5f,-.5f,.5f,.02f,-.02f,.02f,   .5f,-.5f,.5f,-.02f,.02f,.02f,   -.5f,-.5f,.5f,.02f,.02f,.02f,
+.5f,-.5f,.5f,.02f,-.02f,.02f,   -.5f,-.5f,.5f,.02f,.02f,.02f,   -.5f,-.5f,.5f,-.02f,-.02f,.02f,
+.5f,-.5f,.5f,-.02f,.02f,.02f,   .5f,-.5f,.5f,-.02f,.02f,-.02f,   -.5f,-.5f,.5f,.02f,.02f,-.02f,
+.5f,-.5f,.5f,-.02f,.02f,.02f,   -.5f,-.5f,.5f,.02f,.02f,-.02f,   -.5f,-.5f,.5f,.02f,.02f,.02f,
+-.5f,-.5f,.5f,-.02f,-.02f,.02f,   -.5f,-.5f,.5f,.02f,.02f,.02f,   -.5f,.5f,.5f,.02f,-.02f,.02f,
+-.5f,-.5f,.5f,-.02f,-.02f,.02f,   -.5f,.5f,.5f,.02f,-.02f,.02f,   -.5f,.5f,.5f,-.02f,.02f,.02f,
+-.5f,-.5f,.5f,.02f,.02f,.02f,   -.5f,-.5f,.5f,.02f,.02f,-.02f,   -.5f,.5f,.5f,.02f,-.02f,-.02f,
+-.5f,-.5f,.5f,.02f,.02f,.02f,   -.5f,.5f,.5f,.02f,-.02f,-.02f,   -.5f,.5f,.5f,.02f,-.02f,.02f,
+-.5f,.5f,.5f,-.02f,.02f,.02f,   -.5f,.5f,.5f,.02f,-.02f,.02f,   .5f,.5f,.5f,-.02f,-.02f,.02f,
+-.5f,.5f,.5f,-.02f,.02f,.02f,   .5f,.5f,.5f,-.02f,-.02f,.02f,   .5f,.5f,.5f,.02f,.02f,.02f,
+-.5f,.5f,.5f,.02f,-.02f,.02f,   -.5f,.5f,.5f,.02f,-.02f,-.02f,   .5f,.5f,.5f,-.02f,-.02f,-.02f,
+-.5f,.5f,.5f,.02f,-.02f,.02f,   .5f,.5f,.5f,-.02f,-.02f,-.02f,   .5f,.5f,.5f,-.02f,-.02f,.02f,
+.5f,.5f,.5f,.02f,.02f,.02f,   .5f,.5f,.5f,-.02f,-.02f,.02f,   .5f,-.5f,.5f,-.02f,.02f,.02f,
+.5f,.5f,.5f,.02f,.02f,.02f,   .5f,-.5f,.5f,-.02f,.02f,.02f,   .5f,-.5f,.5f,.02f,-.02f,.02f,
+.5f,.5f,.5f,-.02f,-.02f,.02f,   .5f,.5f,.5f,-.02f,-.02f,-.02f,   .5f,-.5f,.5f,-.02f,.02f,-.02f,
+.5f,.5f,.5f,-.02f,-.02f,.02f,   .5f,-.5f,.5f,-.02f,.02f,-.02f,   .5f,-.5f,.5f,-.02f,.02f,.02f,
+
+//LEFT SIDE
+-.5f,-.5f,.5f,-.02f,-.02f,.02f,   -.5f,-.5f,.5f,-.02f,.02f,-.02f,   -.5f,-.5f,-.5f,-.02f,.02f,.02f,
+-.5f,-.5f,.5f,-.02f,-.02f,.02f,   -.5f,-.5f,-.5f,-.02f,.02f,.02f,   -.5f,-.5f,-.5f,-.02f,-.02f,-.02f,
+-.5f,-.5f,.5f,-.02f,.02f,-.02f,   -.5f,-.5f,.5f,.02f,.02f,-.02f,   -.5f,-.5f,-.5f,.02f,.02f,.02f,
+-.5f,-.5f,.5f,-.02f,.02f,-.02f,   -.5f,-.5f,-.5f,.02f,.02f,.02f,   -.5f,-.5f,-.5f,-.02f,.02f,.02f,
+-.5f,-.5f,-.5f,-.02f,-.02f,-.02f,   -.5f,-.5f,-.5f,-.02f,.02f,.02f,   -.5f,.5f,-.5f,-.02f,-.02f,.02f,
+-.5f,-.5f,-.5f,-.02f,-.02f,-.02f,   -.5f,.5f,-.5f,-.02f,-.02f,.02f,   -.5f,.5f,-.5f,-.02f,.02f,-.02f,
+-.5f,-.5f,-.5f,-.02f,.02f,.02f,   -.5f,-.5f,-.5f,.02f,.02f,.02f,   -.5f,.5f,-.5f,.02f,-.02f,.02f,
+-.5f,-.5f,-.5f,-.02f,.02f,.02f,   -.5f,.5f,-.5f,.02f,-.02f,.02f,   -.5f,.5f,-.5f,-.02f,-.02f,.02f,
+-.5f,.5f,-.5f,-.02f,.02f,-.02f,   -.5f,.5f,-.5f,-.02f,-.02f,.02f,   -.5f,.5f,.5f,-.02f,-.02f,-.02f,
+-.5f,.5f,-.5f,-.02f,.02f,-.02f,   -.5f,.5f,.5f,-.02f,-.02f,-.02f,   -.5f,.5f,.5f,-.02f,.02f,.02f,
+-.5f,.5f,-.5f,-.02f,-.02f,.02f,   -.5f,.5f,-.5f,.02f,-.02f,.02f,   -.5f,.5f,.5f,.02f,-.02f,-.02f,
+-.5f,.5f,-.5f,-.02f,-.02f,.02f,   -.5f,.5f,.5f,.02f,-.02f,-.02f,   -.5f,.5f,.5f,-.02f,-.02f,-.02f,
+-.5f,.5f,.5f,-.02f,.02f,.02f,   -.5f,.5f,.5f,-.02f,-.02f,-.02f,   -.5f,-.5f,.5f,-.02f,.02f,-.02f,
+-.5f,.5f,.5f,-.02f,.02f,.02f,   -.5f,-.5f,.5f,-.02f,.02f,-.02f,   -.5f,-.5f,.5f,-.02f,-.02f,.02f,
+-.5f,.5f,.5f,-.02f,-.02f,-.02f,   -.5f,.5f,.5f,.02f,-.02f,-.02f,   -.5f,-.5f,.5f,.02f,.02f,-.02f,
+-.5f,.5f,.5f,-.02f,-.02f,-.02f,   -.5f,-.5f,.5f,.02f,.02f,-.02f,   -.5f,-.5f,.5f,-.02f,.02f,-.02f,
+
+//TOP SIDE
+-.5f,.5f,-.5f,-.02f,.02f,-.02f,   -.5f,.5f,-.5f,.02f,.02f,.02f,   .5f,.5f,-.5f,-.02f,.02f,.02f,
+-.5f,.5f,-.5f,-.02f,.02f,-.02f,   .5f,.5f,-.5f,-.02f,.02f,.02f,   .5f,.5f,-.5f,.02f,.02f,-.02f,
+-.5f,.5f,-.5f,.02f,.02f,.02f,   -.5f,.5f,-.5f,.02f,-.02f,.02f,   .5f,.5f,-.5f,-.02f,-.02f,.02f,
+-.5f,.5f,-.5f,.02f,.02f,.02f,   .5f,.5f,-.5f,-.02f,-.02f,.02f,   .5f,.5f,-.5f,-.02f,.02f,.02f,
+.5f,.5f,-.5f,.02f,.02f,-.02f,   .5f,.5f,-.5f,-.02f,.02f,.02f,   .5f,.5f,.5f,-.02f,.02f,-.02f,
+.5f,.5f,-.5f,.02f,.02f,-.02f,   .5f,.5f,.5f,-.02f,.02f,-.02f,   .5f,.5f,.5f,.02f,.02f,.02f,
+.5f,.5f,-.5f,-.02f,.02f,.02f,   .5f,.5f,-.5f,-.02f,-.02f,.02f,   .5f,.5f,.5f,-.02f,-.02f,-.02f,
+.5f,.5f,-.5f,-.02f,.02f,.02f,   .5f,.5f,.5f,-.02f,-.02f,-.02f,   .5f,.5f,.5f,-.02f,.02f,-.02f,
+.5f,.5f,.5f,.02f,.02f,.02f,   .5f,.5f,.5f,-.02f,.02f,-.02f,   -.5f,.5f,.5f,.02f,.02f,-.02f,
+.5f,.5f,.5f,.02f,.02f,.02f,   -.5f,.5f,.5f,.02f,.02f,-.02f,   -.5f,.5f,.5f,-.02f,.02f,.02f,
+.5f,.5f,.5f,-.02f,.02f,-.02f,   .5f,.5f,.5f,-.02f,-.02f,-.02f,   -.5f,.5f,.5f,.02f,-.02f,-.02f,
+.5f,.5f,.5f,-.02f,.02f,-.02f,   -.5f,.5f,.5f,.02f,-.02f,-.02f,   -.5f,.5f,.5f,.02f,.02f,-.02f,
+-.5f,.5f,.5f,-.02f,.02f,.02f,   -.5f,.5f,.5f,.02f,.02f,-.02f,   -.5f,.5f,-.5f,.02f,.02f,.02f,
+-.5f,.5f,.5f,-.02f,.02f,.02f,   -.5f,.5f,-.5f,.02f,.02f,.02f,   -.5f,.5f,-.5f,-.02f,.02f,-.02f,
+-.5f,.5f,.5f,.02f,.02f,-.02f,   -.5f,.5f,.5f,.02f,-.02f,-.02f,   -.5f,.5f,-.5f,.02f,-.02f,.02f,
+-.5f,.5f,.5f,.02f,.02f,-.02f,   -.5f,.5f,-.5f,.02f,-.02f,.02f,   -.5f,.5f,-.5f,.02f,.02f,.02f,
+
+//BOTTOM SIDE
+-.5f,-.5f,.5f,-.02f,-.02f,.02f,   -.5f,-.5f,.5f,.02f,-.02f,-.02f,   .5f,-.5f,.5f,-.02f,-.02f,-.02f,
+-.5f,-.5f,.5f,-.02f,-.02f,.02f,   .5f,-.5f,.5f,-.02f,-.02f,-.02f,   .5f,-.5f,.5f,.02f,-.02f,.02f,
+-.5f,-.5f,.5f,.02f,-.02f,-.02f,   -.5f,-.5f,.5f,.02f,.02f,-.02f,   .5f,-.5f,.5f,-.02f,.02f,-.02f,
+-.5f,-.5f,.5f,.02f,-.02f,-.02f,   .5f,-.5f,.5f,-.02f,.02f,-.02f,   .5f,-.5f,.5f,-.02f,-.02f,-.02f,
+.5f,-.5f,.5f,.02f,-.02f,.02f,   .5f,-.5f,.5f,-.02f,-.02f,-.02f,   .5f,-.5f,-.5f,-.02f,-.02f,.02f,
+.5f,-.5f,.5f,.02f,-.02f,.02f,   .5f,-.5f,-.5f,-.02f,-.02f,.02f,   .5f,-.5f,-.5f,.02f,-.02f,-.02f,
+.5f,-.5f,.5f,-.02f,-.02f,-.02f,   .5f,-.5f,.5f,-.02f,.02f,-.02f,   .5f,-.5f,-.5f,-.02f,.02f,.02f,
+.5f,-.5f,.5f,-.02f,-.02f,-.02f,   .5f,-.5f,-.5f,-.02f,.02f,.02f,   .5f,-.5f,-.5f,-.02f,-.02f,.02f,
+.5f,-.5f,-.5f,.02f,-.02f,-.02f,   .5f,-.5f,-.5f,-.02f,-.02f,.02f,   -.5f,-.5f,-.5f,.02f,-.02f,.02f,
+.5f,-.5f,-.5f,.02f,-.02f,-.02f,   -.5f,-.5f,-.5f,.02f,-.02f,.02f,   -.5f,-.5f,-.5f,-.02f,-.02f,-.02f,
+.5f,-.5f,-.5f,-.02f,-.02f,.02f,   .5f,-.5f,-.5f,-.02f,.02f,.02f,   -.5f,-.5f,-.5f,.02f,.02f,.02f,
+.5f,-.5f,-.5f,-.02f,-.02f,.02f,   -.5f,-.5f,-.5f,.02f,.02f,.02f,   -.5f,-.5f,-.5f,.02f,-.02f,.02f,
+-.5f,-.5f,-.5f,-.02f,-.02f,-.02f,   -.5f,-.5f,-.5f,.02f,-.02f,.02f,   -.5f,-.5f,.5f,.02f,-.02f,-.02f,
+-.5f,-.5f,-.5f,-.02f,-.02f,-.02f,   -.5f,-.5f,.5f,.02f,-.02f,-.02f,   -.5f,-.5f,.5f,-.02f,-.02f,.02f,
+-.5f,-.5f,-.5f,.02f,-.02f,.02f,   -.5f,-.5f,-.5f,.02f,.02f,.02f,   -.5f,-.5f,.5f,.02f,.02f,-.02f,
+-.5f,-.5f,-.5f,.02f,-.02f,.02f,   -.5f,-.5f,.5f,.02f,.02f,-.02f,   -.5f,-.5f,.5f,.02f,-.02f,-.02f,
+
+// -.5f,-.5f,-.5f,0f,0f,0f,   -.5f,.5f,-.5f,0f,0f,0f,   .5f,.5f,-.5f,0f,0f,0f,
+// -.5f,-.5f,-.5f,0f,0f,0f,   .5f,.5f,-.5f,0f,0f,0f,   .5f,-.5f,-.5f,0f,0f,0f,
+// actually screw it i have the script i'm gonna get my bang for my buck
+/*script:
+for i=1,1 do
+local inp={
+-.5,-.5,-.5,-.001,-.001,-.001,   -.5,.5,-.5,-.001,.001,-.001,   .5,.5,-.5,.001,.001,-.001,
+-.5,-.5,-.5,-.001,-.001,-.001,   .5,.5,-.5,.001,.001,-.001,   .5,-.5,-.5,.001,-.001,-.001,}
+local num=#inp
+local function printinp()for i=1,num,18 do print(inp[i].."f,"..inp[i+1].."f,"..inp[i+2].."f,"..inp[i+3].."f,"..inp[i+4].."f,"..inp[i+5].."f,   "..inp[i+6].."f,"..inp[i+7].."f,"..inp[i+8].."f,"..inp[i+9].."f,"..inp[i+10].."f,"..inp[i+11].."f,   "..inp[i+12].."f,"..inp[i+13].."f,"..inp[i+14].."f,"..inp[i+15].."f,"..inp[i+16].."f,"..inp[i+17].."f,") end end
+print("\n// FRONT SIDE")printinp()
+local function rot()for i=1,num,3 do inp[i],inp[i+2]=-inp[i+2],inp[i]end end rot()
+print("\n//RIGHT SIDE")printinp()rot()
+print("\n//BACK SIDE")printinp()rot()
+print("\n//LEFT SIDE")printinp()rot()
+for i=2,num,3 do inp[i],inp[i+1]=-inp[i+1],inp[i]end
+print("\n//TOP SIDE")printinp()
+for i=2,num,3 do inp[i],inp[i+1]=-inp[i],-inp[i+1]end
+print("\n//BOTTOM SIDE")printinp()end*/
+// FRONT SIDE
+-.5f,-.5f,-.5f,-.001f,-.001f,-.001f,   -.5f,.5f,-.5f,-.001f,.001f,-.001f,   .5f,.5f,-.5f,.001f,.001f,-.001f,
+-.5f,-.5f,-.5f,-.001f,-.001f,-.001f,   .5f,.5f,-.5f,.001f,.001f,-.001f,   .5f,-.5f,-.5f,.001f,-.001f,-.001f,
+
+//RIGHT SIDE
+.5f,-.5f,-.5f,.001f,-.001f,-.001f,   .5f,.5f,-.5f,.001f,.001f,-.001f,   .5f,.5f,.5f,.001f,.001f,.001f,
+.5f,-.5f,-.5f,.001f,-.001f,-.001f,   .5f,.5f,.5f,.001f,.001f,.001f,   .5f,-.5f,.5f,.001f,-.001f,.001f,
+
+//BACK SIDE
+.5f,-.5f,.5f,.001f,-.001f,.001f,   .5f,.5f,.5f,.001f,.001f,.001f,   -.5f,.5f,.5f,-.001f,.001f,.001f,
+.5f,-.5f,.5f,.001f,-.001f,.001f,   -.5f,.5f,.5f,-.001f,.001f,.001f,   -.5f,-.5f,.5f,-.001f,-.001f,.001f,
+
+//LEFT SIDE
+-.5f,-.5f,.5f,-.001f,-.001f,.001f,   -.5f,.5f,.5f,-.001f,.001f,.001f,   -.5f,.5f,-.5f,-.001f,.001f,-.001f,
+-.5f,-.5f,.5f,-.001f,-.001f,.001f,   -.5f,.5f,-.5f,-.001f,.001f,-.001f,   -.5f,-.5f,-.5f,-.001f,-.001f,-.001f,
+
+//TOP SIDE
+-.5f,.5f,-.5f,-.001f,.001f,-.001f,   -.5f,.5f,.5f,-.001f,.001f,.001f,   .5f,.5f,.5f,.001f,.001f,.001f,
+-.5f,.5f,-.5f,-.001f,.001f,-.001f,   .5f,.5f,.5f,.001f,.001f,.001f,   .5f,.5f,-.5f,.001f,.001f,-.001f,
+
+//BOTTOM SIDE
+-.5f,-.5f,.5f,-.001f,-.001f,.001f,   -.5f,-.5f,-.5f,-.001f,-.001f,-.001f,   .5f,-.5f,-.5f,.001f,-.001f,-.001f,
+-.5f,-.5f,.5f,-.001f,-.001f,.001f,   .5f,-.5f,-.5f,.001f,-.001f,-.001f,   .5f,-.5f,.5f,.001f,-.001f,.001f,
+			];
+			public static uint[] SelBoxColorData = [ // 1x color
+0xffffffff,0xffffffff,0xffffffff,0xffffffff,0xffffffff,0xffffffff,
+0xffffffff,0xffffffff,0xffffffff,0xffffffff,0xffffffff,0xffffffff,
+0xffffffff,0xffffffff,0xffffffff,0xffffffff,0xffffffff,0xffffffff,
+0xffffffff,0xffffffff,0xffffffff,0xffffffff,0xffffffff,0xffffffff,
+0xffffffff,0xffffffff,0xffffffff,0xffffffff,0xffffffff,0xffffffff,
+0xffffffff,0xffffffff,0xffffffff,0xffffffff,0xffffffff,0xffffffff,
+0xffffffff,0xffffffff,0xffffffff,0xffffffff,0xffffffff,0xffffffff,
+0xffffffff,0xffffffff,0xffffffff,0xffffffff,0xffffffff,0xffffffff,
+0xffffffff,0xffffffff,0xffffffff,0xffffffff,0xffffffff,0xffffffff,
+0xffffffff,0xffffffff,0xffffffff,0xffffffff,0xffffffff,0xffffffff,
+0xffffffff,0xffffffff,0xffffffff,0xffffffff,0xffffffff,0xffffffff,
+0xffffffff,0xffffffff,0xffffffff,0xffffffff,0xffffffff,0xffffffff,
+0x7f7f7f7f,0x7f7f7f7f,0x7f7f7f7f,0x7f7f7f7f,0x7f7f7f7f,0x7f7f7f7f,0x7f7f7f7f,0x7f7f7f7f,0x7f7f7f7f];
+			public struct SelBoxDataStruct {
+				public uint color;
+				public float sx,sy,sz,rx,ry,rz,px,py,pz;
+			}
 			public static void OnLoad(Game game) {
 				// shader = new("Shaders/babfte/debug.vert","Shaders/babfte/debug.frag");
 				// GL.UseProgram(shader.Handle);
@@ -2943,6 +3924,43 @@ namespace GameEngineThing {
 				GL.VertexAttribPointer(1, 3, VertexAttribPointerType.Float, false, 6 * sizeof(float), 3 * sizeof(float));
 				GL.VertexAttribDivisor(0, 1);
 				GL.VertexAttribDivisor(1, 1);
+
+				OutlBoxShader = new("Shaders/babfte/OutlineBox.vert", "Shaders/babfte/OutlineBox.frag");
+				GL.UseProgram(OutlBoxShader.Handle);
+				OutlBoxVAO = GL.GenVertexArray();
+				GL.BindVertexArray(OutlBoxVAO);
+
+				OutlBoxVBO1 = GL.GenBuffer(); // vbo for general selection box pt data
+				GL.BindBuffer(BufferTarget.ArrayBuffer, OutlBoxVBO1);
+				GL.BufferData(BufferTarget.ArrayBuffer, sizeof(float) * /*6 * 16 * 6*/SelBoxPointData.Length+sizeof(uint)*SelBoxColorData.Length, SelBoxPointData, BufferUsageHint.StaticDraw);
+				GL.BufferSubData(BufferTarget.ArrayBuffer, sizeof(float)*SelBoxPointData.Length, sizeof(uint)*SelBoxColorData.Length, SelBoxColorData);
+				GL.EnableVertexAttribArray(0);
+				GL.VertexAttribPointer(0, 3, VertexAttribPointerType.Float, false, 6 * sizeof(float), 0); // position scale
+				GL.EnableVertexAttribArray(1);
+				GL.VertexAttribPointer(1, 3, VertexAttribPointerType.Float, false, 6 * sizeof(float), 3 * sizeof(float)); // position offset
+				GL.EnableVertexAttribArray(2);
+				GL.VertexAttribPointer(2, 1, VertexAttribPointerType.UnsignedByte, false, sizeof(byte), sizeof(float)*SelBoxPointData.Length); // transparency
+				OutlInstVBO = GL.GenBuffer(); // vbo for the selection boxes
+				GL.BindBuffer(BufferTarget.ArrayBuffer, OutlInstVBO);
+				GL.BufferData(BufferTarget.ArrayBuffer, BlockStuff.BulkDrawConst * (sizeof(float) * 9+sizeof(uint)), 0, BufferUsageHint.DynamicDraw);
+
+				GL.EnableVertexAttribArray(3);
+				GL.VertexAttribPointer(3, 4, VertexAttribPointerType.UnsignedByte, false, 40, 0); // box color
+				GL.EnableVertexAttribArray(4);
+				GL.VertexAttribPointer(4, 3, VertexAttribPointerType.Float, false, 40, 4); // box size
+				GL.EnableVertexAttribArray(5);
+				// GL.VertexAttribPointer(5, 4, VertexAttribPointerType.Float, false, 64, 16); // transformation mat col 0
+				GL.VertexAttribPointer(5, 3, VertexAttribPointerType.Float, false, 40, 16); // rotation
+				GL.EnableVertexAttribArray(6);
+				// GL.VertexAttribPointer(6, 4, VertexAttribPointerType.Float, false, 64, 32); // transformation mat col 1
+				GL.VertexAttribPointer(6, 3, VertexAttribPointerType.Float, false, 40, 28); // position
+				// GL.EnableVertexAttribArray(7);
+				// GL.VertexAttribPointer(7, 4, VertexAttribPointerType.Float, false, 64, 48); // transformation mat col 2
+				GL.VertexAttribDivisor(3, 1);
+				GL.VertexAttribDivisor(4, 1);
+				GL.VertexAttribDivisor(5, 1);
+				GL.VertexAttribDivisor(6, 1);
+				// GL.VertexAttribDivisor(7, 1);
 			}
 			public static void OnRenderFrame(Game game) {
 				// int amt = ptsList.Count;
@@ -2978,27 +3996,26 @@ namespace GameEngineThing {
 						GL.BindVertexArray(BiToolVAO);
 						GL.BindBuffer(BufferTarget.ArrayBuffer, BiToolVBO);
 						BiToolShader.SetMatrix4("view", currentView);
-						List<IBindableBlock> AllBiBlocks = BindableBlockStuff.AllBindableBlocks;
-						int amt = AllBiBlocks.Count;
+						HashSet<IBindableBlock> AllBiBlocks = BiBS.AllBindableBlocks;
+						// int amt = AllBiBlocks.Count;
 						const int BDCX2 = BlockStuff.BulkDrawConst<<1; // because i don't want VSCODE COLORING ALMOST EVERYTHING AFTER THAT SWITCH STATEMENT IN YELLOW DFJSFJWEJFWIOFJ
 						Vector3[] list = new Vector3[BDCX2];
 
-						int i = 0;
+						int i = 1;
 						foreach (IBindableBlock block in AllBiBlocks) {
-							HashSet<IBindableBlock> bOuts = block.Outputs;
+							HashSet<IBindableBlock> bOuts = block.OutputsHashSet;
 							int count = bOuts.Count;
-							int countThing = count<<1;
-							if (countThing > 0) {
+							if (count > 0) {
+								int countThing = count<<1;
 								switch (i + countThing) {
-									case > BDCX2:
+									case > BDCX2+1:
 										// throw new Exception("oopsies too many binds, i haven't implemented bulk drawing binds yet :3");
 										// remaining of the first one
 										Vector3 pos = block.Pos;
-										int amtThingy = BDCX2-i;
-										Array.Fill(list, pos, i, amtThingy);
+										int amtThingy = BDCX2-(i-1);
+										Array.Fill(list, pos, i-1, amtThingy);
 										IBindableBlock[] arr = new IBindableBlock[count];
 										bOuts.CopyTo(arr);
-										i++;
 										for (int j = 0; j < amtThingy>>1; j++, i+=2) list[i] = arr[j].Pos;
 										// render
 										GL.BufferSubData(BufferTarget.ArrayBuffer, 0, sizeof(float)*6*BlockStuff.BulkDrawConst, list);
@@ -3014,55 +4031,212 @@ namespace GameEngineThing {
 											GL.DrawArraysInstanced(PrimitiveType.Triangles, 0, 6, BlockStuff.BulkDrawConst);
 										}
 										for (i = 1; k < count; k++, i+=2) list[i] = arr[k].Pos;
-										i--;
 										break;
-									case BDCX2:
-										Array.Fill(list, block.Pos, i, countThing);
-										// int i2 = i+1;
-										i++;
+									case BDCX2+1:
+										Array.Fill(list, block.Pos, i-1, countThing);
 										foreach (IBindableBlock b in bOuts) {
-											// list[i2] = b.Pos;
-											// i2 += 2;
 											list[i] = b.Pos;
 											i += 2;
 										}
-										// i--; // i SHOULD equal BDCX2 if you do i-- here i think idk
 										GL.BufferSubData(BufferTarget.ArrayBuffer, 0, sizeof(float)*6*BlockStuff.BulkDrawConst, list);
 										GL.DrawArraysInstanced(PrimitiveType.Triangles, 0, 6, BlockStuff.BulkDrawConst);
-										i = 0;
-										// i += countThing;
+										i = 1;
 										break;
 									default:
-										Array.Fill(list, block.Pos, i, countThing);
-										// int i2 = i+1;
-										i++;
+										Array.Fill(list, block.Pos, i-1, countThing);
 										foreach (IBindableBlock b in bOuts) {
-											// list[i2] = b.Pos;
-											// i2 += 2;
 											list[i] = b.Pos;
 											i += 2;
 										}
-										
-										// i += countThing;
-										i--;
 										break;
 								}
-								// if (i + countThing > ((BlockStuff.BulkDrawConst<<1)-1)) {
-								// } else {
-								// } // todo this feels like it'll end up looking like crap so uh.
 							}
 						}
-						if (i > 0) { if ((frame&127)==0) Console.WriteLine("rendering binds");
-							GL.BufferSubData(BufferTarget.ArrayBuffer, 0, sizeof(float)*3*i, list);
+						if (i > 1) { if ((frame&127)==0) Console.WriteLine("rendering binds");
+							GL.BufferSubData(BufferTarget.ArrayBuffer, 0, sizeof(float)*3*(i-1), list);
 							GL.DrawArraysInstanced(PrimitiveType.Triangles, 0, 6, i>>1);
 						}
-						
 						break;
+				}
+				// int OutlObjCount = OutlinedObjects.Count;
+				// if (OutlObjCount > 0) {Console.Write("rendering the selection boxes.");
+				// 	GL.UseProgram(OutlBoxShader.Handle);
+				// 	GL.BindVertexArray(OutlBoxVAO);
+				// 	GL.BindBuffer(BufferTarget.ArrayBuffer, OutlInstVBO);
+				// 	OutlBoxShader.SetMatrix4("v", currentView);
+				// 	switch (OutlObjCount) {
+				// 		case > BlockStuff.BulkDrawConst: {
+				// 			float[] array = new float[BlockStuff.BulkDrawConst*15];
+				// 			uint[] colors = new uint[BlockStuff.BulkDrawConst];
+				// 			int i = 0, i2 = 0;
+				// 			foreach (KeyValuePair<IBlock, OutlineType> a in OutlinedObjects) {
+				// 				IBlock block = a.Key;
+				// 				// Matrix4 Mat = DataStuff.CreateRotationXYZ(block.Rot) * Matrix4.CreateTranslation(block.Pos);
+				// 				// (float sizeX, float sizeY, float sizeZ) = block.Size;
+				// 				// new float[] {sizeX, sizeY, sizeZ, Mat.Row0.X, Mat.Row1.X, Mat.Row2.X, Mat.Row3.X, Mat.Row0.Y, Mat.Row1.Y, Mat.Row2.Y, Mat.Row3.Y, Mat.Row0.Z, Mat.Row1.Z, Mat.Row2.Z, Mat.Row3.Z, Mat.Row0.W, Mat.Row1.W, Mat.Row2.W, Mat.Row3.W}.CopyTo(array, i);
+				// 				colors[i] = a.Value switch {
+				// 					OutlineType.None => 0xff00007fu,
+				// 					OutlineType.Selected => 0xffffbf00u,
+				// 					OutlineType.Highlighted => 0xff00ff00u,
+				// 					OutlineType.Highlighted | OutlineType.Selected => 0xffffff00u,
+				// 					_ => 0xff0000ffu
+				// 				};
+				// 				(float rx, float ry, float rz) = block.Rot;
+				// 				(float tx, float ty, float tz) = block.Pos;
+				// 				float num = MathF.Cos(rx), num2 = MathF.Sin(rx),
+				// 				num3 = MathF.Cos(ry), num4 = MathF.Sin(ry),
+				// 				num5 = MathF.Cos(rz), num6 = MathF.Sin(rz);
+				// 				float _x2 = num2 * num4, _x3 = num * num4;
+				// 				// return new Matrix4(num3*num5,num3*num6,-num4,0,
+				// 				// _x2*num5-num*num6,_x2*num6+num*num5,num2*num3,0,
+				// 				// _x3*num5+num2*num6,_x3*num6-num2*num5,num*num3,0,
+				// 				// tx,ty,tz,1);
+				// 				(array[i2],array[i2+1],array[i2+2])=block.Size;
+				// 				array[i2+3]=num3*num5;
+				// 				array[i2+4]=_x2*num5-num*num6;
+				// 				array[i2+5]=_x3*num5+num2*num6;
+				// 				array[i2+6]=tx;
+				// 				array[i2+7]=num3*num6;
+				// 				array[i2+8]=_x2*num6+num*num5;
+				// 				array[i2+9]=_x3*num6-num2*num5;
+				// 				array[i2+10]=ty;
+				// 				array[i2+11]=-num4;
+				// 				array[i2+12]=num2*num3;
+				// 				array[i2+13]=num*num3;
+				// 				array[i2+14]=tz;
+				// 				i++; i2+=15;
+				// 				if (i == OutlObjCount) {
+				// 					GL.BufferSubData(BufferTarget.ArrayBuffer, 0, sizeof(float) * BlockStuff.BulkDrawConst * 15, array);
+				// 					GL.BufferSubData(BufferTarget.ArrayBuffer, sizeof(float)*BlockStuff.BulkDrawConst*15, sizeof(uint)*BlockStuff.BulkDrawConst, colors);
+				// 					GL.DrawArraysInstanced(PrimitiveType.Triangles, 0, 324, BlockStuff.BulkDrawConst);
+				// 					i = 0; i2 = 0;
+				// 				}
+				// 			}
+				// 			if (i > 0) {
+				// 				GL.BufferSubData(BufferTarget.ArrayBuffer, 0, sizeof(float) * i2, array);
+				// 				GL.BufferSubData(BufferTarget.ArrayBuffer, sizeof(float)*BlockStuff.BulkDrawConst*15, sizeof(uint)*i, colors);
+				// 				GL.DrawArraysInstanced(PrimitiveType.Triangles, 0, 324, i);
+				// 			}
+				// 		} break;
+				// 		default: {
+				// 			float[] array = new float[OutlObjCount*15];
+				// 			uint[] colors = new uint[OutlObjCount];
+				// 			int i = 0, i2 = 0;
+				// 			foreach (KeyValuePair<IBlock, OutlineType> a in OutlinedObjects) {
+				// 				IBlock block = a.Key;
+				// 				// Matrix4 Mat = DataStuff.CreateRotationXYZ(block.Rot) * Matrix4.CreateTranslation(block.Pos);
+				// 				// (float sizeX, float sizeY, float sizeZ) = block.Size;
+				// 				// new float[] {sizeX, sizeY, sizeZ, Mat.Row0.X, Mat.Row1.X, Mat.Row2.X, Mat.Row3.X, Mat.Row0.Y, Mat.Row1.Y, Mat.Row2.Y, Mat.Row3.Y, Mat.Row0.Z, Mat.Row1.Z, Mat.Row2.Z, Mat.Row3.Z, Mat.Row0.W, Mat.Row1.W, Mat.Row2.W, Mat.Row3.W}.CopyTo(array, i);
+				// 				colors[i] = a.Value switch {
+				// 					OutlineType.None => 0xff00007fu,
+				// 					OutlineType.Selected => 0xffffbf00u,
+				// 					OutlineType.Highlighted => 0xff00ff00u,
+				// 					OutlineType.Highlighted | OutlineType.Selected => 0xffffff00u,
+				// 					_ => 0xff0000ffu
+				// 				};
+				// 				(float rx, float ry, float rz) = block.Rot;
+				// 				(float tx, float ty, float tz) = block.Pos;
+				// 				float num = MathF.Cos(rx), num2 = MathF.Sin(rx),
+				// 				num3 = MathF.Cos(ry), num4 = MathF.Sin(ry),
+				// 				num5 = MathF.Cos(rz), num6 = MathF.Sin(rz);
+				// 				float _x2 = num2 * num4, _x3 = num * num4;
+				// 				// return new Matrix4(num3*num5,num3*num6,-num4,0,
+				// 				// _x2*num5-num*num6,_x2*num6+num*num5,num2*num3,0,
+				// 				// _x3*num5+num2*num6,_x3*num6-num2*num5,num*num3,0,
+				// 				// tx,ty,tz,1);
+				// 				(array[i2],array[i2+1],array[i2+2])=block.Size;
+				// 				array[i2+3]=num3*num5;
+				// 				array[i2+4]=_x2*num5-num*num6;
+				// 				array[i2+5]=_x3*num5+num2*num6;
+				// 				array[i2+6]=tx;
+				// 				array[i2+7]=num3*num6;
+				// 				array[i2+8]=_x2*num6+num*num5;
+				// 				array[i2+9]=_x3*num6-num2*num5;
+				// 				array[i2+10]=ty;
+				// 				array[i2+11]=-num4;
+				// 				array[i2+12]=num2*num3;
+				// 				array[i2+13]=num*num3;
+				// 				array[i2+14]=tz;
+				// 				i++; i2+=15;
+				// 			}
+				// 			GL.BufferSubData(BufferTarget.ArrayBuffer, 0, sizeof(float) * i2, array);
+				// 			GL.BufferSubData(BufferTarget.ArrayBuffer, sizeof(float)*BlockStuff.BulkDrawConst*15, sizeof(uint)*OutlObjCount, colors);
+				// 			GL.DrawArraysInstanced(PrimitiveType.Triangles, 0, 324, OutlObjCount);
+				// 		} break;
+				// 	}
+				// }
+				// int m = 0;
+				// foreach (IBlock block in BlockStuff.AllBlocks) {
+				// 	if ((block.State&(BlockState.Selected|BlockState.Highlighted))>0) {
+				// 		SelBoxesBuffer[m] = new SelBoxDataStruct();
+				// 	}
+				// }
+				{
+					GL.UseProgram(OutlBoxShader.Handle);
+					GL.BindVertexArray(OutlBoxVAO);
+					GL.BindBuffer(BufferTarget.ArrayBuffer, OutlInstVBO);
+					OutlBoxShader.SetMatrix4("v", currentView);
+					// float[] array = new float[BlockStuff.BulkDrawConst*9];
+					// uint[] colors = new uint[BlockStuff.BulkDrawConst];
+					int i = 0/*, i2 = 0*/;
+					foreach (IBlock block in BlockStuff.AllBlocks) {
+						if ((block.State&BlockState.Selected)==0) continue;
+						// Matrix4 Mat = DataStuff.CreateRotationXYZ(block.Rot) * Matrix4.CreateTranslation(block.Pos);
+						// (float sizeX, float sizeY, float sizeZ) = block.Size;
+						// new float[] {sizeX, sizeY, sizeZ, Mat.Row0.X, Mat.Row1.X, Mat.Row2.X, Mat.Row3.X, Mat.Row0.Y, Mat.Row1.Y, Mat.Row2.Y, Mat.Row3.Y, Mat.Row0.Z, Mat.Row1.Z, Mat.Row2.Z, Mat.Row3.Z, Mat.Row0.W, Mat.Row1.W, Mat.Row2.W, Mat.Row3.W}.CopyTo(array, i);
+						// colors[i] = block.OutlineState switch {
+						// 	OutlineType.None => 0xff00007fu,
+						// 	OutlineType.Selected => 0xffffbf00u,
+						// 	OutlineType.Highlighted => 0xff00ff00u,
+						// 	OutlineType.Highlighted | OutlineType.Selected => 0xffffff00u,
+						// 	_ => 0xff0000ffu
+						// };
+						// (array[i2],array[i2+1],array[i2+2])=block.Size;
+						// (array[i2+3],array[i2+4],array[i2+5])=block.Rot;
+						// (array[i2+6],array[i2+7],array[i2+8])=block.Pos;
+						ref SelBoxDataStruct thisSelBoxDataStruct = ref SelBoxesBuffer[i];
+						thisSelBoxDataStruct.color = block.OutlineState switch {
+							OutlineType.None => 0xff00007fu,
+							OutlineType.Selected => 0xffffbf00u,
+							OutlineType.Highlighted => 0xff00ff00u,
+							OutlineType.Highlighted | OutlineType.Selected => 0xffffff00u,
+							_ => 0xff0000ffu
+						};
+						// (array[i2],array[i2+1],array[i2+2])=block.Size;
+						// (array[i2+3],array[i2+4],array[i2+5])=block.Rot;
+						// (array[i2+6],array[i2+7],array[i2+8])=block.Pos;
+						(thisSelBoxDataStruct.sx,thisSelBoxDataStruct.sy,thisSelBoxDataStruct.sz) = block.Size;
+						(thisSelBoxDataStruct.rx,thisSelBoxDataStruct.ry,thisSelBoxDataStruct.rz) = block.Rot;
+						(thisSelBoxDataStruct.px,thisSelBoxDataStruct.py,thisSelBoxDataStruct.pz) = block.Pos;
+						i++;// i2+=9;
+						// if (i == BlockStuff.BulkDrawConst) {
+						// 	GL.BufferSubData(BufferTarget.ArrayBuffer, 0, sizeof(float) * BlockStuff.BulkDrawConst * 9, array);
+						// 	GL.BufferSubData(BufferTarget.ArrayBuffer, sizeof(float)*BlockStuff.BulkDrawConst*9, sizeof(uint)*BlockStuff.BulkDrawConst, colors);
+						// 	GL.DrawArraysInstanced(PrimitiveType.Triangles, 0, 324, BlockStuff.BulkDrawConst);
+						// 	i = 0; i2 = 0;
+						// }
+						if (i == BlockStuff.BulkDrawConst) {
+							GL.BufferSubData(BufferTarget.ArrayBuffer, 0, BlockStuff.BulkDrawConst * 40, SelBoxesBuffer);
+							GL.DrawArraysInstanced(PrimitiveType.Triangles, 0, 324, BlockStuff.BulkDrawConst);
+							i = 0;// i2 = 0;
+						}
+					}
+					if (i > 0) {
+						GL.BufferSubData(BufferTarget.ArrayBuffer, 0, sizeof(float) * 40 * i, SelBoxesBuffer);
+						// GL.BufferSubData(BufferTarget.ArrayBuffer, sizeof(float)*BlockStuff.BulkDrawConst*15, sizeof(uint)*i, colors);
+						GL.DrawArraysInstanced(PrimitiveType.Triangles, 0, 324, i);
+					}
 				}
 			}
 			// public static bool ASJFDKJDFKSDJ = false;
 			public static List<IBindableBlock> BindToolSelList = [];
 			public static List<IBindableBlock> BindToolBindList = [];
+			public static IBindableBlock HighlightedBlock = null;
+			public static HashSet<IBindableBlock> SelectedBlocks = [];
+			public static readonly BiBS.Gate GhostBlockGateIshIDK = new BiBS.Gate(true);
+			public static readonly Dictionary<Type, Action<Vector3>> PlaceBlockDict = new() {
+				[typeof(BiBS.Gate)] = delegate(Vector3 pos) {BiBS.Gate newGate = new(pos) { Clr = (((uint)Random.Shared.Next())<<1)|255 };}
+			};
 			public static void OnUpdateFrame(Game game) {
 				MouseState ms = game.MouseState;
 				Vector2 mousePos = ms.Position;
@@ -3083,13 +4257,17 @@ namespace GameEngineThing {
 								// int blockCount = AllBlocks.Count;
 								// Vector3[] positions = new Vector3[blockCount];
 								// Vector3[] matThingy = [(view.Row0.X, view.Row1.X, view.Row2.X), (view.Row3.X, view.Row0.Y, view.Row1.Y), (view.Row2.Y, view.Row3.Y, view.Row0.Z), (view.Row1.Z, view.Row2.Z, view.Row3.Z)];
-								(float x0,float y0,float z0,float w0,float x1,float y1,float z1,float w1,float x2,float y2,float z2,float w2,float x3,float y3,float z3,float w3)=
-								(view.Row0.X,view.Row0.Y,view.Row0.Z,view.Row0.W,view.Row1.X,view.Row1.Y,view.Row1.Z,view.Row1.W,view.Row2.X,view.Row2.Y,view.Row2.Z,view.Row2.W,view.Row3.X,view.Row3.Y,view.Row3.Z,view.Row3.W);
-								x1 /= x0; x2 /= x0; x3 /= x0;
-								y1 /= y0; y2 /= y0; y3 /= y0;
-								(float sx, float sy) = DragStart/CliSz;
-								(float ex, float ey) = mousePos/CliSz;
-								sx = (sx*2-1)/x0;sy = (sy*-2+1)/y0;ex = (ex*2-1)/x0;ey = (ey*-2+1)/y0; // idk for some reason the y axis is flipped
+								float z0=view.Row0.Z, w0=view.Row0.W,rawX0=view.Row0.X,rawY0=view.Row0.Y,
+								x1=view.Row1.X/rawX0, y1=view.Row1.Y/rawY0, z1=view.Row1.Z, w1=view.Row1.W,
+								x2=view.Row2.X/rawX0, y2=view.Row2.Y/rawY0, z2=view.Row2.Z, w2=view.Row2.W,
+								x3=view.Row3.X/rawX0, y3=view.Row3.Y/rawY0, z3=view.Row3.Z, w3=view.Row3.W,
+								// (float sx, float sy) = DragStart/CliSz;
+								// (float ex, float ey) = mousePos/CliSz;
+								// sx = (sx*2-1)/x0;sy = (sy*-2+1)/y0;ex = (ex*2-1)/x0;ey = (ey*-2+1)/y0; // idk for some reason the y axis is flipped
+								sx = MathF.FusedMultiplyAdd(DragStart.X/CliSz.X,2,-1)/rawX0,
+								ex = MathF.FusedMultiplyAdd(mousePos.X/CliSz.X,2,-1)/rawX0,
+								sy = MathF.FusedMultiplyAdd(DragStart.Y/CliSz.Y,-2,1)/rawY0,
+								ey = MathF.FusedMultiplyAdd(mousePos.Y/CliSz.Y,-2,1)/rawY0; // idk for some reason the y axis is flipped
 								List<IBlock> AllBlocks = BlockStuff.AllBlocks;
 								int AmtOfBlocks = AllBlocks.Count;
 								// int diff = ((AmtOfBlocks+(BlockStuff.BulkDrawConst-1))>>BlockStuff.BulkDrawBS)-ptsList.Count;
@@ -3097,35 +4275,52 @@ namespace GameEngineThing {
 								if (ShiftSelect) {
 									for (int i = AmtOfBlocks-1; i > -1; i--) {
 										IBlock block = AllBlocks[i];
-										//result = new Vector4(vec.X * mat.Row0.X + vec.Y * mat.Row1.X + vec.Z * mat.Row2.X + vec.W * mat.Row3.X,
-										// vec.X * mat.Row0.Y + vec.Y * mat.Row1.Y + vec.Z * mat.Row2.Y + vec.W * mat.Row3.Y,
-										// vec.X * mat.Row0.Z + vec.Y * mat.Row1.Z + vec.Z * mat.Row2.Z + vec.W * mat.Row3.Z,
-										// vec.X * mat.Row0.W + vec.Y * mat.Row1.W + vec.Z * mat.Row2.W + vec.W * mat.Row3.W);
-										// (float x, float y, float z, float w) = new Vector4(block.Pos, 1) * view;
-										(float x, float y, float z) = block.Pos;
-										float w = x*w0+y*w1+z*w2+w3, wi = 1f/w;
-										(x,y,z)=((x+y*x1+z*x2+x3)*wi,
-										(x+y*y1+z*y2+y3)*wi,
-										x*z0+y*z1+z*z2+z3);
-										// x /= w; y /= w; z /= w; // OH, OH, OH MY GOD YEAAAH BOIIIIIIIIIIIII YEUUREUUUEUREUEEEAAEAAAAHHHSHSSSS HOLY [__] YES OMG FINALLY HOLY COW WOW SDJFKJSDF AAAAAAAAAAAA
-										// // sdfjsdfjsjdflkdjks
-
-										if (z > -w && (x > sx ^ x > ex) && (y > sy ^ y > ey)) block.SelState |= BlockState.Selected;
+										// //result = new Vector4(vec.X * mat.Row0.X + vec.Y * mat.Row1.X + vec.Z * mat.Row2.X + vec.W * mat.Row3.X,
+										// // vec.X * mat.Row0.Y + vec.Y * mat.Row1.Y + vec.Z * mat.Row2.Y + vec.W * mat.Row3.Y,
+										// // vec.X * mat.Row0.Z + vec.Y * mat.Row1.Z + vec.Z * mat.Row2.Z + vec.W * mat.Row3.Z,
+										// // vec.X * mat.Row0.W + vec.Y * mat.Row1.W + vec.Z * mat.Row2.W + vec.W * mat.Row3.W);
+										// // (float x, float y, float z, float w) = new Vector4(block.Pos, 1) * view;
+										// (float x, float y, float z) = block.Pos;
+										// float w = x*w0+y*w1+z*w2+w3, wi = 1f/w;
+										// (x,y,z)=((x+y*x1+z*x2+x3)*wi,
+										// (x+y*y1+z*y2+y3)*wi,
+										// x*z0+y*z1+z*z2+z3);
+										// // x /= w; y /= w; z /= w; // OH, OH, OH MY GOD YEAAAH BOIIIIIIIIIIIII YEUUREUUUEUREUEEEAAEAAAAHHHSHSSSS HOLY [__] YES OMG FINALLY HOLY COW WOW SDJFKJSDF AAAAAAAAAAAA
+										// // // sdfjsdfjsjdflkdjks
+										Vector3 pos = block.Pos;
+										float z=MathF.FusedMultiplyAdd(pos.X,z0,MathF.FusedMultiplyAdd(pos.Y,z1,MathF.FusedMultiplyAdd(pos.Z,z2,z3))),
+										w=MathF.FusedMultiplyAdd(pos.X,w0,MathF.FusedMultiplyAdd(pos.Y,w1,MathF.FusedMultiplyAdd(pos.Z,w2,w3))), wi = 1f/w,
+										x=(MathF.FusedMultiplyAdd(pos.Y,x1,pos.X)+MathF.FusedMultiplyAdd(pos.Z,x2,x3))*wi,
+										y=(MathF.FusedMultiplyAdd(pos.Y,y1,pos.X)+MathF.FusedMultiplyAdd(pos.Z,y2,y3))*wi;
+										if (z > -w && (x > sx ^ x > ex) && (y > sy ^ y > ey)) {
+											block.State |= BlockState.Selected;
+											block.OutlineState |= OutlineType.Selected;
+										}
 									}
 								} else {
 									for (int i = AmtOfBlocks-1; i > -1; i--) {
 										IBlock block = AllBlocks[i];
-										(float x, float y, float z) = block.Pos;
-										float w = x*w0+y*w1+z*w2+w3, wi = 1f/w;
-										(x,y,z)=((x+y*x1+z*x2+x3)*wi,
-										(x+y*y1+z*y2+y3)*wi,
-										x*z0+y*z1+z*z2+z3);
-										// x /= w; y /= w; z /= w; // OH, OH, OH MY GOD YEAAAH BOIIIIIIIIIIIII YEUUREUUUEUREUEEEAAEAAAAHHHSHSSSS HOLY [__] YES OMG FINALLY HOLY COW WOW SDJFKJSDF AAAAAAAAAAAA
-										// // sdfjsdfjsjdflkdjks
+										// (float x, float y, float z) = block.Pos;
+										// float w = x*w0+y*w1+z*w2+w3, wi = 1f/w;
+										// (x,y,z)=((x+y*x1+z*x2+x3)*wi,
+										// (x+y*y1+z*y2+y3)*wi,
+										// x*z0+y*z1+z*z2+z3);
+										// // x /= w; y /= w; z /= w; // OH, OH, OH MY GOD YEAAAH BOIIIIIIIIIIIII YEUUREUUUEUREUEEEAAEAAAAHHHSHSSSS HOLY [__] YES OMG FINALLY HOLY COW WOW SDJFKJSDF AAAAAAAAAAAA
+										// // // sdfjsdfjsjdflkdjks
+										Vector3 pos = block.Pos;
+										float w=MathF.FusedMultiplyAdd(pos.X,w0,MathF.FusedMultiplyAdd(pos.Y,w1,MathF.FusedMultiplyAdd(pos.Z,w2,w3))), wi = 1f/w;
+										float x=(MathF.FusedMultiplyAdd(pos.Y,x1,pos.X)+MathF.FusedMultiplyAdd(pos.Z,x2,x3))*wi,
+										y=(MathF.FusedMultiplyAdd(pos.Y,y1,pos.X)+MathF.FusedMultiplyAdd(pos.Z,y2,y3))*wi,
+										z=MathF.FusedMultiplyAdd(pos.X,z0,MathF.FusedMultiplyAdd(pos.Y,z1,MathF.FusedMultiplyAdd(pos.Z,z2,z3)));
 
 										// block.IsSelected = z > -w && (x > sx ^ x > ex) && (y > sy ^ y > ey);
-										if (z > -w && (x > sx ^ x > ex) && (y > sy ^ y > ey))
-											block.SelState |= BlockState.Selected; else block.SelState &= ~BlockState.Selected;
+										if (z > -w && (x > sx ^ x > ex) && (y > sy ^ y > ey)){
+											block.OutlineState |= OutlineType.Selected;
+											block.State |= BlockState.Selected;
+										} else {
+											block.OutlineState &= ~OutlineType.Selected;
+											if (block.OutlineState == 0) block.State &= ~BlockState.Selected;
+										}
 									}
 								}
 								// for (int i = 0; i < blockCount; i++) {
@@ -3172,50 +4367,82 @@ namespace GameEngineThing {
 							Dragging = false;
 						}
 						if (ks[Keys.Enter]) {
-							{ List<IBlock> BlockList = BlockStuff.AllBlocks;
-							for (int i = BlockList.Count-1; i > -1; i--) if ((BlockList[i].SelState&BlockState.Selected)>0) BlockList.RemoveAt(i); }
-							{ List<IBindableBlock> BlockList = BindableBlockStuff.AllBindableBlocks;
-							for (int i = BlockList.Count-1; i > -1; i--) if ((BlockList[i].SelState&BlockState.Selected)>0) BlockList.RemoveAt(i); }
-							{ List<Gate> BlockList = Gate.AllGates;
-							for (int i = BlockList.Count-1; i > -1; i--) if ((BlockList[i].SelState&BlockState.Selected)>0) BlockList.RemoveAt(i); }
+							{ List<IBlock> BlockList = BlockStuff.AllBlocks;IBlock b;
+							for (int i = BlockList.Count-1; i > -1; i--) {b=BlockList[i];if((b.State&BlockState.Selected)>0&&(b.OutlineState&OutlineType.Selected)>0) {b.ID=0;BlockList.RemoveAt(i);}} }
+							{ HashSet<IBindableBlock> BlockList = BiBS.AllBindableBlocks;
+							foreach (IBindableBlock b in BlockList) {if((b.State&BlockState.Selected)>0&&(b.OutlineState&OutlineType.Selected)>0) BlockList.Remove(b);} }
+							{ List<BiBS.Gate> BlockList = BiBS.Gate.AllGates;IBlock b;
+							for (int i = BlockList.Count-1; i > -1; i--) {b=BlockList[i];if((b.State&BlockState.Selected)>0&&(b.OutlineState&OutlineType.Selected)>0) BlockList.RemoveAt(i);} }
+							foreach (IBindableBlock b in BiBS.AllBindableBlocks) b.CleanInputs();
+							GC.Collect();
 						}
-						break;
+					break;
 					case 2: // build
-						break;
+						{float mx = mousePos.X/CliSz.X*2-1, my = mousePos.Y/CliSz.Y*-2+1;
+						// Vector4 frontVecTester = (mx, my, -1, 1), backVecTester = (mx, my, 1, 1);
+						Matrix4 viewInv = Matrix4.Invert(view);
+						// (float x1, float y1, float z1, float w1) = frontVecTester * viewInv;
+						// (float x2, float y2, float z2, float w2) = backVecTester * viewInv;
+						// x1 /= w1; y1 /= w1; z1 /= w1;
+						// x2 /= w2; y2 /= w2; z2 /= w2;
+						float shared0 = MathF.FusedMultiplyAdd(mx, viewInv.Row0.X, MathF.FusedMultiplyAdd(my, viewInv.Row1.X, viewInv.Row3.X));
+						float shared1 = MathF.FusedMultiplyAdd(mx, viewInv.Row0.Y, MathF.FusedMultiplyAdd(my, viewInv.Row1.Y, viewInv.Row3.Y));
+						float shared2 = MathF.FusedMultiplyAdd(mx, viewInv.Row0.Z, MathF.FusedMultiplyAdd(my, viewInv.Row1.Z, viewInv.Row3.Z));
+						float shared3 = MathF.FusedMultiplyAdd(mx, viewInv.Row0.W, MathF.FusedMultiplyAdd(my, viewInv.Row1.W, viewInv.Row3.W));
+						float s1 = shared3 - viewInv.Row2.W;
+						// (float x1, float y1, float z1) = (
+						// 	(shared0 - viewInv.Row2.X)*s1,
+						// 	(shared1 - viewInv.Row2.Y)*s1,
+						// 	(shared2 - viewInv.Row2.Z)*s1);
+						float x1=(shared0 - viewInv.Row2.X)/s1,
+						y1=(shared1 - viewInv.Row2.Y)/s1,
+						z1=(shared2 - viewInv.Row2.Z)/s1;
+						float n = y1/(-shared1/shared3+y1); // it's big brain time - markiplier or sm
+						// GhostBlockGateIshIDK.Pos = (MathF.FusedMultiplyAdd(n,shared0/shared3-x1,x1), 0, MathF.FusedMultiplyAdd(n,shared2/shared3-z1,z1));
+						ref Vector3 ghostGatePos = ref GhostBlockGateIshIDK.Pos;
+						ghostGatePos.X = MathF.FusedMultiplyAdd(n,shared0/shared3-x1,x1);
+						ghostGatePos.Y = 0;
+						ghostGatePos.Z = MathF.FusedMultiplyAdd(n,shared2/shared3-z1,z1);
+						GhostBlockGateIshIDK.Clr ^= (uint)Random.Shared.Next();
+						Console.Write("ghost block pos: "+ghostGatePos+'\n');
+						break;}
 					case 3: // paint
 						break;
-					case 4: // bind
-						{
+					case 4: {// bind
 							(float x0,float y0,float z0,float w0,float x1,float y1,float z1,float w1,float x2,float y2,float z2,float w2,float x3,float y3,float z3,float w3)=
 							(view.Row0.X,view.Row0.Y,view.Row0.Z,view.Row0.W,view.Row1.X,view.Row1.Y,view.Row1.Z,view.Row1.W,view.Row2.X,view.Row2.Y,view.Row2.Z,view.Row2.W,view.Row3.X,view.Row3.Y,view.Row3.Z,view.Row3.W);
-							(float mx, float my) = mousePos/CliSz;
-							mx = mx*2-1;my = my*-2+1; // idk for some reason the y axis is flipped
-							float maxDist = 0.03125f;
-							maxDist *= maxDist;
-							List<IBindableBlock> BlockList = BindableBlockStuff.AllBindableBlocks;
+							// (float mx, float my) = mousePos/CliSz;
+							// mx = MathF.FusedMultiplyAdd(mx,2,-1);my = MathF.FusedMultiplyAdd(my,-2,1); // idk for some reason the y axis is flipped
+							float mx = mousePos.X/CliSz.X*2-1, my = mousePos.Y/CliSz.Y*-2+1;
+							// float maxDist = 0.03125f; maxDist *= maxDist;
+							const float maxDist = 0.03125f*0.03125f;
+							HashSet<IBindableBlock> BlockList = BiBS.AllBindableBlocks;
 							IBindableBlock selBlock = null;
 							int AmtOfBlocks = BlockList.Count;
 							float best = float.PositiveInfinity;
-							for (int i = AmtOfBlocks-1; i > -1; i--) {
-								IBindableBlock block = BlockList[i];
-								block.SelState &= ~BlockState.Highlighted;
+							foreach (IBindableBlock block in BlockList) {
+								block.OutlineState &= ~OutlineType.Highlighted;
+								if (block.OutlineState == 0) block.State &= ~BlockState.Selected;
 								(float x, float y, float z) = block.Pos;
-								float w = x*w0+y*w1+z*w2+w3, wi = 1f/w;
-								(x,y,z)=((x*x0+y*x1+z*x2+x3)*wi,
-								(x*y0+y*y1+z*y2+y3)*wi,
-								(x*z0+y*z1+z*z2+z3)*wi);
+								// float w = x*w0+y*w1+z*w2+w3, wi = 1f/w;
+								// (x,y,z)=((x*x0+y*x1+z*x2+x3)*wi,
+								// (x*y0+y*y1+z*y2+y3)*wi,
+								// (x*z0+y*z1+z*z2+z3)*wi);
 								// x /= w; y /= w; z /= w; // OH, OH, OH MY GOD YEAAAH BOIIIIIIIIIIIII YEUUREUUUEUREUEEEAAEAAAAHHHSHSSSS HOLY [__] YES OMG FINALLY HOLY COW WOW SDJFKJSDF AAAAAAAAAAAA
 								// // sdfjsdfjsjdflkdjks
+								float w = MathF.FusedMultiplyAdd(x,w0,MathF.FusedMultiplyAdd(y,w1,MathF.FusedMultiplyAdd(z,w2,w3))), wi = 1f/w;
+								(x,y,z)=(MathF.FusedMultiplyAdd(x,x0,MathF.FusedMultiplyAdd(y,x1,MathF.FusedMultiplyAdd(z,x2,x3)))*wi,
+								MathF.FusedMultiplyAdd(x,y0,MathF.FusedMultiplyAdd(y,y1,MathF.FusedMultiplyAdd(z,y2,y3)))*wi,
+								MathF.FusedMultiplyAdd(x,z0,MathF.FusedMultiplyAdd(y,z1,MathF.FusedMultiplyAdd(z,z2,z3)))*wi);
 
 								// block.IsSelected = z > -w && (x > sx ^ x > ex) && (y > sy ^ y > ey);
 								if (z > -1) {
-									float a = x - mx;
-									a *= a;
-									float b = y - my;
-									b *= b;
+									float a = x - mx; a *= a;
+									float b = y - my; b *= b;
 									float c = a + b;
 									if (c<maxDist) {
-										float v = (.0625f*z*z)+c;
+										// float v = (.0625f*z*z)+c;
+										float v = MathF.FusedMultiplyAdd(.0625f*z,z,c);
 										if (v < best) {
 											selBlock = block;
 											best = v;
@@ -3224,14 +4451,28 @@ namespace GameEngineThing {
 								}
 							}
 							if (selBlock != null) {
-								selBlock.SelState |= BlockState.Highlighted;
-								Console.WriteLine("block in highlight!");
+								selBlock.OutlineState |= OutlineType.Highlighted;
+								selBlock.State |= BlockState.Selected;
+								// Console.WriteLine("block in highlight!");
 								if (ms.IsButtonPressed(MouseButton.Left)) {
-									selBlock.SelState |= BlockState.Selected;
 									if (ShiftSelect) BindToolBindList.Add(selBlock); else BindToolSelList.Add(selBlock);
+									selBlock.OutlineState |= OutlineType.Selected;
 								}
 								if (ms.IsButtonPressed(MouseButton.Right)) {
 									selBlock.ForceToggle();
+								}
+								if (ms.IsButtonPressed(MouseButton.Middle)) {
+									if (selBlock is BiBS.Gate gate) {
+										gate.Type = gate.Type switch {
+											GateType.And => GateType.Nand,
+											GateType.Or => GateType.Nor,
+											GateType.Xor => GateType.Xnor,
+											GateType.Nand => GateType.Or,
+											GateType.Nor => GateType.Xor,
+											_ => GateType.And};
+										gate.TypeXorOn = gate.Type^(gate.On?(GateType)4:0);
+									}
+									BiBS.QueueBlock(selBlock);
 								}
 							}
 						}
@@ -3247,16 +4488,50 @@ namespace GameEngineThing {
 					default: throw new Exception();
 				}
 			}
+			public static void ToolToggle(int index) {
+				switch (ToolEquipped) { // unequip
+					case 0: break;
+					case 1: break;
+					case 2: GhostBlockGateIshIDK.Pos = (float.NaN, float.NaN, float.NaN); break;
+					case 3: break;
+					case 4: BindToolSelList = []; BindToolBindList = [];
+						foreach (IBindableBlock block in BiBS.AllBindableBlocks) {
+							block.OutlineState &= ~(OutlineType.Highlighted|OutlineType.Selected);
+							block.State &= ~BlockState.Selected;
+						}
+						break;
+					case 5: break;
+					case 6: break;
+					case 7: break;
+					case 8: break;
+				}
+				if (index == ToolEquipped) { // unequip
+					ToolEquipped = 0;
+				} else { // equip
+					switch (index) {
+						case 0: break;
+						case 1: break;
+						case 2: break;
+						case 3: break;
+						case 4: BindToolSelList = []; BindToolBindList = []; break;
+						case 5: break;
+						case 6: break;
+						case 7: break;
+						case 8: break;
+					}
+					ToolEquipped = index;
+				}
+			}
 			public static void OnKeyDown(KeyboardKeyEventArgs e) {
 				switch (e.Key) {
-					case Keys.D1: ToolEquipped = (ToolEquipped == 1) ? 0 : 1; return;
-					case Keys.D2: ToolEquipped = (ToolEquipped == 2) ? 0 : 2; return;
-					case Keys.D3: ToolEquipped = (ToolEquipped == 3) ? 0 : 3; return;
-					case Keys.D4: ToolEquipped = (ToolEquipped == 4) ? 0 : 4; BindToolSelList = []; BindToolBindList = []; return;
-					case Keys.D5: ToolEquipped = (ToolEquipped == 5) ? 0 : 5; return;
-					case Keys.D6: ToolEquipped = (ToolEquipped == 6) ? 0 : 6; return;
-					case Keys.D7: ToolEquipped = (ToolEquipped == 7) ? 0 : 7; return;
-					case Keys.D8: ToolEquipped = (ToolEquipped == 8) ? 0 : 8; return;
+					case Keys.D1: ToolToggle(1); return;
+					case Keys.D2: ToolToggle(2); return;
+					case Keys.D3: ToolToggle(3); return;
+					case Keys.D4: ToolToggle(4); return;
+					case Keys.D5: ToolToggle(5); return;
+					case Keys.D6: ToolToggle(6); return;
+					case Keys.D7: ToolToggle(7); return;
+					case Keys.D8: ToolToggle(8); return;
 				}
 				switch (ToolEquipped) {
 					case 0: break;
@@ -3265,7 +4540,7 @@ namespace GameEngineThing {
 						if (e.Alt) {
 							switch (e.Key) {
 								case Keys.Q:
-									BuildToolBlock = typeof(Gate);
+									BuildToolBlock = typeof(BiBS.Gate);
 									break;
 							}
 						}
@@ -3281,17 +4556,29 @@ namespace GameEngineThing {
 									foreach (IBindableBlock a in BindToolSelList) b1.Add(a);
 									foreach (IBindableBlock a in BindToolBindList) b2.Add(a);
 
-									foreach (IBindableBlock b in b1) b.Outputs.UnionWith(b2);
+									foreach (IBindableBlock b in b1) {
+										foreach (IBindableBlock ibindable in b2) {
+											if (!b.OutputsHashSet.Contains(ibindable)) {
+												b.OrigOrderOutputs.Add(ibindable);
+												b.OutputsHashSet.Add(ibindable);
+											}
+										}
+									}
 									foreach (IBindableBlock b in b2) b.Inputs.UnionWith(b1);
 								} else {
-									int doTo = Math.Min(BindToolSelList.Count, BindToolBindList.Count);
-									for (int i = 0; i < doTo; i++) {
+									int SelListCount = BindToolSelList.Count, BindListCount = BindToolBindList.Count;
+									for (int i = 0; i < Math.Min(SelListCount, BindListCount); i++) {
 										IBindableBlock block1 = BindToolSelList[i], block2 = BindToolBindList[i];
-										block1.Outputs.Add(block2);
+										if (!block1.OutputsHashSet.Contains(block2)) {
+											block1.OrigOrderOutputs.Add(block2);
+											block1.OutputsHashSet.Add(block2);
+										}
 										block2.Inputs.Add(block1);
 									}
 								}
+								foreach (IBindableBlock b in BiBS.AllBindableBlocks) {b.State&=~BlockState.Selected;b.OutlineState&=~OutlineType.Selected;}
 								BindToolSelList = []; BindToolBindList = [];
+								BiBS.RefreshAllBindOrderStuffs();
 								break;
 						}
 						break;
@@ -3306,17 +4593,10 @@ namespace GameEngineThing {
 					case 0: break;
 					case 1: break;
 					case 2:
-							Vector3 position = game._player.RootPosition+(MathF.FusedMultiplyAdd(Random.Shared.NextSingle(),3,-1.5f),MathF.FusedMultiplyAdd(Random.Shared.NextSingle(),3,-1.5f),MathF.FusedMultiplyAdd(Random.Shared.NextSingle(),3,-1.5f));
-							_ = new Gate(position) {
-								// Clr = ((uint)Random.Shared.Next())&0x00ffffffu
-								Clr = ((uint)Random.Shared.Next())|0xffu
-							};
-							// Console.WriteLine("New gate made @ "+position);
-							// foreach (IBindableBlock b in BindableBlockStuff.AllBindableBlocks)
-							// {
-							// 	Console.WriteLine("bindable block at "+b.Pos);
-							// 	if (b is Gate) Console.WriteLine("b is a gate.");
-							// }
+						if (e.Button != MouseButton.Left) break;
+						Vector2 mPos = game.MouseState.Position;
+						// for some reason the y axis is flipped
+						PlaceBlockDict[BuildToolBlock](DataStuff.RaycastToXZPlane_Vec3(Matrix4.Invert(currentView),MathF.FusedMultiplyAdd(mPos.X/game._clientSize.X,2,-1),MathF.FusedMultiplyAdd(mPos.Y/game._clientSize.Y,-2,1)));
 						break;
 					case 3: break;
 					case 4: break;
@@ -3328,42 +4608,54 @@ namespace GameEngineThing {
 			}
 		}
 		public enum GateType {
-			And, Or, Xor
+			And = 0, Or = 1, Xor = 2,
+			Nand = 4, Nor = 5, Xnor = 6,
+			NotBitmask = 4,
 		}
-		public class Gate : IBindableBlock {
-			public static List<Gate> AllGates = [];
+		/*public class DisplayBlock : IBindableBlock {
+			public static List<DisplayBlock> AllDisplayBlocks = [];
 			public GateType Type;
 			/// <summary>
-			/// True: Not enabled. False: Not disabled.
+			/// creates a DisplayBlock and does absolutely NOTHING else, doesn't even add it to the lists or add an ID.
 			/// </summary>
-			public bool Not;
-			public Gate(Vector3 position) {
-				Pos = position;
+			public DisplayBlock() {}
+			public DisplayBlock(Vector3 position) {
+				Pos = position; Size = (1f,1f,1f); ID = IDPtr++;
 				BlockStuff.AllBlocks.Add(this);
 				BindableBlockStuff.AllBindableBlocks.Add(this);
-				AllGates.Add(this);
+				AllDisplayBlocks.Add(this);
 			}
-			public Gate(Vector3 position, Vector3 rotation) {
-				Pos = position; Rot = rotation;
+			public DisplayBlock(Vector3 position, Vector3 rotation) {
+				Pos = position; Rot = rotation; Size = (1f,1f,1f); ID = IDPtr++;
 				BlockStuff.AllBlocks.Add(this);
 				BindableBlockStuff.AllBindableBlocks.Add(this);
-				AllGates.Add(this);
+				AllDisplayBlocks.Add(this);
 			}
-			public static void New(Vector3 position) {
-				_ = new Gate(position);
+			public DisplayBlock(bool ghostIsh) {
+				Size = (1f,1f,1f);
+				AllDisplayBlocks.Add(this);
+				if (!ghostIsh) { ID = IDPtr++;
+					BlockStuff.AllBlocks.Add(this);
+					BindableBlockStuff.AllBindableBlocks.Add(this);
+				} else ID = 0;
 			}
-			public static void New(Vector3 position, Vector3 rotation) {
-				_ = new Gate(position, rotation);
-			}
+
+			// public static float[] verts = [
+			// 	-.5f,-.5f,.5f, 0,0,  .5f,-.5f,.5f, 1,0,  -.5f,.5f,.5f, 0,1,   .5f,-.5f,.5f, 1,0,  .5f,.5f,.5f, 1,1,  -.5f,.5f,.5f, 0,1, // front
+			// 	-.5f,-.5f,-.5f, 0,0,  -.5f,.5f,-.5f, 0,1,  .5f,-.5f,-.5f, 1,0,   .5f,-.5f,-.5f, 1,0,  -.5f,.5f,-.5f, 0,1,  .5f,.5f,-.5f, 1,1, // back
+			// 	.5f,-.5f,-.5f, 0,0,  .5f,.5f,-.5f, 0,1,  .5f,-.5f,.5f, 1,0,   .5f,-.5f,.5f, 1,0,  .5f,.5f,-.5f, 0,1,  .5f,.5f,.5f, 1,1, // right
+			// 	-.5f,-.5f,-.5f, 1,0,  -.5f,-.5f,.5f, 0,0,  -.5f,.5f,-.5f, 1,1,   -.5f,-.5f,.5f, 0,0,  -.5f,.5f,.5f, 0,1,  -.5f,.5f,-.5f, 1,1, // left
+			// 	-.5f,.5f,.5f, 0,1,  -.5f,.5f,-.5f, 0,0,  .5f,.5f,.5f, 1,1,   .5f,.5f,.5f, 1,1,  -.5f,.5f,-.5f, 0,0,  .5f,.5f,-.5f, 1,0, // top
+			// 	-.5f,-.5f,.5f, 0,0,  .5f,-.5f,.5f, 1,0,  -.5f,-.5f,-.5f, 0,1,   .5f,-.5f,.5f, 1,0,  .5f,-.5f,-.5f, 1,1,  -.5f,-.5f,-.5f, 0,1, // bottom
+			// ];
 			public static float[] verts = [
-				-.5f,-.2f,.5f, 0,0,  .5f,-.2f,.5f, 1,0,  -.5f,.2f,.5f, 0,1,   .5f,-.2f,.5f, 1,0,  .5f,.2f,.5f, 1,1,  -.5f,.2f,.5f, 0,1, // front
-				-.5f,-.2f,-.5f, 0,0,  -.5f,.2f,-.5f, 0,1,  .5f,-.2f,-.5f, 1,0,   .5f,-.2f,-.5f, 1,0,  -.5f,.2f,-.5f, 0,1,  .5f,.2f,-.5f, 1,1, // back
-				.5f,-.2f,-.5f, 0,0,  .5f,.2f,-.5f, 0,1,  .5f,-.2f,.5f, 1,0,   .5f,-.2f,.5f, 1,0,  .5f,.2f,-.5f, 0,1,  .5f,.2f,.5f, 1,1, // right
-				-.5f,-.2f,-.5f, 1,0,  -.5f,-.2f,.5f, 0,0,  -.5f,.2f,-.5f, 1,1,   -.5f,-.2f,.5f, 0,0,  -.5f,.2f,.5f, 0,1,  -.5f,.2f,-.5f, 1,1, // left
-				-.5f,.2f,.5f, 0,1,  -.5f,.2f,-.5f, 0,0,  .5f,.2f,.5f, 1,1,   .5f,.2f,.5f, 1,1,  -.5f,.2f,-.5f, 0,0,  .5f,.2f,-.5f, 1,0, // top
-				-.5f,-.2f,.5f, 0,0,  .5f,-.2f,.5f, 1,0,  -.5f,-.2f,-.5f, 0,1,   .5f,-.2f,.5f, 1,0,  .5f,-.2f,-.5f, 1,1,  -.5f,-.2f,-.5f, 0,1, // bottom
+				-.5f,-.5f,.5f, .5f,-.5f,.5f, -.5f,.5f,.5f,  .5f,-.5f,.5f, .5f,.5f,.5f, -.5f,.5f,.5f,// front
+				-.5f,-.5f,-.5f, -.5f,.5f,-.5f, .5f,-.5f,-.5f,  .5f,-.5f,-.5f, -.5f,.5f,-.5f, .5f,.5f,-.5f,// back
+				.5f,-.5f,-.5f, .5f,.5f,-.5f, .5f,-.5f,.5f,  .5f,-.5f,.5f, .5f,.5f,-.5f, .5f,.5f,.5f,// right
+				-.5f,-.5f,-.5f, -.5f,-.5f,.5f, -.5f,.5f,-.5f,  -.5f,-.5f,.5f, -.5f,.5f,.5f, -.5f,.5f,-.5f,// left
+				-.5f,.5f,.5f, -.5f,.5f,-.5f, .5f,.5f,.5f,  .5f,.5f,.5f, -.5f,.5f,-.5f, .5f,.5f,-.5f,// top
+				-.5f,-.5f,.5f, .5f,-.5f,.5f, -.5f,-.5f,-.5f,  .5f,-.5f,.5f, .5f,-.5f,-.5f, -.5f,-.5f,-.5f,// bottom
 			];
-			public static int instanceVBO2;
 			public static void L(Game game) {
 				VAO = GL.GenVertexArray();
 				GL.BindVertexArray(VAO);
@@ -3373,13 +4665,11 @@ namespace GameEngineThing {
 				GL.BufferData(BufferTarget.ArrayBuffer, verts.Length * sizeof(float), verts, BufferUsageHint.StaticDraw);
 
 				GL.EnableVertexAttribArray(0);
-				GL.VertexAttribPointer(0, 3, VertexAttribPointerType.Float, false, 5 * sizeof(float), 0);
-				GL.EnableVertexAttribArray(1);
-				GL.VertexAttribPointer(1, 2, VertexAttribPointerType.Float, false, 5 * sizeof(float), 3 * sizeof(float));
+				GL.VertexAttribPointer(0, 3, VertexAttribPointerType.Float, false, 3 * sizeof(float), 0);
 
 				instanceVBO = GL.GenBuffer();
 				GL.BindBuffer(BufferTarget.ArrayBuffer, instanceVBO);
-				GL.BufferData(BufferTarget.ArrayBuffer, sizeof(float) * 12 * BlockStuff.BulkDrawConst, /*pos*/ 0, BufferUsageHint.DynamicDraw);
+				GL.BufferData(BufferTarget.ArrayBuffer, (sizeof(float)*12+sizeof(uint)+1)*BlockStuff.BulkDrawConst, 0, BufferUsageHint.DynamicDraw);
 
 				GL.EnableVertexAttribArray(2);
 				GL.VertexAttribPointer(2, 4, VertexAttribPointerType.Float, false, 12 * sizeof(float), 0);
@@ -3387,281 +4677,211 @@ namespace GameEngineThing {
 				GL.VertexAttribPointer(3, 4, VertexAttribPointerType.Float, false, 12 * sizeof(float), 4 * sizeof(float));
 				GL.EnableVertexAttribArray(4);
 				GL.VertexAttribPointer(4, 4, VertexAttribPointerType.Float, false, 12 * sizeof(float), 8 * sizeof(float));
-				GL.BindBuffer(BufferTarget.ArrayBuffer, 0);
 				GL.VertexAttribDivisor(2, 1);
 				GL.VertexAttribDivisor(3, 1);
 				GL.VertexAttribDivisor(4, 1);
 
-				instanceVBO2 = GL.GenBuffer();
-				GL.BindBuffer(BufferTarget.ArrayBuffer, instanceVBO2);
-				// GL.BufferData(BufferTarget.ArrayBuffer, sizeof(byte) * 3 * BlockStuff.BulkDrawConst, /*pos*/ 0, BufferUsageHint.DynamicDraw);
-				GL.BufferData(BufferTarget.ArrayBuffer, sizeof(uint) * BlockStuff.BulkDrawConst, /*pos*/ 0, BufferUsageHint.DynamicDraw);
 				GL.EnableVertexAttribArray(5);
-				GL.VertexAttribPointer(5, 4, VertexAttribPointerType.UnsignedByte, false, sizeof(uint), 0);
+				GL.VertexAttribPointer(5, 4, VertexAttribPointerType.UnsignedByte, false, sizeof(uint), sizeof(float)*12*BlockStuff.BulkDrawConst);
 				GL.VertexAttribDivisor(5, 1);
 
-				// // unbind
-				// GL.BindBuffer(BufferTarget.ArrayBuffer, 0);
-				// GL.BindVertexArray(0);
-				// eh it'll be fineeee without unbind here lol
+				GL.EnableVertexAttribArray(6);
+				GL.VertexAttribPointer(6, 1, VertexAttribPointerType.UnsignedByte, false, 1, (sizeof(float)*12+sizeof(uint))*BlockStuff.BulkDrawConst);
+				GL.VertexAttribDivisor(6, 1);
+
+				// it'll be fineeee without unbind here lol
 			}
 			public static void R() {
 				GL.BindVertexArray(VAO);
 				float[] blockdata = new float[BlockStuff.BulkDrawConst*12];
-				// byte[] colordata = new byte[BlockStuff.BulkDrawConst*3]; // todo replace with uint because yes. and transparency. 2026/4/9
 				uint[] colordata = new uint[BlockStuff.BulkDrawConst];
-				int count = AllGates.Count;
+				byte[] statedata = new byte[BlockStuff.BulkDrawConst];
+				int count = AllDisplayBlocks.Count;
 				if ((frame&255)==0)Console.WriteLine("Instance count: "+count);
-				int precalcdframething = (frame&7)<<3;
 				if (count > BlockStuff.BulkDrawConst) {
-					// throw new Exception("bruhh i haven't gotten around to doing this yet..");
 					int amtThing = count>>BlockStuff.BulkDrawBS;
 					for (int j = 0; j < amtThing; j++) {
 						for (int i=0, i2=j<<BlockStuff.BulkDrawBS, i3=0; i3<BlockStuff.BulkDrawConst;i+=12,i2++,i3++) {
-							Gate gate = AllGates[i2];
-							uint clr = gate.Clr;
-							// (colordata[i3], colordata[i3 + 1], colordata[i3 + 2]) = (precalcdframething + ((int)gate.SelState & 7)) switch
-							// { // oh [__] 64 cases
-							//     4 or 5 or 6 or 7 or 20 or 21 or 22 or 23 or 36 or 37 or 38 or 39 or 52 or 53 or 54 or 55 => ((byte,byte,byte))(0,255,0),
-							//     1 or 3 or 5 or 7 or 9 or 11 or 13 or 15 or 33 or 35 or 37 or 39 or 41 or 43 or 45 or 47 => ((byte)(((clr & 0x000000ffu)-255f)*.5f+255f),(byte)((((clr&0x0000ff00u)>>8)-255f)*.5f+255f),(byte)((((clr&0x00ff0000u)>>16)-255f)*.75f+255f)),
-							//     2 or 3 or 6 or 7 or 34 or 35 or 38 or 39 => ((byte, byte, byte))(51, 51, 204),
-							//     _ => ((byte)(clr&0x000000ffu),(byte)((clr&0x0000ff00u)>>8),(byte)((clr&0x00ff0000u)>>16)),
-							// };
-							colordata[i3] = (precalcdframething + ((uint)gate.SelState & 7)) switch {
-								4 or 5 or 6 or 7 or 20 or 21 or 22 or 23 or 36 or 37 or 38 or 39 or 52 or 53 or 54 or 55 => 0x00ff00ff,
-								// 1 or 3 or 5 or 7 or 9 or 11 or 13 or 15 or 33 or 35 or 37 or 39 or 41 or 43 or 45 or 47 => (((clr & 0x000000ffu)+255)>>1)|((((clr&0x0000ff00u)>>8)+255)>>1)|(((((clr&0x00ff0000u)>>16)+85)*3)>>2),
-								1 or 3 or 5 or 7 or 9 or 11 or 13 or 15 or 33 or 35 or 37 or 39 or 41 or 43 or 45 or 47 => (((((clr&0xff000000u)>>24)+255u)>>1)<<24)|((((clr&0x00ff0000u)+16711680u)>>17)<<16)|(((((clr&0x0000ff00u)*3)+65280u)>>10)<<8)|(clr&0xffu),
-								2 or 3 or 6 or 7 or 34 or 35 or 38 or 39 => 0x3333ccff, // 3333cc
-								_ => clr,
-							};
-							(float x, float y, float z) = gate.Rot;
-							// float thisT = frame+Random.Shared.NextSingle();
-							// x += MathF.Sin(thisT*.01f)*.05f;
-							// y += MathF.Sin(thisT*.01f+MathF.PI/3f)*.05f;
-							// z += MathF.Sin(thisT*.01f+MathF.PI/1.5f)*.05f;
-							x = MathF.FusedMultiplyAdd(MathF.Sin(frame*.01f),.05f,x);
-							y = MathF.FusedMultiplyAdd(MathF.Sin(MathF.FusedMultiplyAdd(frame,.01f,MathF.PI/3f)),.05f,y);
-							z = MathF.FusedMultiplyAdd(MathF.Sin(MathF.FusedMultiplyAdd(frame,.01f,MathF.PI/1.5f)),.05f,z);
-							float num = MathF.Cos(x),
-							num2 = MathF.Sin(x),
-							num3 = MathF.Cos(y),
-							num4 = MathF.Sin(y),
-							num5 = MathF.Cos(z),
-							num6 = MathF.Sin(z);
-							(float x8, float y8, float z8) = gate.Pos;
-							float n4xn5 = num4*num5;
-							float x2 = MathF.FusedMultiplyAdd(num2,n4xn5,-num*num6);
-							float x3 = MathF.FusedMultiplyAdd(num,n4xn5,num2*num6);
-							// (blockdata[i],blockdata[i+1],blockdata[i+2],blockdata[i+3])=(num3*num5,x2,x3,x8);
-							// (blockdata[i+4],blockdata[i+5],blockdata[i+6],blockdata[i+7])=(num3*num6,x2*num6+num*num5,x3*num6-num2*num5,y8);
-							// (blockdata[i+8],blockdata[i+9],blockdata[i+10],blockdata[i+11])=(-num4,num2*num3,num*num3,z8);
-// 							new float[12] {num3*num5,x2,x3,x8,
-// num3*num6,x2*num6+num*num5,x3*num6-num2*num5,y8,
-// -num4,num2*num3,num*num3,z8}.CopyTo(blockdata, i);
-							blockdata[i] = num3*num5;
-							blockdata[i+1] = x2;
-							blockdata[i+2] = x3;
-							blockdata[i+3] = x8;
-							blockdata[i+4] = num3*num6;
-							blockdata[i+5] = MathF.FusedMultiplyAdd(x2,num6,num*num5);
-							blockdata[i+6] = MathF.FusedMultiplyAdd(x3,num6,-num2*num5);
-							blockdata[i+7] = y8;
-							blockdata[i+8] = -num4;
-							blockdata[i+9] = num2*num3;
-							blockdata[i+10] = num*num3;
-							blockdata[i+11] = z8;
+							DisplayBlock dispBlock = AllDisplayBlocks[i2];
+							uint clr = dispBlock.Clr;
+							colordata[i3] = (((((clr&0xff000000u)>>24)+255u)>>1)<<24)|((((clr&0x00ff0000u)+16711680u)>>17)<<16)|(((((clr&0x0000ff00u)*3)+65280u)>>10)<<8)|(clr&0xffu);
+							(float rx, float ry, float rz) = dispBlock.Rot;
+							(float sx, float sy, float sz) = dispBlock.Size;
+							(float tx, float ty, float tz) = dispBlock.Pos;
+							float num = MathF.Cos(rx), num2 = MathF.Sin(rx),
+							num3 = MathF.Cos(ry), num4 = MathF.Sin(ry),
+							num5 = MathF.Cos(rz), num6 = MathF.Sin(rz);
+							float _x2 = num2 * num4, _x3 = num * num4;
+							blockdata[i] = sx*num3*num5;
+							blockdata[i+1] = sy*(_x2*num5-num*num6);
+							blockdata[i+2] = sz*(_x3*num5+num2*num6);
+							blockdata[i+3] = tx;
+							blockdata[i+4] = sx*num3*num6;
+							blockdata[i+5] = sy*(_x2*num6+num*num5);
+							blockdata[i+6] = sz*(_x3*num6-num2*num5);
+							blockdata[i+7] = ty;
+							blockdata[i+8] = sx*-num4;
+							blockdata[i+9] = sy*num2*num3;
+							blockdata[i+10] = sz*num*num3;
+							blockdata[i+11] = tz;
+							statedata[i3] = (byte)(((int)dispBlock.Type)|(dispBlock.On?8:0));
 						}
 						GL.BindBuffer(BufferTarget.ArrayBuffer, instanceVBO);
 						GL.BufferSubData(BufferTarget.ArrayBuffer, 0, sizeof(float)*12*BlockStuff.BulkDrawConst, blockdata);
-						GL.BindBuffer(BufferTarget.ArrayBuffer, instanceVBO2);
-						// GL.BufferSubData(BufferTarget.ArrayBuffer, 0, sizeof(byte)*3*BlockStuff.BulkDrawConst, colordata);
-						GL.BufferSubData(BufferTarget.ArrayBuffer, 0, sizeof(uint)*BlockStuff.BulkDrawConst, colordata);
+						GL.BufferSubData(BufferTarget.ArrayBuffer, sizeof(float)*12*BlockStuff.BulkDrawConst, sizeof(uint)*BlockStuff.BulkDrawConst, colordata);
+						GL.BufferSubData(BufferTarget.ArrayBuffer, (sizeof(float)*12+sizeof(uint))*BlockStuff.BulkDrawConst, BlockStuff.BulkDrawConst, statedata);
 						GL.DrawArraysInstanced(PrimitiveType.Triangles, 0, 36, BlockStuff.BulkDrawConst);
 					}
 					int amt = count&(BlockStuff.BulkDrawConst-1);
 					if (amt > 0) {
 						for (int i=0,i2=amtThing<<BlockStuff.BulkDrawBS,i3=0; i2 < count; i+=12,i2++,i3++) {
-							// (blockdata[i], blockdata[i+1], blockdata[i+2]) = AllGates[i2].Pos;
-							// (blockdata[i+3], blockdata[i+4], blockdata[i+5]) = AllGates[i2].Rot;
-							// (blockdata[i+6], blockdata[i+7], blockdata[i+8]) = AllGates[i2].Clr;
-							Gate gate = AllGates[i2];
-							uint clr = gate.Clr;
-							colordata[i3] = (precalcdframething + ((uint)gate.SelState & 7)) switch {
-								4 or 5 or 6 or 7 or 20 or 21 or 22 or 23 or 36 or 37 or 38 or 39 or 52 or 53 or 54 or 55 => 0x00ff00ff,
-								// 1 or 3 or 5 or 7 or 9 or 11 or 13 or 15 or 33 or 35 or 37 or 39 or 41 or 43 or 45 or 47 => (((clr & 0x000000ffu)+255)>>1)|((((clr&0x0000ff00u)>>8)+255)>>1)|(((((clr&0x00ff0000u)>>16)+85)*3)>>2),
-								1 or 3 or 5 or 7 or 9 or 11 or 13 or 15 or 33 or 35 or 37 or 39 or 41 or 43 or 45 or 47 => (((((clr&0xff000000u)>>24)+255u)>>1)<<24)|((((clr&0x00ff0000u)+16711680u)>>17)<<16)|(((((clr&0x0000ff00u)*3)+65280u)>>10)<<8)|(clr&0xffu),
-								2 or 3 or 6 or 7 or 34 or 35 or 38 or 39 => 0x3333ccff, // 3333cc
-								_ => clr,
-							};
-							// (float x, float y, float z) = gate.Rot;
-							// float thisT = frame+Random.Shared.NextSingle();
-							// x += MathF.Sin(thisT*.01f)*.05f;
-							// y += MathF.Sin(thisT*.01f+MathF.PI/3f)*.05f;
-							// z += MathF.Sin(thisT*.01f+MathF.PI/1.5f)*.05f;
-							(float x, float y, float z) = gate.Rot;
-							x = MathF.FusedMultiplyAdd(MathF.Sin(frame*.01f),.05f,x);
-							y = MathF.FusedMultiplyAdd(MathF.Sin(MathF.FusedMultiplyAdd(frame,.01f,MathF.PI/3f)),.05f,y);
-							z = MathF.FusedMultiplyAdd(MathF.Sin(MathF.FusedMultiplyAdd(frame,.01f,MathF.PI/1.5f)),.05f,z);
-							float num = MathF.Cos(x),
-							num2 = MathF.Sin(x),
-							num3 = MathF.Cos(y),
-							num4 = MathF.Sin(y),
-							num5 = MathF.Cos(z),
-							num6 = MathF.Sin(z);
-							(float x8, float y8, float z8) = gate.Pos;
-							float n4xn5 = num4*num5;
-							float x2 = MathF.FusedMultiplyAdd(num2,n4xn5,-num*num6);
-							float x3 = MathF.FusedMultiplyAdd(num,n4xn5,num2*num6);
-							blockdata[i] = num3*num5;
-							blockdata[i+1] = x2;
-							blockdata[i+2] = x3;
-							blockdata[i+3] = x8;
-							blockdata[i+4] = num3*num6;
-							blockdata[i+5] = MathF.FusedMultiplyAdd(x2,num6,num*num5);
-							blockdata[i+6] = MathF.FusedMultiplyAdd(x3,num6,-num2*num5);
-							blockdata[i+7] = y8;
-							blockdata[i+8] = -num4;
-							blockdata[i+9] = num2*num3;
-							blockdata[i+10] = num*num3;
-							blockdata[i+11] = z8;
+							// (blockdata[i], blockdata[i+1], blockdata[i+2]) = AllDisplayBlocks[i2].Pos;
+							// (blockdata[i+3], blockdata[i+4], blockdata[i+5]) = AllDisplayBlocks[i2].Rot;
+							// (blockdata[i+6], blockdata[i+7], blockdata[i+8]) = AllDisplayBlocks[i2].Clr;
+							DisplayBlock dispBlock = AllDisplayBlocks[i2];
+							uint clr = dispBlock.Clr;
+							colordata[i3] = (((((clr&0xff000000u)>>24)+255u)>>1)<<24)|((((clr&0x00ff0000u)+16711680u)>>17)<<16)|(((((clr&0x0000ff00u)*3)+65280u)>>10)<<8)|(clr&0xffu);
+							(float rx, float ry, float rz) = dispBlock.Rot;
+							(float sx, float sy, float sz) = dispBlock.Size;
+							(float tx, float ty, float tz) = dispBlock.Pos;
+							float num = MathF.Cos(rx), num2 = MathF.Sin(rx),
+							num3 = MathF.Cos(ry), num4 = MathF.Sin(ry),
+							num5 = MathF.Cos(rz), num6 = MathF.Sin(rz);
+							float _x2 = num2 * num4, _x3 = num * num4;
+							blockdata[i] = sx*num3*num5;
+							blockdata[i+1] = sy*(_x2*num5-num*num6);
+							blockdata[i+2] = sz*(_x3*num5+num2*num6);
+							blockdata[i+3] = tx;
+							blockdata[i+4] = sx*num3*num6;
+							blockdata[i+5] = sy*(_x2*num6+num*num5);
+							blockdata[i+6] = sz*(_x3*num6-num2*num5);
+							blockdata[i+7] = ty;
+							blockdata[i+8] = sx*-num4;
+							blockdata[i+9] = sy*num2*num3;
+							blockdata[i+10] = sz*num*num3;
+							blockdata[i+11] = tz;
+							statedata[i3] = (byte)(((int)dispBlock.Type)|(dispBlock.On?8:0));
 						}
 						GL.BindBuffer(BufferTarget.ArrayBuffer, instanceVBO);
 						GL.BufferSubData(BufferTarget.ArrayBuffer, 0, sizeof(float)*12*amt, blockdata);
-						GL.BindBuffer(BufferTarget.ArrayBuffer, instanceVBO2);
-						GL.BufferSubData(BufferTarget.ArrayBuffer, 0, sizeof(uint)*count, colordata);
+						GL.BufferSubData(BufferTarget.ArrayBuffer, sizeof(float)*12*BlockStuff.BulkDrawConst, sizeof(uint)*amt, colordata);
+						GL.BufferSubData(BufferTarget.ArrayBuffer, (sizeof(float)*12+sizeof(uint))*BlockStuff.BulkDrawConst, amt, statedata);
 						GL.DrawArraysInstanced(PrimitiveType.Triangles, 0, 36, amt);}
 				} else {
 					for (int i = 0, i2=0; i2 < count; i+=12,i2++) {
-						// (blockdata[i], blockdata[i+1], blockdata[i+2]) = AllGates[i2].Pos;
-						// (blockdata[i+3], blockdata[i+4], blockdata[i+5]) = AllGates[i2].Rot;
-						// (blockdata[i+6], blockdata[i+7], blockdata[i+8]) = AllGates[i2].Clr;
-						Gate gate = AllGates[i2];
-						uint clr = gate.Clr;
-						// float r,g,b;
-						// switch (precalcdframething+((int)gate.SelState&7)) { // oh [__] 64 cases
-						// 	case 4 or 5 or 6 or 7 or 20 or 21 or 22 or 23 or 36 or 37 or 38 or 39 or 52 or 53 or 54 or 55:
-						// 		(r,g,b)=(0,1,0);
-						// 		break;
-						// 	case 1 or 3 or 5 or 7 or 9 or 11 or 13 or 15 or 33 or 35 or 37 or 39 or 41 or 43 or 45 or 47:
-						// 		r=((clr&0x000000ffu)-255f)*.5f+255f;g=(((clr&0x0000ff00u)>>8)-255f)*.5f+255f;b=(((clr&0x00ff0000u)>>16)-255f)*.75f+255f;
-						// 		break;
-						// 	case 2 or 3 or 6 or 7 or 34 or 35 or 38 or 39:
-						// 		(r,g,b)=(.2f,.2f,.8f);
-						// 		break;
-						// 	default:
-						// 		r=clr&0x000000ffu;g=(clr&0x0000ff00u)>>8;b=(clr&0x00ff0000u)>>16;
-						// 		break;
-						// }
-						// if (gate.State && ((frame&1)==0)) {
-						// } else if ((gate.SelState&BlockState.Selected)>0 && ((frame&2)==0)) {
-						// /*} else */if ((gate.SelState&BlockState.Highlighted)>0 && ((frame&4)==0)) {
-						// } else {
-						// }
-						// if (Frame%256==0) Console.WriteLine("RGB:"+r+','+g+','+b+';');
-						// (colordata[i3], colordata[i3+1], colordata[i3+2]) = ((byte)r,(byte)g,(byte)b);
-						colordata[i2] = (precalcdframething + ((uint)gate.SelState & 7)) switch {
-							4 or 5 or 6 or 7 or 20 or 21 or 22 or 23 or 36 or 37 or 38 or 39 or 52 or 53 or 54 or 55 => 0x00ff00ff,
-							// 1 or 3 or 5 or 7 or 9 or 11 or 13 or 15 or 33 or 35 or 37 or 39 or 41 or 43 or 45 or 47 => (((clr & 0x000000ffu)+255)>>1)|((((clr&0x0000ff00u)>>8)+255)>>1)|(((((clr&0x00ff0000u)>>16)+85)*3)>>2),
-							1 or 3 or 5 or 7 or 9 or 11 or 13 or 15 or 33 or 35 or 37 or 39 or 41 or 43 or 45 or 47 => (((((clr&0xff000000u)>>24)+255u)>>1)<<24)|((((clr&0x00ff0000u)+16711680u)>>17)<<16)|(((((clr&0x0000ff00u)*3)+65280u)>>10)<<8)|(clr&0xffu),
-							2 or 3 or 6 or 7 or 34 or 35 or 38 or 39 => 0x3333ccff, // 3333cc
-							_ => clr,
-						};
-						(float x, float y, float z) = gate.Rot;
-						x = MathF.FusedMultiplyAdd(MathF.Sin(frame*.01f),.05f,x);
-						y = MathF.FusedMultiplyAdd(MathF.Sin(MathF.FusedMultiplyAdd(frame,.01f,MathF.PI/3f)),.05f,y);
-						z = MathF.FusedMultiplyAdd(MathF.Sin(MathF.FusedMultiplyAdd(frame,.01f,MathF.PI/1.5f)),.05f,z);
-						float num = MathF.Cos(x),
-						num2 = MathF.Sin(x),
-						num3 = MathF.Cos(y),
-						num4 = MathF.Sin(y),
-						num5 = MathF.Cos(z),
-						num6 = MathF.Sin(z);
-						// float x2 = num2 * num4, x3 = num * num4;
-						// (float x8, float y8, float z8) = gate.Pos;
-						// x2 = x2*num5-num*num6;
-						// float y2 = x2*num6+num*num5;
-						// float z2 = num2*num3;
-						// x3 = x3*num5+num2*num6;
-						// float y3 = x3*num6-num2*num5;
-						// float z3 = num*num3;
-						// // Matrix4 result = new(
-						// // 	num3*num5,num3*num6,-num4,0,
-						// // 	x2,y2,z2,0,
-						// // 	x3,y3,z3,0,
-						// // 	x8,y8,z8,1
-						// // );
-						// (blockdata[i],blockdata[i+1],blockdata[i+2],blockdata[i+3])=(num3*num5,x2,x3,x8);
-						// (blockdata[i+4],blockdata[i+5],blockdata[i+6],blockdata[i+7])=(num3*num6,y2,y3,y8);
-						// (blockdata[i+8],blockdata[i+9],blockdata[i+10],blockdata[i+11])=(-num4,z2,z3,z8);
-						(float x8, float y8, float z8) = gate.Pos;
-						float n4xn5 = num4*num5;
-						float x2 = MathF.FusedMultiplyAdd(num2,n4xn5,-num*num6);
-						float x3 = MathF.FusedMultiplyAdd(num,n4xn5,num2*num6);
-						blockdata[i] = num3*num5;
-						blockdata[i+1] = x2;
-						blockdata[i+2] = x3;
-						blockdata[i+3] = x8;
-						blockdata[i+4] = num3*num6;
-						blockdata[i+5] = MathF.FusedMultiplyAdd(x2,num6,num*num5);
-						blockdata[i+6] = MathF.FusedMultiplyAdd(x3,num6,-num2*num5);
-						blockdata[i+7] = y8;
-						blockdata[i+8] = -num4;
-						blockdata[i+9] = num2*num3;
-						blockdata[i+10] = num*num3;
-						blockdata[i+11] = z8;
+						DisplayBlock dispBlock = AllDisplayBlocks[i2];
+						uint clr = dispBlock.Clr;
+						colordata[i2] = (((((clr&0xff000000u)>>24)+255u)>>1)<<24)|((((clr&0x00ff0000u)+16711680u)>>17)<<16)|(((((clr&0x0000ff00u)*3)+65280u)>>10)<<8)|(clr&0xffu);
+						(float rx, float ry, float rz) = dispBlock.Rot;
+						(float sx, float sy, float sz) = dispBlock.Size;
+						(float tx, float ty, float tz) = dispBlock.Pos;
+						float num = MathF.Cos(rx), num2 = MathF.Sin(rx),
+						num3 = MathF.Cos(ry), num4 = MathF.Sin(ry),
+						num5 = MathF.Cos(rz), num6 = MathF.Sin(rz);
+						float _x2 = num2 * num4, _x3 = num * num4;
+						blockdata[i] = sx*num3*num5;
+						blockdata[i+1] = sy*(_x2*num5-num*num6);
+						blockdata[i+2] = sz*(_x3*num5+num2*num6);
+						blockdata[i+3] = tx;
+						blockdata[i+4] = sx*num3*num6;
+						blockdata[i+5] = sy*(_x2*num6+num*num5);
+						blockdata[i+6] = sz*(_x3*num6-num2*num5);
+						blockdata[i+7] = ty;
+						blockdata[i+8] = sx*-num4;
+						blockdata[i+9] = sy*num2*num3;
+						blockdata[i+10] = sz*num*num3;
+						blockdata[i+11] = tz;
+						statedata[i2] = (byte)(((int)dispBlock.Type)|(dispBlock.On?8:0));
 					}
 					GL.BindBuffer(BufferTarget.ArrayBuffer, instanceVBO);
 					GL.BufferSubData(BufferTarget.ArrayBuffer, 0, sizeof(float)*12*count, blockdata);
-					GL.BindBuffer(BufferTarget.ArrayBuffer, instanceVBO2);
-					GL.BufferSubData(BufferTarget.ArrayBuffer, 0, sizeof(uint)*count, colordata);
+					GL.BufferSubData(BufferTarget.ArrayBuffer, sizeof(float)*12*BlockStuff.BulkDrawConst, sizeof(uint)*count, colordata);
+					GL.BufferSubData(BufferTarget.ArrayBuffer, (sizeof(float)*12+sizeof(uint))*BlockStuff.BulkDrawConst, count, statedata);
 					GL.DrawArraysInstanced(PrimitiveType.Triangles, 0, 36, count);
 				}
 			}
 			public override bool OnUpdate() {
-				bool NewState;
-				switch (Type) {
-					case GateType.And:
-						NewState = true;
-						foreach (IBindableBlock block in Inputs) if ((block.SelState&BlockState.On)==0) {NewState = false; break;}
-						break;
+				bool Changes;
+				switch (Type^((GateType)(On?4:0))) {
+					case GateType.And: // this is either off and and or on and nand
+						foreach (IBindableBlock block in Inputs) {if (!block.On) {Changes = false; break;}}
+						Changes = true; break;
 					case GateType.Or:
-						NewState = false;
-						foreach (IBindableBlock block in Inputs) if ((block.SelState&BlockState.On)>0) {NewState = true; break;}
+						foreach (IBindableBlock block in Inputs) {if (block.On) {Changes = true; break;}}
+						Changes = false; break;
+					case GateType.Xor: // off xor or on xnor
+						Changes = false;
+						foreach (IBindableBlock block in Inputs) Changes ^= block.On;
 						break;
-					case GateType.Xor:
-						NewState = true;
-						foreach (IBindableBlock block in Inputs) NewState ^= (block.SelState&BlockState.On)>0;
+					case GateType.Nand:
+						foreach (IBindableBlock block in Inputs) {if (!block.On) {Changes = true; break;}}
+						Changes = false; break;
+					case GateType.Nor:
+						foreach (IBindableBlock block in Inputs) {if (block.On) {Changes = false; break;}}
+						Changes = true; break;
+					case GateType.Xnor:
+						Changes = true;
+						foreach (IBindableBlock block in Inputs) Changes ^= block.On;
 						break;
 					default: throw new Exception();
 				}
-				if (((SelState&BlockState.On)>0) ^ NewState ^ Not) {
+				if (Changes) {
 					// State ^= true;
-					SelState ^= BlockState.On;
+					On ^= true;
 					ForceEvent();
 					return true;
 				}
 				return false;
 			}
+			public override bool GetUpdateResult() {
+				switch (Type^((GateType)(On?4:0))) {
+					case GateType.And: // this is either off and and or on and nand
+						foreach (IBindableBlock block in Inputs) if (!block.On) return false;
+						return true;
+					case GateType.Or:
+						foreach (IBindableBlock block in Inputs) if (block.On) return true;
+						return false;
+					case GateType.Xor: // off xor or on xnor
+						bool StateChanges = false;
+						foreach (IBindableBlock block in Inputs) StateChanges ^= block.On;
+						return StateChanges;
+					case GateType.Nand:
+						foreach (IBindableBlock block in Inputs) if (!block.On) return true;
+						return false;
+					case GateType.Nor:
+						foreach (IBindableBlock block in Inputs) if (block.On) return false;
+						return true;
+					case GateType.Xnor:
+						bool _StateChanges = true;
+						foreach (IBindableBlock block in Inputs) _StateChanges ^= block.On;
+						return _StateChanges;
+					default: throw new Exception();
+				}
+			}
+			public override void CleanInputs() {
+				foreach (IBindableBlock block in Inputs) {if(block==null||block.ID==0)Inputs.Remove(block);}
+			}
 			public override void ForceEvent() {
-				foreach (IBindableBlock block in Outputs) BindableBlockStuff.QueueBlock(block);
+				//foreach (IBindableBlock block in OrigOrderOutputs) BindableBlockStuff.QueueBlock(block);
+				BindableBlockStuff.QueueSet(this);
 			}
 			public override void ForceSet(bool state) {
-				if (((SelState&BlockState.On)>0) ^ state) {
-					SelState^=BlockState.On;
+				if (On ^ state) {
+					On^=true;
 					ForceEvent();
 				}
 			}
 			public override void ForceToggle() {
-				SelState ^= BlockState.On;
+				On ^= true;
 				ForceEvent();
 			}
 			public override void QuietForceSet(bool state) {
-				if (((SelState&BlockState.On)>0)^state)SelState^=BlockState.On;
+				if (On^state)On^=true;
 			}
 			public override void QuietForceToggle() {
-				SelState ^= BlockState.On;
+				On ^= true;
 			}
-		}
+		}*/
 		public Shader shader;
 		public int cubeVAO, cubeVBO, instanceVBO;
 		public static float[] cubeVerts = [
@@ -3681,10 +4901,10 @@ namespace GameEngineThing {
 			game._camera.MaxDist = 1024;
 			shader = new("Shaders/babfte/Shader.vert", "Shaders/babfte/Shader.frag");
 			GL.UseProgram(shader.Handle);
+			shader.SetInt("texture0", 0);
 			// GenDefaultWorld();
 			foreach (Type type in BlockStuff.AllBlockTypes) type.GetMethod("L")?.Invoke(null, [game]);
 			Tools.OnLoad(game);
-			GL.BindVertexArray(0);
 			// cubeVAO = GL.GenVertexArray();
 			// GL.BindVertexArray(cubeVAO);
 
@@ -3703,30 +4923,22 @@ namespace GameEngineThing {
 
 			// GL.EnableVertexAttribArray(2);
 			// GL.VertexAttribIPointer(2, 3, VertexAttribIntegerType.Int, 3 * sizeof(int), 0);
-			// GL.BindBuffer(BufferTarget.ArrayBuffer, 0);
 			// GL.VertexAttribDivisor(2, 1);
-
-			// // unbind
-			// GL.BindBuffer(BufferTarget.ArrayBuffer, 0);
-			// GL.BindVertexArray(0);
-			// // GL.BindBuffer(BufferTarget.ElementArrayBuffer, 0);
-
 		}
 		Game game;
 		public static Matrix4 currentView;
 		public override void OnRenderFrame(Game game, double dt) {
 			base.OnRenderFrame(game, dt);
+			game._textureSheet.Use(TextureUnit.Texture0);
 			GL.UseProgram(shader.Handle);
 			currentView = game._camera.View;
 			GL.UniformMatrix4(GL.GetUniformLocation(shader.Handle, "view"), true, ref currentView);
-			foreach (var BlockRenderAction in BlockStuff.BlockRenderBehavior.Values) {
-				BlockRenderAction();
-			}
+			foreach (var BlockRenderAction in BlockStuff.BlockRenderBehaviors) BlockRenderAction();
 			Tools.OnRenderFrame(game);
 		}
 		public override void OnUpdateFrame(Game game, double dt) {
 			base.OnUpdateFrame(game, dt);
-			BindableBlockStuff.OnUpdateFrame();
+			BiBS.OnUpdateFrame();
 			Tools.OnUpdateFrame(game);
 			frame++;
 		}
@@ -3739,6 +4951,74 @@ namespace GameEngineThing {
 			base.OnMouseDown(e);
 			Tools.OnMouseDown(e, game);
 		}
+	}
+	public class CPSTest : IMinigame {
+		public const string GameIdentifier = "cpstester";
+		public static Dictionary<string, Action<Game>> InGameConstructorthings = new() {
+			["cpstest"] = delegate (Game game) {
+				game._currentMinigames.Add(new CPSTest());
+				game._gameModes.Add(GameIdentifier);
+			}
+		};
+		public static void StartInit() {
+			InGameConstructorthings["cpstester"]=
+			InGameConstructorthings["cpstest"];
+			DataStuff.chatCommands["cpstest "] = delegate (Game game, string path) {
+				Console.Write("cps test thing.\n");
+				if (path.Length > 6 && path[..5] == "time ") {
+					try {
+						long duration = (long)(Convert.ToDouble(path[5..])*Stopwatch.Frequency);
+						Duration = duration;
+					} catch (Exception e) {
+						Console.Write("smth didn't work bruh\n"+e.Message+'\n');
+					}
+				}
+			};
+		}
+		public CPSTest() {StartTime = Stopwatch.GetTimestamp();}
+		public long StartTime;
+		public static long Duration = Stopwatch.Frequency * 5;
+		public long Clicks = 0;
+        public override void OnKeyDown(KeyboardKeyEventArgs e)
+        {
+            base.OnKeyDown(e);
+			if (e.Key == Keys.Enter) {
+				StartTime = Stopwatch.GetTimestamp();
+				Clicks = 0;
+			}
+        }
+        public override void OnMouseDown(MouseButtonEventArgs e)
+        {
+            base.OnMouseDown(e);
+			if (Stopwatch.GetTimestamp() < StartTime+Duration) {
+				Clicks++;
+			} else {
+				double dDur = Duration/(double)Stopwatch.Frequency;
+				Console.WriteLine("done; time: "+dDur+"; clicks: "+Clicks+"; cps: "+(Clicks / dDur)+";\n");
+				StartTime = Stopwatch.GetTimestamp();
+				Clicks = 0;
+			}
+        }
+
+	}
+	public class Minesweeper : IMinigame {
+		public const string GameIdentifier = "minesweeper";
+		public static Dictionary<string, Action<Game>> InGameConstructorThings = new() {
+			["minesweeper"] = delegate (Game game) {
+				game._currentMinigames.Add(new Minesweeper());
+				game._gameModes.Add(GameIdentifier);
+			}
+		};
+        public override void OnLoad(Game game)
+        {
+            base.OnLoad(game);
+			game.UpdateFrequency = 60;
+			throw new Exception("no i haven't made this yet bruh");
+        }
+        public override void OnRenderFrame(Game game, double dt)
+        {
+            base.OnRenderFrame(game, dt);
+        }
 	}
 	public class RandomProgramStuff : IMinigame {
 		public const string GameIdentifier = "randomprogramstuff";

@@ -5,8 +5,8 @@ in vec4 color;
 
 uniform sampler2D texture0;
 
-void main()
-{
-    //FragColor = texture(texture0, texCoord);
-    FragColor = color;
+void main() {
+    vec4 txClr = texture(texture0, texCoord);
+    float a = txClr.a-txClr.a*color.a+color.a;
+    FragColor = vec4((txClr.a*(txClr.rgb-color.rgb*color.a)+color.rgb*color.a)/a, a);
 }

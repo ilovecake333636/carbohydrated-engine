@@ -16,41 +16,35 @@ using System.Text;
 
 namespace GameEngineThing {
 	public class Game : GameWindow {
+		public static Game currentGame = null;
 		public Vector2i _clientSize;
-		public static int _gameCount = 0;
-		public int _gameID;
 		public double _gameTime = .0;
 		private double _semiRealTime = .0;
 		public double _dT = .0;
 		public Shader _shader;
-		public Shader _textShader { get; private set; }
-		private Texture _textureSheet;
+		public Shader _textShader;
+		public Texture _textureSheet;
 		public Text _textRenderer;
-		public Camera _camera = new(new Vector3(0f, 0f, 3f), Vector3.Zero, Vector3.UnitY);
+		public Camera _camera = new();
 		private double _DTOverTime = 0;
 		public long _frameCount = 0;
-		// private Random _random = new();
-		private Stopwatch _stopwatch = new();
 		// private bool _gameUpdating = true;
-		public long _gameTick { get; private set; } = 0;
-		public float _gameTickSpeed { get; set; } = 60f;
+		public long _gameTick = 0;
+		public float _gameTickSpeed = 60f;
 		/// <summary>
 		/// there's nothing stopping you from making this not the inverse of the tick speed but like maybe don't i guess idk lol
 		/// </summary>
-		public float _tickSpeedInv {get; set;} = 1f/60f;
-		private float _gameTickLagCompensationAmount = 2f;
+		public float _tickSpeedInv = 1f/60f;
+		private float _maxLagCompensationTime = 0.1f;
 		// private int _seconds = 0;
 		public static float _groundHeight = 0f;
 
 		public Player _player;
-		private ObjectMesh _playerTorsoMesh;
-		private ObjectMesh _playerHeadMesh;
-		private ObjectMesh _playerArmMesh;
-		private ObjectMesh _playerLegMesh;
-		public bool _isChatting {get; private set;} = false;
+		private ObjectMesh _playerTorsoMesh, _playerHeadMesh, _playerArmMesh, _playerLegMesh;
+		public bool _isChatting = false;
 		public double _consoleScroll = 0;
 		private int _chattingBlinker = 0;
-		public string _chattingText { get; private set; } = "";
+		public string _chattingText = "";
 		private int _chattingTextLines = 1;
 		private Vector2 _chattingTextSize = new(2);
 		private float _chattingTextLineHeight = 10f;
@@ -58,14 +52,13 @@ namespace GameEngineThing {
 		public string ReopenData = "";
 		public string OpenData;
 		public List<string> _gameModes = [];
-		public DebugFlags _debugFlags = DebugFlags.none;
 
 		private WindowState previousState;
 		// private Pong _pongGame;
 		// private VerticalOneKey _1kManiaPrototype;
 		// private ManiaRG _maniaRGPrototype;
-		public List<IMinigame> _currentMinigames { get; private set; } = [];
-		public int _minigameCount { get; private set; }
+		public List<IMinigame> _currentMinigames = [];
+		public int _minigameCount;
 		private VideoRecorder _videoRecorder;
 		private long previousFrameTimestamp = 0;
 		public double[] profilerFrameTimes = new double[2048];
@@ -73,81 +66,63 @@ namespace GameEngineThing {
 		public int profilerIndex = 0;
 		private bool profilerOn = false;
 		public readonly long gameStartTimestamp = Stopwatch.GetTimestamp();
+		public static readonly long programStartTimestamp = Stopwatch.GetTimestamp();
 		public bool renderPlayer = true;
-		public static readonly Action<Game> DefaultFlyBehavior = delegate (Game game){
-			Camera cam = game._camera;
-			var KeyboardState = game.KeyboardState;
-			float moveAmount = cam.CamSpeed / game._gameTickSpeed;
-			Player player = game._player;
-			long frameCount = game._frameCount;
-			float movement = (KeyboardState.IsKeyDown(Keys.W) ? -moveAmount : 0) + (KeyboardState.IsKeyDown(Keys.S) ? moveAmount : 0);
-			Vector3 plrMovement = Vector3.Zero;
-			plrMovement += cam.Direction * movement;
-			movement = (KeyboardState.IsKeyDown(Keys.A) ? -moveAmount : 0) + (KeyboardState.IsKeyDown(Keys.D) ? moveAmount : 0);
-			plrMovement += cam.Right * movement;
-			movement = ((KeyboardState.IsKeyDown(Keys.Space) || KeyboardState.IsKeyDown(Keys.E)) ? moveAmount : 0) + ((KeyboardState.IsKeyDown(Keys.LeftShift) || KeyboardState.IsKeyDown(Keys.Q)) ? -moveAmount : 0);
-			plrMovement += cam.Up * movement;
-			player.RootPosition += plrMovement;
-			(float ax, float ay, float az) = player.RootRotation;
-			float num = MathF.Cos(ax),
-			num2 = MathF.Sin(ax),
-			num3 = MathF.Cos(ay),
-			num4 = MathF.Sin(ay),
-			num5 = MathF.Cos(az),
-			num6 = MathF.Sin(az),
-			x2 = num2 * num4,x3 = num * num4;
-			(float sX, float sY, float sZ) = player.RootScale;
-			(float tX, float tY, float tZ) = player.RootPosition;
-			player.RootModel = new(sX * num3 * num5,sX * num3 * num6,-sX * num4,0,
-			sY * (x2 * num5 - num * num6),sY * (x2 * num6 + num * num5),sY * num2 * num3,0,
-			sZ * (x3 * num5 + num2 * num6),sZ * (x3 * num6 - num2 * num5),sZ * num * num3,0,
-			tX,tY,tZ,1);
-			player.UpdateLimbs();
-		};
-		public Action<Game> FlyBehavior;
-		public List<Announcement> _announcementsThing;
 
 
 		public Game(int width, int height, string title) :
-		base(GameWindowSettings.Default, new NativeWindowSettings() { ClientSize = (width, height), Title = title }) { _gameID = _gameCount++; }
-
+		base(GameWindowSettings.Default, new NativeWindowSettings() { ClientSize = (width, height), Title = title }) { }
+		private static readonly Action<Game> SecretMessage = delegate(Game g) {
+			long ts = Stopwatch.GetTimestamp();
+			long ticksSinceGameStart = ts - g.gameStartTimestamp;
+			if (ticksSinceGameStart < Stopwatch.Frequency*3) return;
+			StringBuilder s = new("SECRET MESSAGE! :3\nhi :3\n:3");
+			while (Random.Shared.Next(20) > 0) s.Append(" :3");
+			AnnouncementsManager.Announcements.Add(new(s.ToString(), Stopwatch.GetTimestamp() + Stopwatch.Frequency*10+Random.Shared.Next((int)Stopwatch.Frequency*4),(.3f,.5f,Random.Shared.NextSingle(),.95f),(.5f,Random.Shared.NextSingle(),.5f,.5f), fot:3f));
+			if (ticksSinceGameStart > Stopwatch.Frequency*5)g.DeferredTasks -= SecretMessage;
+		};
+		public Action<Game> DeferredTasks = delegate(Game game){};
 		static void Main() {
-			Console.WriteLine("Starting OpenGL application...");
+			long startTS = programStartTimestamp;
+			Console.Write(startTS+" is the program start tick.\n");
+			AnnouncementsManager.Announcements = [
+				new("Welcome to carbohydrated-engine, have fun!", Stopwatch.GetTimestamp() + Stopwatch.Frequency*12, (.8f, .2f, .8f, .95f), (.1f, .1f, .1f, .8f), fot:4)];
 			bool Opening = true;
 			string OpenData = "";
 			while (Opening) {
 				Opening = false;
 				using Game game = new(800, 600, "GameEngineThingy :3");
+				if (Random.Shared.Next(1000) == 0) game.DeferredTasks += SecretMessage;
 				game.VSync = VSyncMode.On;
 				game.OpenData = OpenData;
 				game.Run();
 				Opening = game.WillReopen;
 				OpenData = game.ReopenData; }
-			Console.WriteLine("game has closed.");
-			debuggingThingClass.someDebugThing(debuggingThingClass.IsDebugging); }
+			Console.Write("game has closed.\n"); }
 		protected override void OnLoad() {
 			base.OnLoad();
-			GL.ClearColor(.3f, .6f, .5f, 1f);
+			if (currentGame == null) currentGame = this; else throw new Exception("uhh screw you ig i don't want to deal with multiple windows yet lol");
+			GL.ClearColor(.3f, .5f, .7f, 1f);
 
 			// Ensure text EBO is created with no mesh VAO bound
 			Text.OnLoad();
 
-			_playerTorsoMesh = new ObjectMesh(Vector3.Zero, Vector3.Zero, Vector3.One, DataStuff.PlrTorsoV, DataStuff.PlrTorsoI);
-			_playerArmMesh = new ObjectMesh(Vector3.Zero, Vector3.Zero, Vector3.One, DataStuff.PlrArmV, DataStuff.PlrArmI);
-			_playerLegMesh = new ObjectMesh(Vector3.Zero, Vector3.Zero, Vector3.One, DataStuff.PlrLegV, DataStuff.PlrLegI);
-			_playerHeadMesh = new ObjectMesh(Vector3.Zero, Vector3.Zero, Vector3.One, DataStuff.PlrHeadV, DataStuff.PlrHeadI);
-			_player = new Player(Vector3.Zero, Vector3.Zero, Vector3.One, [
+			_playerTorsoMesh = new ObjectMesh((0f,0f,0f), (0f,0f,0f), (1f,1f,1f), DataStuff.PlrTorsoV, DataStuff.PlrTorsoI);
+			_playerArmMesh = new ObjectMesh((0f,0f,0f), (0f,0f,0f), (1f,1f,1f), DataStuff.PlrArmV, DataStuff.PlrArmI);
+			_playerLegMesh = new ObjectMesh((0f,0f,0f), (0f,0f,0f), (1f,1f,1f), DataStuff.PlrLegV, DataStuff.PlrLegI);
+			_playerHeadMesh = new ObjectMesh((0f,0f,0f), (0f,0f,0f), (1f,1f,1f), DataStuff.PlrHeadV, DataStuff.PlrHeadI);
+			_player = new Player((0f,0f,0f), (0f,0f,0f), (1f,1f,1f), [
 				new(_playerTorsoMesh, 0),
 				new(_playerHeadMesh, 0),
 				new(_playerArmMesh, 0),
-				new(Vector3.Zero, Vector3.Zero, new Vector3(-1f, 1f, 1f), _playerArmMesh),
+				new((0f,0f,0f), (0f,0f,0f), (-1f, 1f, 1f), _playerArmMesh),
 				new(_playerLegMesh, 0),
-				new(Vector3.Zero, Vector3.Zero, new Vector3(-1f, 1f, 1f), _playerLegMesh),
-			], [Vector3.Zero, new(0f, 1.2f, 0f), new(-1f, 0f, 0f), new(1f, 0f, 0f), new(-.3f, -1.2f, 0f), new(.3f, -1.2f, 0f),
-			], [Vector3.Zero, Vector3.Zero, Vector3.Zero, Vector3.Zero, Vector3.Zero, Vector3.Zero], [
-				Vector3.One, (0.9f,0.9f,0.9f),
-				Vector3.One, new(-1f, 1f, 1f),
-				Vector3.One, new(-1f, 1f, 1f),
+				new((0f,0f,0f), (0f,0f,0f), (-1f, 1f, 1f), _playerLegMesh),
+			], [(0f,0f,0f), (0f, 1.2f, 0f), (-1.1f, 0.3f, 0f), (1.1f, 0.3f, 0f), (-.3f, -1.15f, 0f), (.3f, -1.15f, 0f),
+			], [(0f,0f,0f), (0f,0f,0f), (0f,0f,0f), (0f,0f,0f), (0f,0f,0f), (0f,0f,0f)], [
+				(1.1f,1.1f,1.1f), (0.875f,0.875f,0.875f),
+				(1f,1f,1f), (-1f, 1f, 1f),
+				(1.05f,.9f,1.05f), (-1.05f, .9f, 1.05f),
 			]);
 			_shader = new Shader("Shaders/shader.vert", "Shaders/shader.frag");
 			_shader.Use();
@@ -157,7 +132,6 @@ namespace GameEngineThing {
 			_textureSheet = Texture.LoadFromFile("Textures/texturesheet.png", false, false);
 			_textureSheet.Use(TextureUnit.Texture0);
 			_shader.SetInt("texture0", 0);
-			_shader.SetInt("tx0", 0);
 
 			_textShader = new Shader("Shaders/textShader.vert", "Shaders/textShader.frag");
 			_textShader.Use();
@@ -182,58 +156,16 @@ namespace GameEngineThing {
 			Console.WriteLine("Max vertices: " + GL.GetInteger(GetPName.MaxElementsVertices));
 			Console.WriteLine("Max indices: " + GL.GetInteger(GetPName.MaxElementsIndices));
 
-			// Console.WriteLine("FontCharacterData info: FontCharDeeta has " + FontCharFillerThing.FontCharDeeta.Chars.Count + " normal characters, and " + FontCharFillerThing.FontCharDeeta.SChars.Count + " special characters.");
-			// foreach (var a in FontCharFillerThing.FontCharDeeta.Chars) {
-			// 	Console.Write("key:"+a.Key+";value:sizeX:"+a.Value.sizeX+",Y:"+a.Value.sizeY+",advX:"+a.Value.advanceX+",Y:"+a.Value.advanceY+",bX:"+a.Value.bearingX+",Y:"+a.Value.bearingY+",tsX:"+a.Value.tStartX+",Y:"+a.Value.tStartY+",teX:"+a.Value.tEndX+",Y:"+a.Value.tEndY+'\n');
-			// }
-			// foreach (var a in FontCharFillerThing.FontCharDeeta.SChars) {
-			// 	Console.Write("key:"+a.Key+";value:sizeX:"+a.Value.sizeX+",Y:"+a.Value.sizeY+",advX:"+a.Value.advanceX+",Y:"+a.Value.advanceY+",bX:"+a.Value.bearingX+",Y:"+a.Value.bearingY+",tsX:"+a.Value.tStartX+",Y:"+a.Value.tStartY+",teX:"+a.Value.tEndX+",Y:"+a.Value.tEndY+'\n');
-			// }
-			// GameEngineFlyBehavior = 0;
+			AnnouncementsManager.OnLoad();
 
-			_announcementsThing = [new("testing testing", Stopwatch.GetTimestamp() + Stopwatch.Frequency*12, (.8f, .2f, .8f), (.1f, .1f, .1f), .8f, fot:4),new("tst test2 dsfsdfsdds", Stopwatch.GetTimestamp() + Stopwatch.Frequency*30,(.3f,.5f,.3f),(.5f,.5f,.5f),.5f, fot:0)];
-
-			// switch (OpenData.ToLower()) {
-			// 	case "pong":
-			// 		_currentMinigames = [new Pong(new Vector3(10f, 0f, 10f), new Vector3(1f), new Vector3(270f, 0f, 0f))];
-			// 		_gameModes = ["pong"];
-			// 		break;
-			// 	case "fnf": // do something else but rn the something else doesn't exist
-			// 	case "mania": // also do something else but the something else also doesn't exist
-			// 		_currentMinigames = [new ManiaRG(_textRenderer)];
-			// 		_gameModes = ["mania"];
-			// 		break;
-			// 	case "1k fnf" or "1kfnf" or "fnf 1k" or "fnf1k" or
-			// 		"v1k" or "verticalonekey" or "vertical one key":
-			// 		_currentMinigames = [new VerticalOneKey(_textRenderer, DataStuff.BuiltInV1KCharts[0])];
-			// 		_gameModes = ["v1k"];
-			// 		break;
-			// 	case "v1k2":
-			// 		_currentMinigames = [new VerticalOneKey(_textRenderer, DataStuff.BuiltInV1KCharts[1])];
-			// 		_gameModes = ["v1k"];
-			// 		break;
-			// 	case "miner": // also do something else but the something else also doesn't exist
-			// 		_currentMinigames = [new MiningGame()];
-			// 		_gameModes = ["miner"];
-			// 		break;
-			// 	case "animate":
-			// 		_currentMinigames = [new Animate()];
-			// 		_gameModes = ["animate"];
-			// 		break;
-			// 	default:
-			// 		_currentMinigames = [new DefaultGameBehavior()];
-			// 		_gameModes = ["DEFAULT_BEHAVIOR"];
-			// 		break;
-			// }
-			FlyBehavior = DefaultFlyBehavior;
 			if (DataStuff.MinigameInitializers.TryGetValue(OpenData, out Action<Game> v)) v(this); else DataStuff.MinigameInitializers["DEFAULT_BEHAVIOR"](this);
-			foreach (IMinigame minigame in _currentMinigames) minigame.OnLoad(this);
-
-			_stopwatch.Start();}
+			foreach (IMinigame minigame in _currentMinigames) minigame.OnLoad(this);}
 		protected override void OnRenderFrame(FrameEventArgs e) {
 			base.OnRenderFrame(e);
 
 			GL.Clear(ClearBufferMask.ColorBufferBit | ClearBufferMask.DepthBufferBit);
+
+			_camera.UpdateVectors();
 
 			_textureSheet.Use(TextureUnit.Texture0);
 			// _textRenderer.TextTexture.Use(TextureUnit.Texture1); // should already be used though idk
@@ -243,24 +175,21 @@ namespace GameEngineThing {
 			// _shader.SetMatrix4("projection", _camera.Projection);
 
 
-			if (renderPlayer){_shader.SetTextureLocation("tx0", new Vector4(0f, 0f, 1f, 1f)); _player.Render(_shader);}
+			if (renderPlayer) _player.Render(_shader);
 
 			foreach(IMinigame minigame in _currentMinigames) minigame.OnRenderFrame(this, e.Time);
 
 			// UI time!! :3
 			// remember that this renderer is pretty weird or smth and if you render in the wrong order the game may not render properly.
-			bool debugText = _debugFlags.HasFlag(DebugFlags.debugText);
 			if (_isChatting) {
-				StringBuilder chatTxt = new("> "); chatTxt.Append(_chattingText);
-				if (_chattingBlinker < 128) chatTxt.Append("\\blinker|");
-				string chattxt = chatTxt.ToString();
+				string chattxt = (_chattingBlinker<128)?("> "+_chattingText+"\\blinker|"):("> "+_chattingText);
 				_textRenderer.RenderText(this, _textShader, chattxt, (0,(int)_consoleScroll), new(-.5f), _chattingTextSize, new(1), _chattingTextLineHeight, _clientSize, FontCharFillerThing.FontCharDeeta, true);
-				if (debugText) _textRenderer.RenderText(this, _textShader, chattxt, (0,(int)_consoleScroll), new(-1, -.8f), _chattingTextSize, new(.7f), _chattingTextLineHeight, _clientSize, FontCharFillerThing.FontCharDeeta, false);}
-			// _videoRecorder?.CaptureFrame(this.ClientSize, VSync == VSyncMode.On);
+			}
+			AnnouncementsManager.OnRender(_clientSize);
 			long timestampNow = Stopwatch.GetTimestamp();
 			profilerFrameTimes[profilerIndex] = (timestampNow - previousFrameTimestamp) / (double)Stopwatch.Frequency * 1000;
 			previousFrameTimestamp = timestampNow;
-			if (profilerOn) { _textRenderer.ProfilerRender(this);}
+			if (profilerOn) _textRenderer.ProfilerRender(this);
 			profilerIndex = (profilerIndex + 1) % profilerFrameTimes.Length;
 			_videoRecorder?.CaptureFrame(_clientSize);
 			SwapBuffers();}
@@ -278,78 +207,48 @@ namespace GameEngineThing {
 			minigame.OnUpdateFrame(this, _dT);
 
 			if (IsFocused) {
+				MouseState ms = MouseState;
+				KeyboardState ks = KeyboardState;
+				System.Collections.BitArray ksAsBitArray = DataStuff.GetKSBitArray(ks);
+				byte[] ksData = DataStuff.GetBitArrayByteArray(ksAsBitArray);
 				if (_isChatting) {
 					_chattingBlinker=(_chattingBlinker+3)&255;
-					if (MouseState.ScrollDelta.Y != 0) {
-						float scrollAmt = -MouseState.ScrollDelta.Y * _chattingTextLineHeight * _chattingTextSize.Y;
-						if (KeyboardState[Keys.LeftAlt]) scrollAmt *= 5;
-						_consoleScroll += scrollAmt;
-					}
 				} else {
-					if (MouseState.ScrollDelta.Y != 0) { // (3f * _tickSpeedInv + 1)
-						_camera.CamSpeed = Math.Max(.1f, Math.Min(1024f, _camera.CamSpeed * (MouseState.ScrollDelta.Y * 0.1f + 1)));
-						if (_debugFlags.HasFlag(DebugFlags.debugLogging)) Console.WriteLine("scroll speed changed; new speed: " + _camera.CamSpeed);}
-					bool IsNotEngineTick = _semiRealTime < _tickSpeedInv; if (MouseState[MouseButton.Right] || MouseState[MouseButton.Middle]){
-						// float deltaX = MouseState.X - MouseState.PreviousX;
-						// float deltaY = MouseState.Y - MouseState.PreviousY;
-						(float deltaX, float deltaY) = MouseState.Position - MouseState.PreviousPosition;
-						if (deltaX != 0 || deltaY != 0) {
-							float Yaw = (_camera.Yaw + deltaX * _camera.MouseSensitivity) % (float)(2.0 * Math.PI);
-							float Pitch = Math.Max(MathHelper.DegreesToRadians(-89f), Math.Min(MathHelper.DegreesToRadians(89f), _camera.Pitch - deltaY * _camera.MouseSensitivity));
-							_camera.Yaw = Yaw;
-							_camera.Pitch = Pitch;
-							float NCosPitch = -(float)Math.Cos(Pitch);
-
-							_camera.CameraToTargetOffset = Vector3.Normalize(new Vector3(
-								NCosPitch * (float)Math.Cos(Yaw),
-								-(float)Math.Sin(Pitch),
-								NCosPitch * (float)Math.Sin(Yaw)));if (IsNotEngineTick) {_camera.UpdateVectors(); return;}}}
-					// if (IsNotEngineTick) { // if this frame is too early to go to the next game tick
-					//   // update camera vectors so the camera movement is smooth
-					// 	_camera.UpdateVectors();
-					// 	return;}
-					if (IsNotEngineTick) return; // if this frame is too early to go to the next game tick
-					// increment game tick and update game time
-					_gameTick++;
-					_gameTime = _gameTick * _tickSpeedInv;
-					// update semi real time; this is a fake time that is used to make the game run at a constant speed
-					_semiRealTime -= _tickSpeedInv;
-					if (_semiRealTime > _gameTickLagCompensationAmount * _tickSpeedInv) _semiRealTime = _gameTickLagCompensationAmount * _tickSpeedInv;
-					// ^ prevents the semi real time from getting too big; If this wasn't here, then for example, if a big lag spike happens, the semi real time will get really big and the game will run as fast as possible for a while, and that would feel really weird, and people might rage or something idk :p
-					foreach (IMinigame minigame in _currentMinigames)
-					minigame.OnEngineTick(this, _tickSpeedInv);
-					// camera zoom n stuff
-					if (KeyboardState.IsKeyDown(Keys.I)) _camera.CameraDistFromTarget = Math.Max(_camera.MinDist, _camera.CameraDistFromTarget * (_gameTickSpeed / (_gameTickSpeed + 3f)));
-					if (KeyboardState.IsKeyDown(Keys.O)) _camera.CameraDistFromTarget = Math.Min(_camera.MaxDist, _camera.CameraDistFromTarget * (3f * _tickSpeedInv + 1));
+					if (ms[MouseButton.Right] || ms[MouseButton.Middle]){
+						Vector2 delta = ms.Position - ms.PreviousPosition;
+						if (delta.X != 0 || delta.Y != 0) {
+							_camera.Yaw = (((_camera.Yaw + delta.X * _camera.MouseSensitivity) % MathF.Tau) + MathF.Tau) % MathF.Tau;
+							_camera.Pitch = Math.Clamp(_camera.Pitch - delta.Y * _camera.MouseSensitivity, -89.9f*DataStuff.D2RConst, 89.9f*DataStuff.D2RConst);}}
+				}
+				if (_semiRealTime < _tickSpeedInv) return; // if this frame is too early to go to the next game tick
+				// increment game tick and update game time
+				_gameTick++;
+				_gameTime = _gameTick / _gameTickSpeed;
+				// update semi real time; this is a fake time that is used to make the game run at a constant speed
+				_semiRealTime -= _tickSpeedInv;
+				if (_semiRealTime > _maxLagCompensationTime) _semiRealTime = _maxLagCompensationTime;
+				// ^ prevents the semi real time from getting too big; without this, then if lag happens, the semi real time'll get really big and if the fps increases again the game will have new engine ticks every single frame for a while and that wouldn't be very good :p
+				foreach (IMinigame minigame in _currentMinigames) minigame.OnEngineTick(this, _tickSpeedInv);
+				// camera zoom n stuff
+				if (!_isChatting){
+					if ((ksData[((int)Keys.I)>>3]&(1<<(((int)Keys.I)&7)))>0) _camera.CameraDistFromTarget = Math.Max(_camera.MinDist, _camera.CameraDistFromTarget * (_gameTickSpeed / (_gameTickSpeed + 3f)));
+					if ((ksData[((int)Keys.O)>>3]&(1<<(((int)Keys.O)&7)))>0) _camera.CameraDistFromTarget = Math.Min(_camera.MaxDist, _camera.CameraDistFromTarget * (3f * _tickSpeedInv + 1));
 
 					// movement
-					if (_camera.IsFlying) {
-						// GameEngineFlyBehaviorsThing[GameEngineFlyBehavior](this);
-						FlyBehavior(this);
-					} else {
-						float moveAmount = _camera.CamSpeed * _tickSpeedInv;
-						// if (KeyboardState.IsKeyDown(Keys.W)) _player.RootPosition -= Vector3.Normalize(new Vector3(_camera.Direction.X, 0f, _camera.Direction.Z)) * moveAmount;
-						// if (KeyboardState.IsKeyDown(Keys.S)) _player.RootPosition += Vector3.Normalize(new Vector3(_camera.Direction.X, 0f, _camera.Direction.Z)) * moveAmount;
-						// if (KeyboardState.IsKeyDown(Keys.A)) _player.RootPosition -= Vector3.Normalize(new Vector3(_camera.Right.X, 0f, _camera.Right.Z)) * moveAmount;
-						// if (KeyboardState.IsKeyDown(Keys.D)) _player.RootPosition += Vector3.Normalize(new Vector3(_camera.Right.X, 0f, _camera.Right.Z)) * moveAmount;
-						float movement = (KeyboardState.IsKeyDown(Keys.W) ? -moveAmount : 0) + (KeyboardState.IsKeyDown(Keys.S) ? moveAmount : 0);
-						Vector3 plrMovement = Vector3.Zero;
-						if (movement != 0) {
-							(float x, float z) = (_camera.Direction.X, _camera.Direction.Z);
-							float s = movement / MathF.Sqrt(x * x + z * z);
-							plrMovement = new Vector3(x*s, 0, z*s);
-						}
-						movement = (KeyboardState.IsKeyDown(Keys.A) ? -moveAmount : 0) + (KeyboardState.IsKeyDown(Keys.D) ? moveAmount : 0);
-						if (movement != 0) {
-							(float x, float z) = (_camera.Right.X, _camera.Right.Z);
-							float s = movement / MathF.Sqrt(x * x + z * z);
-							plrMovement += new Vector3(x*s, 0, z*s);
-						}
-						_player.RootPosition += plrMovement;
-						if (KeyboardState.IsKeyDown(Keys.Space) && _player.IsGrounded) _player.Jump();
-						_player.StepPhysics(_tickSpeedInv);}
-					_camera.Target = _player.RootPosition;
-					_camera.UpdateVectors(); /* update cam */ }} else {/* window is not focused */}}
+					_player.OnUpdateFrame(this, ksData);
+				}
+				_camera.Target = _player.RootPosition;} else {/* window is not focused */}}
+		protected override void OnMouseWheel(MouseWheelEventArgs e) {
+			base.OnMouseWheel(e);
+			Vector2 scrollDelta = e.Offset;
+			if (_isChatting) {
+				if (scrollDelta.Y != 0) _consoleScroll -= (KeyboardState[Keys.LeftAlt]?5:1)*(scrollDelta.Y * _chattingTextLineHeight * _chattingTextSize.Y);
+			} else {
+				if (scrollDelta.Y != 0) {
+					if (KeyboardState[Keys.LeftAlt]) _player.Walkspeed = Math.Max(.001f, Math.Min(2048f, _player.Walkspeed * float.FusedMultiplyAdd(scrollDelta.Y, 0.1f, 1)));
+					else _camera.CameraDistFromTarget = Math.Clamp(_camera.CameraDistFromTarget * MathF.Pow(.8333333333333f,scrollDelta.Y), _camera.MinDist, _camera.MaxDist);}
+			}
+		}
 		protected override void OnResize(ResizeEventArgs e) {
 			base.OnResize(e);
 			_clientSize = ClientSize;
@@ -359,8 +258,7 @@ namespace GameEngineThing {
 		protected override void OnTextInput(TextInputEventArgs e) {
 			base.OnTextInput(e);
 			string s = e.AsString;
-			if (_isChatting)
-				_chattingText += s;
+			if (_isChatting) _chattingText += s;
 			else if (s == "/") {
 				_isChatting = true;
 				_consoleScroll = _chattingTextLines * _chattingTextLineHeight * _chattingTextSize.Y;
@@ -368,11 +266,13 @@ namespace GameEngineThing {
 		protected override void OnKeyDown(KeyboardKeyEventArgs e) {
 			long timestamp = Stopwatch.GetTimestamp();
 			base.OnKeyDown(e);
+			switch (e.Key) {
+				case Keys.F11:
+					if (WindowState == WindowState.Fullscreen) WindowState = previousState;
+					else { previousState = WindowState; WindowState = WindowState.Fullscreen; } break;
+			}
 			if (_isChatting) {
 				switch (e.Key) {
-					case Keys.F11:
-						if (WindowState == WindowState.Fullscreen) WindowState = previousState;
-						else { previousState = WindowState; WindowState = WindowState.Fullscreen; VSync = VSyncMode.On; } break;
 					case Keys.Escape:
 						_isChatting = false; break;
 					case Keys.Delete or Keys.Backspace:
@@ -380,38 +280,17 @@ namespace GameEngineThing {
 						break;
 					case Keys.Enter:
 						if (e.Modifiers.HasFlag(KeyModifiers.Shift)) {
-							_chattingText += "\n";
+							_chattingText += '\n';
 							_chattingTextLines++;}
 						else {
 							string lowercaseChatTxt = _chattingText.ToLower();
-							bool debug = _debugFlags.HasFlag(DebugFlags.debugLogging);
-							if (debug) Console.WriteLine("chattxt: " + _chattingText + "; lower: " + lowercaseChatTxt);
-							if (DataStuff.noInputChatCommands.TryGetValue(lowercaseChatTxt, out Action<Game> noInputCmd)) {
-								if (debug) Console.WriteLine("Found a no-input command for " + lowercaseChatTxt);
-								noInputCmd(this); }
+							if (DataStuff.noInputChatCommands.TryGetValue(lowercaseChatTxt, out Action<Game> noInputCmd)) noInputCmd(this);
 							else {
-								if (debug) Console.WriteLine("Did not find a no-input command for " + lowercaseChatTxt + ".\nSearching for input commands...");
-								if (DataStuff.chatCommands.TryGetValue(lowercaseChatTxt, out Action<Game, string> inputCmd)) {
-									if (debug) Console.WriteLine("Found command " + lowercaseChatTxt + ".");
-									inputCmd(this, "");
-									break;
-								} else if (debug) Console.WriteLine(lowercaseChatTxt + " is not a valid input command...");
-								if (debug) {
-									for (int i = lowercaseChatTxt.Length-1; i > 0; i--) {
-										string s = lowercaseChatTxt[..i];
-										if (DataStuff.chatCommands.TryGetValue(s, out inputCmd)) {
-											Console.WriteLine("Found command " + s + ".");
-											inputCmd(this, lowercaseChatTxt[i..]);
-											break; } else Console.WriteLine(s + " is not a valid input command..."); }
-								} else {
-									for (int i = lowercaseChatTxt.Length-1; i > 0; i--) {
-										string s = lowercaseChatTxt[..i];
-										if (DataStuff.chatCommands.TryGetValue(s, out inputCmd)) {
-											inputCmd(this, lowercaseChatTxt[i..]);
-											break; } }
-								}
+								if (DataStuff.chatCommands.TryGetValue(lowercaseChatTxt, out Action<Game, string> inputCmd)) inputCmd(this, "");
+								else for (int i = lowercaseChatTxt.Length-1; i > 0; i--)
+									if (DataStuff.chatCommands.TryGetValue(lowercaseChatTxt[..i], out inputCmd)) {
+										inputCmd(this, lowercaseChatTxt[i..]); break; }
 							}
-							if (debug) Console.WriteLine("finalizing or smth idk");
 							_chattingText = "";
 							_chattingTextLines = 1;
 							_isChatting = false;}
@@ -419,8 +298,7 @@ namespace GameEngineThing {
 					case Keys.V:
 						if (e.Modifiers.HasFlag(KeyModifiers.Control)) {
 							string cbStr = ClipboardString;
-							int count = cbStr.AsSpan().Count('\n');
-							_chattingTextLines += count;
+							_chattingTextLines += cbStr.AsSpan().Count('\n');
 							_chattingText += cbStr; }
 						break;
 					case Keys.C: if (e.Modifiers.HasFlag(KeyModifiers.Control)) ClipboardString = _chattingText; break;
@@ -428,24 +306,20 @@ namespace GameEngineThing {
 			else {
 				foreach (IMinigame minigame in _currentMinigames) minigame.OnKeyDown(e);
 				switch (e.Key) {
-					case Keys.F6: if (e.Modifiers.HasFlag(KeyModifiers.Control)) {
-							if (profilerOn) {profilerOn = false; profilerVD = [];} else {
+					case Keys.F6: if (e.Modifiers.HasFlag(KeyModifiers.Control)) if (profilerOn) {profilerOn = false; profilerVD = [];} else {
 								profilerOn = true;
-								float winSizeY = _clientSize.Y;
 								int amt = profilerFrameTimes.Length << 3;
 								profilerVD = new float[amt];
 								// int tRSX = 0;
 								// float tX = tRSX / (float)TextTexture.Width;
 
-								profilerVD[1]=profilerVD[9]=(winSizeY + 0.5f) / winSizeY;
+								profilerVD[1]=profilerVD[9]=0.5f/_clientSize.Y+1;
 								// profilerVD[2]=profilerVD[10]=profilerVD[6]=profilerVD[14]=0;
-								profilerVD[3]=profilerVD[11]=profilerVD[7]=profilerVD[15]=32f / _textRenderer.TextTexture.Height;
-								// if (length > BulkDrawFloats / 8) { // if it takes a full array or more to store all of the data
-								int i = 16;
+								profilerVD[3]=profilerVD[11]=profilerVD[7]=profilerVD[15]=32f/_textRenderer.TextTexture.Height;
+								int i=16;
 								for (; i < (amt>>1)+1; i <<= 1) Array.Copy(profilerVD, 1, profilerVD, i + 1, i - 1);
 								if (i < amt) Array.Copy(profilerVD, 1, profilerVD, i + 1, amt - 1 - i);
-							}
-					} break;
+							} break;
 					default: break; } }}
 		protected override void OnKeyUp(KeyboardKeyEventArgs e) {
 			base.OnKeyUp(e);
@@ -464,36 +338,17 @@ namespace GameEngineThing {
 			// Console.WriteLine("Mouse up: " + e.Button + ", " + e.Modifiers);
 		}
 		protected override void OnClosing(CancelEventArgs e) {
-			long ts0 = Stopwatch.GetTimestamp();
 			base.OnClosing(e);
-			// Clean up OpenGL resources
-			if (_debugFlags.HasFlag(DebugFlags.debugLogging)) {
-				long ts1 = Stopwatch.GetTimestamp();
-				foreach (IMinigame minigame in _currentMinigames) minigame.OnClosing(e);
-				double t0 = Stopwatch.GetElapsedTime(ts1).TotalMilliseconds;
-				long ts2 = Stopwatch.GetTimestamp();
-				_textRenderer?.Dispose();
-				_playerTorsoMesh?.Dispose();
-				_playerHeadMesh?.Dispose();
-				_playerArmMesh?.Dispose();
-				_playerLegMesh?.Dispose();
-				_textureSheet?.Dispose();
-				_shader?.Dispose();
-				_textShader?.Dispose();
-				double t1 = Stopwatch.GetElapsedTime(ts0).TotalMilliseconds;
-				double t2 = Stopwatch.GetElapsedTime(ts1).TotalMilliseconds;
-				double t3 = Stopwatch.GetElapsedTime(ts2).TotalMilliseconds;
-				Console.WriteLine("Closing time: "+t1+"ms; game: "+t2+"ms; minigame took "+t0+"ms, or "+t0/t1*100+"% time. Disposing took "+t3+"ms.");
-			} else {
-				foreach (IMinigame minigame in _currentMinigames) minigame.OnClosing(e);
-				_textRenderer?.Dispose();
-				_playerTorsoMesh?.Dispose();
-				_playerHeadMesh?.Dispose();
-				_playerArmMesh?.Dispose();
-				_playerLegMesh?.Dispose();
-				_textureSheet?.Dispose();
-				_shader?.Dispose();
-				_textShader?.Dispose();}}
+			currentGame = null;
+			foreach (IMinigame minigame in _currentMinigames) minigame.OnClosing(e);
+			_textRenderer?.Dispose();
+			_playerTorsoMesh?.Dispose();
+			_playerHeadMesh?.Dispose();
+			_playerArmMesh?.Dispose();
+			_playerLegMesh?.Dispose();
+			_textureSheet?.Dispose();
+			_shader?.Dispose();
+			_textShader?.Dispose();}
 
 		public void StartRecording(string output, int fps = 60, float speed = 1) {
 			_videoRecorder = new VideoRecorder(_clientSize.X, _clientSize.Y, fps, output, speed); }
@@ -562,6 +417,9 @@ namespace GameEngineThing {
 		public void SetVector3(string name, Vector3 value) {
 			int location = GL.GetUniformLocation(Handle, name);
 			GL.Uniform3(location, value);}
+		public void SetVector3(string name, float v0, float v1, float v2) {
+			int location = GL.GetUniformLocation(Handle, name);
+			GL.Uniform3(location, v0, v1, v2);}
 
 		public void Dispose() {GL.DeleteProgram(Handle);}}
 	// public class CompShader {
@@ -656,47 +514,37 @@ namespace GameEngineThing {
 		public void Dispose() {
 			GL.DeleteTexture(Handle);}}
 	public class Camera {
-		public float CamSpeed = 3f;
 		public Vector3 CameraToTargetOffset = new(1f/MathF.Sqrt(3f), 1f/MathF.Sqrt(3f), -1f/MathF.Sqrt(3f));
 		public float CameraDistFromTarget = 8f;
-		// public Vector3 CameraFront { get; set; } = new Vector3(0f, 0f, -1f);
-		public float MinDist = .05f;
-		public float MaxDist = 128f;
+		// public Vector3 CameraFront; = new Vector3(0f, 0f, -1f);
+		public float MinDist = .01f, MaxDist = 1024f;
 		public Vector3 Target;
 		public Vector3 Position;
-		public readonly Vector3 Up = Vector3.UnitY;
+		public Vector3 Up = Vector3.UnitY;
 		public Vector3 Direction;
 		public Vector3 Right;
 		/// <summary>
 		/// The matrix to project objects to the screen. It is the view but also multiplied by the projection matrix. idk if it helps but yeah.
 		/// </summary>
-		public Matrix4 View;
-		public Matrix4 otherview;
+		public Matrix4 View, otherview;
 
-		public float Pitch;
-		public float Yaw;
-		public float MouseSensitivity = .005f;
+		public float Pitch, Yaw, MouseSensitivity = .005f;
 
-		// public float PlayerSpeed { get; set; } = 5f;
-		public bool IsFlying = false;
-		// public float JumpPower { get; set; } = 5f;
-		// public Vector3 Gravity { get; set; } = new Vector3(0f, -9.81f, 0f);
-		// public Vector3 PlayerVelocity { get; set; } = Vector3.Zero;
-		// public bool IsFalling { get; set; } = false;
-		// public bool IsGrounded { get; set; } = true;
-		public Matrix4 Projection;
+		public Matrix4 Projection = Matrix4.CreatePerspectiveFieldOfView(MathHelper.DegreesToRadians(45f), 800f / 600f, .1f, 10000f);
 
 		public Camera(Vector3 position, Vector3 target, Vector3 up) {
 			Direction = Vector3.Normalize(position - target);
 			Right = Vector3.Normalize(Vector3.Cross(up, Direction));
-			Projection = Matrix4.CreatePerspectiveFieldOfView(MathHelper.DegreesToRadians(45f), 800f / 600f, .1f, 10000f);
 			otherview = Matrix4.LookAt(position, target, up);
 			View = otherview * Projection;
 
 			Position = position;
 			Target = target;
 			Up = up; }
+		public Camera() { }
 		public void UpdateVectors() {
+			float NCosPitch = -MathF.Cos(Pitch);
+			DataStuff.NormalizeVec(NCosPitch*MathF.Cos(Yaw),-MathF.Sin(Pitch),NCosPitch*MathF.Sin(Yaw),out CameraToTargetOffset);
 			Position = Target + CameraToTargetOffset * CameraDistFromTarget;
 			// Direction = Vector3.Normalize(Position - Target);
 			// Right = Vector3.Normalize(Vector3.Cross(Up, Direction));
@@ -709,22 +557,20 @@ namespace GameEngineThing {
 	public class ObjectMesh {
 		public static int MeshCount = 0;
 		public static List<ObjectMesh> Meshes = [];
-		public int Type { get; set; }
-		public List<Vector3> Positions { get; set; }
-		public List<Vector3> Rotations { get; set; }
-		public List<Vector3> Scales { get; set; }
-		public List<Matrix4> Models { get; set; }
-		public int IndicesLen { get; set; }
-		public int VertexArrayObject { get; set; }
-		public int VertexBufferObject { get; set; }
-		public int ElementBufferObject { get; set; }
+		public int Type;
+		public List<Vector3> Positions, Rotations, Scales;
+		public List<Matrix4> Models;
+		public int IndicesLen;
+		public int VertexArrayObject;
+		public int VertexBufferObject;
+		public int ElementBufferObject;
 		public ObjectMesh(Vector3 position, Vector3 rotation, Vector3 scale, float[] vertices, uint[] indices) {
 			MeshCount++;
 			Type = MeshCount;
 			Positions = [position];
 			Rotations = [rotation];
 			Scales = [scale];
-			Models = [Matrix4.CreateRotationX(rotation.X) * Matrix4.CreateRotationY(rotation.Y) * Matrix4.CreateRotationZ(rotation.Z) * Matrix4.CreateScale(scale) * Matrix4.CreateTranslation(position)];
+			Models = [DataStuff.CreateScaleRotXYZTrans(scale, rotation, position)];
 			VertexArrayObject = GL.GenVertexArray();
 			GL.BindVertexArray(VertexArrayObject);
 
@@ -743,28 +589,25 @@ namespace GameEngineThing {
 			GL.EnableVertexAttribArray(1);
 			GL.VertexAttribPointer(1, 2, VertexAttribPointerType.Float, false, 5 * sizeof(float), 3 * sizeof(float));
 
-			Meshes.Add(this);
-			// unbind to prevent later code from accidentally modifying this VAO/EBO
-			GL.BindBuffer(BufferTarget.ArrayBuffer, 0);
-			GL.BindVertexArray(0);
-			GL.BindBuffer(BufferTarget.ElementArrayBuffer, 0);}
+			Meshes.Add(this);}
 		public void Update(int index, Vector3 position, Vector3 rotation, Vector3 scale) {
 			Positions[index] = position;
 			Rotations[index] = rotation;
 			Scales[index] = scale;
-			Models[index] = Matrix4.CreateRotationX(rotation.X) * Matrix4.CreateRotationY(rotation.Y) * Matrix4.CreateRotationZ(rotation.Z) * Matrix4.CreateScale(scale) * Matrix4.CreateTranslation(position);}
+			Models[index] = DataStuff.CreateScaleRotXYZTrans(scale, rotation, position);}
 		public int AddNew(Vector3 position, Vector3 rotation, Vector3 scale) {
 			Positions.Add(position);
 			Rotations.Add(rotation);
 			Scales.Add(scale);
-			Models.Add(Matrix4.CreateRotationX(rotation.X) * Matrix4.CreateRotationY(rotation.Y) * Matrix4.CreateRotationZ(rotation.Z) * Matrix4.CreateScale(scale) * Matrix4.CreateTranslation(position));
+			Models.Add(DataStuff.CreateScaleRotXYZTrans(scale, rotation, position));
 			return Models.Count - 1;}
 		public int AddNewInBulk(Vector3[] positions, Vector3[] rotations, Vector3[] scales) {
 			for (int i = 0; i < positions.Length; i++) {
-				Positions.Add(positions[i]);
-				Rotations.Add(rotations[i]);
-				Scales.Add(scales[i]);
-				Models.Add(Matrix4.CreateRotationX(rotations[i].X) * Matrix4.CreateRotationY(rotations[i].Y) * Matrix4.CreateRotationZ(rotations[i].Z) * Matrix4.CreateScale(scales[i]) * Matrix4.CreateTranslation(positions[i]));}
+				Vector3 pos = positions[i], rot = rotations[i], scale = scales[i];
+				Positions.Add(pos);
+				Rotations.Add(rot);
+				Scales.Add(scale);
+				Models.Add(DataStuff.CreateScaleRotXYZTrans(scale,rot,pos));}
 			return Models.Count - positions.Length;}
 		public void Bind() {
 			GL.BindVertexArray(VertexArrayObject);}
@@ -792,9 +635,9 @@ namespace GameEngineThing {
 			GL.DeleteBuffer(ElementBufferObject);
 			GL.DeleteVertexArray(VertexArrayObject);}}
 	public class Obj {
-		public Vector3 Velocity { get; set; }
-		public ObjectMesh Mesh { get; set; }
-		public int MeshIndex { get; set; }
+		public Vector3 Velocity;
+		public ObjectMesh Mesh;
+		public int MeshIndex;
 		public Obj(Vector3 position, Vector3 rotation, Vector3 scale, ObjectMesh mesh) {
 			Mesh = mesh;
 			MeshIndex = mesh.AddNew(position, rotation, scale);}
@@ -803,41 +646,36 @@ namespace GameEngineThing {
 			MeshIndex = meshIndex;}
 		public void Update(Vector3 position, Vector3 rotation, Vector3 scale) {
 			Mesh.Update(MeshIndex, position, rotation, scale);}
-		public void UpdateModel(Matrix4 model) {
-			Mesh.Models[MeshIndex] = model;}
+		public void UpdateModel(Matrix4 model) {Mesh.Models[MeshIndex] = model;}
 		public void StepPhysics(float deltaTime, Vector3 gravity) {
 			Velocity += gravity * deltaTime;
 			Mesh.Positions[MeshIndex] += Velocity * deltaTime;
 			if (Mesh.Positions[MeshIndex].Y < Game._groundHeight) {
 				Mesh.Positions[MeshIndex] = new Vector3(Mesh.Positions[MeshIndex].X, Game._groundHeight, Mesh.Positions[MeshIndex].Z);
-				Velocity = new Vector3(Velocity.X, 0f, Velocity.Z);}}
+				Velocity.Y = 0f;}}
 		public void Draw(Shader shader, bool bind) { Mesh.DrawAtIndex(shader, MeshIndex, bind); }}
 	public class Player {
-		public Vector3 RootPosition { get; set; }
-		public Vector3 RootRotation { get; set; }
-		public Matrix4 RootModel { get; set; }
-		public Vector3 RootScale { get; set; }
-		public Vector3 Velocity { get; set; }
-		public float JumpPower { get; set; } = 5f;
-		public Vector3 Gravity { get; set; } = new Vector3(0f, -9.81f, 0f);
-		public bool IsGrounded { get; set; } = true;
-		public Obj[] Limbs { get; set; }
-		public Vector3[] LimbPositions { get; set; }
-		public Vector3[] LimbRotations { get; set; }
-		public Vector3[] LimbScales { get; set; }
-		public Obj Torso { get; set; }
-		public Obj Head { get; set; }
-		public Obj LeftArm { get; set; }
-		public Obj RightArm { get; set; }
-		public Obj LeftLeg { get; set; }
-		public Obj RightLeg { get; set; }
+		public Vector3 RootPosition, RootRotation, RootScale, Velocity, CamTargetOffset;
+		public Matrix4 RootModel;
+		public float JumpPower = 5f, Walkspeed = 5f;
+		public Vector3 Gravity = (0f, -9.81f, 0f);
+		public bool IsGrounded = true, IsFlying = false;
+		public Obj[] Limbs;
+		public Vector3[] LimbPositions, LimbRotations, LimbScales;
+		public Obj Torso, Head, LeftArm, RightArm, LeftLeg, RightLeg;
+		public static readonly int LimbCount = 6;
 
 		public Player(Vector3 position, Vector3 rotation, Vector3 scale, Obj[] limbs, Vector3[] limbPositions, Vector3[] limbRotations, Vector3[] limbScales) {
 			RootPosition = position;
 			RootRotation = rotation;
-			RootModel = Matrix4.CreateRotationX(rotation.X) * Matrix4.CreateRotationY(rotation.Y) * Matrix4.CreateRotationZ(rotation.Z) * Matrix4.CreateScale(scale) * Matrix4.CreateTranslation(position);
+			DataStuff.CreateScaleRotXYZTrans(scale,rotation,position, out RootModel);
 			RootScale = scale;
-			Velocity = Vector3.Zero;
+			Velocity.X = 0f;
+			Velocity.Y = 0f;
+			Velocity.Z = 0f;
+			CamTargetOffset.X = 0;
+			CamTargetOffset.Y = 1;
+			CamTargetOffset.Z = 0;
 			Limbs = limbs;
 			Torso = Limbs[0];
 			Head = Limbs[1];
@@ -848,8 +686,7 @@ namespace GameEngineThing {
 			LimbPositions = limbPositions;
 			LimbRotations = limbRotations;
 			LimbScales = limbScales;
-			for (int i = 0; i < Limbs.Length; i++) {
-				Limbs[i].Update(LimbPositions[i] + RootPosition, LimbRotations[i] + RootRotation, LimbScales[i] * RootScale);}}
+			for (int i = 0; i < LimbCount; i++) Limbs[i].Update(LimbPositions[i] + RootPosition, LimbRotations[i] + RootRotation, LimbScales[i] * RootScale);}
 		// public void UpdateLimb(int index) {
 		// 	Limbs[index].UpdateModel(
 		// 		Matrix4.CreateRotationX(LimbRotations[index].X) *
@@ -860,25 +697,39 @@ namespace GameEngineThing {
 		// 		RootModel
 		// 	);}
 		// public void UpdateLimbs() { for (int i = 0; i < Limbs.Length; i++) { UpdateLimb(i); } }
-		public void UpdateLimbs() { for (int i = 0; i < Limbs.Length; i++) {
-				Limbs[i].UpdateModel(/*Matrix4.CreateRotationX(LimbRotations[i].X) *
-				Matrix4.CreateRotationY(LimbRotations[i].Y) *
-				Matrix4.CreateRotationZ(LimbRotations[i].Z) **/
-				DataStuff.CreateRotationXYZ(LimbRotations[i]) *
-				Matrix4.CreateScale(LimbScales[i] * RootScale) *
-				Matrix4.CreateTranslation(LimbPositions[i]) *
-				RootModel);} }
+		public void UpdateMats() {
+			DataStuff.CreateScaleRotXYZTrans(RootScale,RootRotation,RootPosition, out RootModel);
+			Limbs[0].UpdateModel(DataStuff.CreateScaleRotXYZTrans(LimbScales[0], LimbRotations[0], LimbPositions[0]) * RootModel);
+			Limbs[1].UpdateModel(
+				DataStuff.LerpMatrices(
+					Limbs[1].Mesh.Models[Limbs[1].MeshIndex],
+					DataStuff.CreateScaleRotXYZTrans(LimbScales[1], LimbRotations[1], LimbPositions[1]) * RootModel, 0.8f));
+			for (int i = 2; i < LimbCount; i++){
+				Obj limb = Limbs[i];
+				limb.UpdateModel(
+					DataStuff.LerpMatrices(
+						limb.Mesh.Models[limb.MeshIndex],
+						DataStuff.CreateScaleRotXYZTrans(LimbScales[i], LimbRotations[i], LimbPositions[i]) * RootModel, 0.6f));} }
+		public void UpdateLimbs() {
+			Limbs[0].UpdateModel(DataStuff.CreateScaleRotXYZTrans(LimbScales[0], LimbRotations[0], LimbPositions[0]) * RootModel);
+			Limbs[1].UpdateModel(
+				DataStuff.LerpMatrices(
+					Limbs[1].Mesh.Models[Limbs[1].MeshIndex],
+					DataStuff.CreateScaleRotXYZTrans(LimbScales[1], LimbRotations[1], LimbPositions[1]) * RootModel, 0.8f));
+			for (int i = 2; i < LimbCount; i++){
+				Obj limb = Limbs[i];
+				limb.UpdateModel(
+					DataStuff.LerpMatrices(
+						limb.Mesh.Models[limb.MeshIndex],
+						DataStuff.CreateScaleRotXYZTrans(LimbScales[i], LimbRotations[i], LimbPositions[i]) * RootModel, 0.6f));} }
 		public void StepPhysics(float deltaTime) {
-			if (!IsGrounded) {
-				Velocity += Gravity * deltaTime;}
+			if (!IsGrounded) Velocity += Gravity * deltaTime;
 			RootPosition += Velocity * deltaTime;
 			if (RootPosition.Y < Game._groundHeight) {
-				RootPosition = new Vector3(RootPosition.X, Game._groundHeight, RootPosition.Z);
-				Velocity = new Vector3(Velocity.X, 0f, Velocity.Z);
+				RootPosition.Y = Game._groundHeight;
+				Velocity.Y = 0f;
 				IsGrounded = true;}
-			// RootModel = Matrix4.CreateRotationX(RootRotation.X) * Matrix4.CreateRotationY(RootRotation.Y) * Matrix4.CreateRotationZ(RootRotation.Z) * Matrix4.CreateScale(RootScale) * Matrix4.CreateTranslation(RootPosition);
-			RootModel = DataStuff.CreateRotationXYZ(RootRotation) * Matrix4.CreateScale(RootScale) * Matrix4.CreateTranslation(RootPosition);
-			UpdateLimbs();}
+			UpdateMats();}
 		public void Render(Shader shader) {
 			Torso.Draw(shader, true);
 			Head.Draw(shader, true);
@@ -886,70 +737,99 @@ namespace GameEngineThing {
 			RightArm.Draw(shader, false);
 			LeftLeg.Draw(shader, true);
 			RightLeg.Draw(shader, false);}
+		public void OnUpdateFrame(Game game, byte[] ksData) {
+			moveBehavior(this, game, ksData);
+		}
+		public Action<Player, Game, byte[]> moveBehavior = defaultMoveBehavior;
+		public static readonly Action<Player, Game, byte[]> defaultMoveBehavior = delegate (Player plr, Game game, byte[] ksData) {
+			float moveAmount = plr.Walkspeed * game._tickSpeedInv;
+			if (plr.IsFlying) {
+				int movement = ((ksData[((int)Keys.S)>>3]>>(((int)Keys.S)&7))&1)-((ksData[((int)Keys.W)>>3]>>(((int)Keys.W)&7))&1);
+				int movement2 = ((ksData[((int)Keys.D)>>3]>>(((int)Keys.D)&7))&1)-((ksData[((int)Keys.A)>>3]>>(((int)Keys.A)&7))&1);
+				int movement3 = (((ksData[((int)Keys.Space)>>3]>>(((int)Keys.Space)&7))&1)|((ksData[((int)Keys.E)>>3]>>(((int)Keys.E)&7))&1))-
+				(((ksData[((int)Keys.LeftShift)>>3]>>(((int)Keys.LeftShift)&7))&1)|((ksData[((int)Keys.Q)>>3]>>(((int)Keys.Q)&7))&1));
+				if ((movement|movement2|movement3)!=0) {
+					Vector3 plrMovement;
+					float scale = moveAmount;
+					Vector3 input = game._camera.Direction*movement+game._camera.Right*movement2+game._camera.Up*movement3;
+					float mag = MathF.Sqrt(input.X*input.X+input.Y*input.Y+input.Z*input.Z);
+					float num = scale / mag;
+					plrMovement.X = input.X * num;
+					plrMovement.Y = input.Y * num;
+					plrMovement.Z = input.Z * num;
+					plr.RootRotation.Y = ((plrMovement.Z>0?MathF.Asin(input.X/mag):(MathF.PI-MathF.Asin(input.X/mag)))+MathF.Tau)%MathF.Tau;
+					plr.RootRotation.X = 0.25f + 0.5f*(float)Math.Sin(game._gameTime);
+					plr.RootPosition += plrMovement;
+					plr.UpdateMats();
+				}
+			} else { // OPTIMIZATION FOR KS USING THE KS'S BITARRAY BYTE ARRAY: (ks_keys[index>>3] & (1 << (index & 7))) != 0;
+				int s1 = ((ksData[((int)Keys.S)>>3]>>(((int)Keys.S)&7))&1)-((ksData[((int)Keys.W)>>3]>>(((int)Keys.W)&7))&1);
+				int s2 = ((ksData[((int)Keys.D)>>3]>>(((int)Keys.D)&7))&1)-((ksData[((int)Keys.A)>>3]>>(((int)Keys.A)&7))&1);
+				if ((s1|s2)!=0) {
+					Vector3 plrMovement;
+					plrMovement.X = game._camera.Direction.X*s1+game._camera.Right.X*s2;
+					plrMovement.Y = 0;
+					plrMovement.Z = game._camera.Direction.Z*s1+game._camera.Right.Z*s2;
+					float scale = moveAmount/MathF.Sqrt(plrMovement.X*plrMovement.X+plrMovement.Z*plrMovement.Z);
+					plrMovement.X *= scale;
+					plrMovement.Z *= scale;
+					float targetRot = ((plrMovement.Z>0?MathF.Asin(plrMovement.X/moveAmount):(MathF.PI-MathF.Asin(plrMovement.X/moveAmount)))+MathF.Tau)%MathF.Tau;
+					float diff = targetRot-plr.RootRotation.Y;
+					float prevRot = plr.RootRotation.Y;
+					plr.RootRotation.Y = (diff<MathF.PI&&diff>-MathF.PI)?
+						plr.RootRotation.Y+diff*.3333333333f:
+						((plr.RootRotation.Y + ((diff>0)?
+							(MathF.Tau+(diff-MathF.Tau)*.3333333333f):
+							((diff+MathF.Tau)*.3333333333f)))%MathF.Tau);
+					if (plr.RootRotation.Y == prevRot) plr.RootRotation.Y = targetRot;
+					Console.WriteLine(plr.RootRotation.Y+", "+diff);
+					plr.RootPosition += plrMovement;
+				}
+				if (plr.IsGrounded && (ksData[((int)Keys.Space)>>3]&(1<<(((int)Keys.Space)&7)))>0) plr.Jump();
+				plr.StepPhysics(game._tickSpeedInv);}
+		};
 		public void Jump() {
-			Velocity = new Vector3(Velocity.X, JumpPower, Velocity.Z);
+			Velocity.Y = JumpPower;
 			IsGrounded = false;}}
 	public struct FontCharacterData {
 		public Dictionary<char, GlyphData> Chars = [];
 		public Dictionary<string, GlyphData> SChars = [];
-		public FontCharacterData() { } // do not remove this line
+		public FontCharacterData() {} // do not remove this line
 		public FontCharacterData(Dictionary<char, GlyphData> Chars) { this.Chars = Chars; }
 		public FontCharacterData(Dictionary<string, GlyphData> SChars) { this.SChars = SChars; }
 		public FontCharacterData(Dictionary<char, GlyphData> Chars, Dictionary<string, GlyphData> SChars) { this.Chars = Chars; this.SChars = SChars; }}
 
-	public struct TxtOptions(Vector2i posOffset, Vector2 posScale, Vector2 textScale, Vector3 color, float lineHeight, FontCharacterData fontCharData, bool useSpecialChar = false) {
-		public int posOffsetX = posOffset.X;
-		public int posOffsetY = posOffset.Y;
-		public float posScaleX = posScale.X;
-		public float posScaleY = posScale.Y;
-		public float textScaleX = textScale.X;
-		public float textScaleY = textScale.Y;
-		public Vector3 color = color;
-		public float lineHeight = lineHeight;
-		public bool useSpecialChar = useSpecialChar;
-		public FontCharacterData fontCharData = fontCharData;}
-	public struct GameKeyState1(Keys key, bool down) {
-		public Keys Key = key;
-		public bool Down = down;}
-	public struct GameKeyState2(Keys key, bool down, double thingy) {
-		public Keys Key = key;
-		public double Time = thingy;
-		public bool Down = down;}
-	[Flags]
-	public enum DebugFlags {
-		none = 0,
-		debugText = 1,
-		debugLogging = 2,}
 	public sealed class VideoRecorder : IDisposable {
 		private readonly int _w, _h;
 		private bool _recAllFrames;
 		private readonly Process _ffmpeg;
 		private readonly Stream _stdin;
 		private readonly byte[] _fBuffer;
-		public bool _recording {get; private set;}
+		public bool IsRecording {get {return _recording;}}
+		private bool _recording;
 		private long _nextTickNs, _tickStepNs;
 		public VideoRecorder(int w, int h, int fps, string p, float speed = 1) { // no nvenc yet also no audio
 			// (_w, _h, _recAllFrames, _path) = (w,h,fps<0,p);
 			_w = w; _h = h; _recAllFrames = fps < 0;
 			_fBuffer = new byte[w*h<<2];
 			_tickStepNs = (long)(1000000000d/(fps*speed));
-			StringBuilder args = new("-n -f rawvideo -pix_fmt bgra -s ", 256);args.Append(w);args.Append('x');args.Append(h);args.Append(" -r ");args.Append((fps*speed).ToString("N4"));args.Append(" -i - -vf \"vflip\" -an -c:v libx265 -preset superfast -crf 25 -pix_fmt yuv420p \"");args.Append(p);args.Append('\"');
+			string args = "-n -f rawvideo -pix_fmt bgra -s "+w+'x'+h+" -r "+(fps*speed).ToString("N4")+" -i - -vf \"vflip\" -an -c:v libx265 -preset superfast -crf 25 -pix_fmt yuv420p \""+p+'\"';
 			_ffmpeg = new Process {
 				StartInfo = new ProcessStartInfo {
 					FileName = "ffmpeg",
-					Arguments = args.ToString(),
+					Arguments = args,
 					RedirectStandardInput=true,
 					RedirectStandardOutput=true,
 					RedirectStandardError=true,
 					UseShellExecute=false,
 					CreateNoWindow=true}};
 			_ffmpeg.Start();
-			Console.WriteLine("argument thingy for ffmpeg is "+_ffmpeg.StartInfo.Arguments);
+			Console.Write("argument thingy for ffmpeg is "+_ffmpeg.StartInfo.Arguments+'\n');
 			if (_ffmpeg.HasExited) throw new InvalidOperationException("oops my ffmpeg crashed. I lost my data, but I had an antivirus. code: "+_ffmpeg.ExitCode);
 			_stdin = _ffmpeg.StandardInput.BaseStream;
 			_recording = true;
 			_ffmpeg.BeginErrorReadLine();
-			_ffmpeg.ErrorDataReceived += (sender, e) => Console.WriteLine("FFmpeg: "+e.Data);
+			_ffmpeg.ErrorDataReceived += (sender, e) => Console.Write("FFmpeg:"+e.Data+'\n');
 			_nextTickNs = Stopwatch.GetTimestamp()*1000000000L/Stopwatch.Frequency; }
 		public VideoRecorder(int w, int h, float resfps, string p, float inpfps) {
 			_w = w; _h = h; _recAllFrames = resfps < 0;
@@ -971,7 +851,7 @@ namespace GameEngineThing {
 			_stdin = _ffmpeg.StandardInput.BaseStream;
 			_recording = true;
 			_ffmpeg.BeginErrorReadLine();
-			_ffmpeg.ErrorDataReceived += (sender, e) => Console.WriteLine("FFmpeg: "+e.Data);
+			_ffmpeg.ErrorDataReceived += (sender, e) => Console.Write("FFmpeg:"+e.Data+'\n');
 			_nextTickNs = Stopwatch.GetTimestamp()*1000000000L/Stopwatch.Frequency; }
 		public VideoRecorder(int w, int h, string p, float resfps, float inpfps, string parameters) {
 			_w = w; _h = h; _recAllFrames = resfps < 0;
@@ -992,15 +872,15 @@ namespace GameEngineThing {
 			_stdin = _ffmpeg.StandardInput.BaseStream;
 			_recording = true;
 			_ffmpeg.BeginErrorReadLine();
-			_ffmpeg.ErrorDataReceived += (sender, e) => Console.WriteLine("FFmpeg: "+e.Data);
+			_ffmpeg.ErrorDataReceived += (sender, e) => Console.Write("FFmpeg:"+e.Data+'\n');
 			_nextTickNs = Stopwatch.GetTimestamp()*1000000000L/Stopwatch.Frequency; }
 		public void CaptureFrame(Vector2i ClientSize) {
 			if (!_recording) return;
-			if (_ffmpeg.HasExited) { _recording = false; Console.WriteLine("ffmpeg exited: "+_ffmpeg.ExitCode); return; }
+			if (_ffmpeg.HasExited) { _recording = false; Console.WriteLine("ffmpeg exited: "+_ffmpeg.ExitCode); Dispose(); return; }
 			if (!_recAllFrames) {
 				if ((Stopwatch.GetTimestamp() * 1000000000L / Stopwatch.Frequency) < _nextTickNs) return;
 				_nextTickNs += _tickStepNs; }
-			if (ClientSize.X != _w || ClientSize.Y != _h) Dispose();
+			if (ClientSize.X != _w || ClientSize.Y != _h) {Dispose(); return;}
 			try {
 				GL.ReadBuffer(ReadBufferMode.Back);
 				GL.PixelStore(PixelStoreParameter.PackAlignment, 1);
@@ -1013,6 +893,203 @@ namespace GameEngineThing {
 			_recording = false;
 			try { _stdin.Flush(); } catch {}
 			try { _stdin.Close(); } catch {}
-			try { if (!_ffmpeg.WaitForExit(5000)) _ffmpeg.Kill(true); } catch {} _ffmpeg?.Dispose(); }
+			try { if (!_ffmpeg.WaitForExit(8000)) _ffmpeg.Kill(true); } catch {} _ffmpeg?.Dispose(); }
+	}
+	public static class AnnouncementsManager {
+		public struct Announcement {
+			public string Message;
+			public long AppearTS, DisappearTS;
+			public Vector4 TextColor;
+			public uint BGColor;
+			public bool SpecialText;
+			public float FadeInTime = .25f, FadeOutTime;
+			public Announcement(string msg, long dsts, Vector4 textColor, Vector4 bgColor, bool st = false, float fot = 1) {
+				AppearTS = Stopwatch.GetTimestamp();
+				Message = msg;
+				DisappearTS = dsts;
+				TextColor = textColor;
+				BGColor = ((uint)(bgColor.W*255)<<24)|((uint)(bgColor.Z*255)<<16)|((uint)(bgColor.Y*255)<<8)|(uint)(bgColor.X*255);
+				SpecialText = st;
+				FadeOutTime = fot;
+			}
+			public Announcement(string msg, long dsts, Vector4 textColor, uint bgColor, bool st = false, float fot = 1) {
+				AppearTS = Stopwatch.GetTimestamp();
+				Message = msg;
+				DisappearTS = dsts;
+				TextColor = textColor;
+				BGColor = bgColor;
+				SpecialText = st;
+				FadeOutTime = fot;
+			}
+			public Announcement(string msg, long dsts, long apts, Vector4 textColor, Vector4 bgColor, bool st = false, float fot = 1) {
+				Message = msg;
+				DisappearTS = dsts; AppearTS = apts;
+				TextColor = textColor;
+				BGColor = ((uint)(bgColor.W*255)<<24)|((uint)(bgColor.Z*255)<<16)|((uint)(bgColor.Y*255)<<8)|(uint)(bgColor.X*255);
+				SpecialText = st;
+				FadeOutTime = fot;
+			}
+			public Announcement(string msg, long dsts, long apts, Vector4 textColor, uint bgColor, bool st = false, float fot = 1) {
+				Message = msg;
+				DisappearTS = dsts; AppearTS = apts;
+				TextColor = textColor;
+				BGColor = bgColor;
+				SpecialText = st;
+				FadeOutTime = fot;
+			}
+		}
+		public static List<Announcement> Announcements = [];
+		public static int VAO, VBO, tcUniformLocation;
+		public static AnnouncementVertexStruct[] dataBuffer = new AnnouncementVertexStruct[Text.BulkDrawConst*4];
+		public static Shader AnnShader;
+		public static void OnLoad() {
+			VAO = GL.GenVertexArray();
+			VBO = GL.GenBuffer();
+			GL.BindVertexArray(VAO);
+			GL.BindBuffer(BufferTarget.ArrayBuffer, VBO);
+			GL.BufferData(BufferTarget.ArrayBuffer, Text.BulkDrawConst*4*(sizeof(float)*4+sizeof(uint)), 0, BufferUsageHint.DynamicDraw);
+			GL.BindBuffer(BufferTarget.ElementArrayBuffer, Text.EBO);
+			GL.EnableVertexAttribArray(0);
+			GL.VertexAttribPointer(0, 4, VertexAttribPointerType.Float, false, 4*sizeof(float)+sizeof(uint), 0);
+			GL.EnableVertexAttribArray(1);
+			GL.VertexAttribPointer(1, 4, VertexAttribPointerType.UnsignedByte, false, 4*sizeof(float)+sizeof(uint), 4*sizeof(float));
+			AnnShader = new("Shaders/annTS.vert", "Shaders/annTS.frag");
+			AnnShader.Use();
+			tcUniformLocation = GL.GetUniformLocation(AnnShader.Handle, "tc");
+			AnnShader.SetInt("text", 1);
+		}
+		[System.Runtime.InteropServices.StructLayout(System.Runtime.InteropServices.LayoutKind.Sequential)]
+		public struct AnnouncementVertexStruct {
+			public float a,b,c,d;
+			public uint color;
+		}
+		public static void OnRender(Vector2i windowSize) {
+			int AnnCount = Announcements.Count;
+			if (AnnCount == 0) return;
+			long ts = Stopwatch.GetTimestamp();
+			AnnShader.Use();
+			GL.BindVertexArray(VAO);
+			GL.BindBuffer(BufferTarget.ArrayBuffer, VBO);
+			FontCharacterData fontCharData = FontCharFillerThing.FontCharDeeta;
+			Dictionary<char, GlyphData> Chars = fontCharData.Chars;
+			Dictionary<string, GlyphData> SChars = fontCharData.SChars;
+			int vI = 4;
+			const float posScaleX = -0.9f, posScaleY = .95f,
+			textScaleX = 6, textScaleY = 6;
+			float WSIxTSX = textScaleX/windowSize.X,
+			WSIxTSY = textScaleY/windowSize.Y,
+			spaceSize = WSIxTSX*3,
+			tabSize = spaceSize*4,
+			lineHeight = WSIxTSY*10f,
+			NextMessageYOffset = lineHeight+spaceSize*2.5f;
+			float startaX = posScaleX;
+			float startaY = posScaleY;
+			float bpY = startaY;
+			GlyphData thingyWithDataUsefulForTheBG = fontCharData.SChars["0x0ON"];
+			for (int index = AnnCount-1; index > -1; index--){
+				Announcement tA = Announcements[index];
+				if (tA.DisappearTS < ts) {Announcements.RemoveAt(index); continue;}
+				float SFromAppear = (float)((ts-tA.AppearTS)/(double)Stopwatch.Frequency);
+				if (SFromAppear < 0) continue;
+				float SToDisappear = (float)((tA.DisappearTS-ts)/(double)Stopwatch.Frequency);
+				float TransMulti = ((SToDisappear<tA.FadeOutTime)?SToDisappear/tA.FadeOutTime:1)*((SFromAppear<tA.FadeInTime)?SFromAppear/tA.FadeInTime:1);
+
+				float startHeight = bpY;
+				float bpX = startaX;
+				bpY -= NextMessageYOffset;
+				float maxX = bpX, minY = bpY;
+
+				string msg = tA.Message;
+				int msgLen = msg.Length;
+
+				if (tA.SpecialText) {
+					for (int i = 0; i < msgLen; i++) {
+						uint PerCharColor = 0xFFFFFFFF;
+						char c = msg[i];
+						GlyphData Chr;
+						switch (c) {
+							case ' ': bpX += spaceSize; continue;
+							case '	': bpX += tabSize; continue;
+							case '\n': bpX = startaX; bpY -= lineHeight; continue;
+							case '\\':
+								i++;
+								char nextChar;
+								if (i+1 > msgLen || (nextChar=msg[i]) == '\\') { Chr = Chars['\\']; i--; break; } // if this is the last char or the next char is another '\\' then show a '\\' char.
+								if (nextChar == '|') { Chr = Chars['\\']; break; } // if the next char is a | char (my format is \| for '\\' chars) then show a '\\', then increment i so the '|' isn't shown.
+								if (nextChar == '\n') goto case '\n'; // if the line goes to a new line then increment i and do the next line stuff.
+								int IsStacking = 0;
+								int j = msg.IndexOfAny(Text.CharSearchThingy, i);
+								if (j == -1) j = msgLen; else if (msg[j] != '|') IsStacking = 1;
+								int len = j - i;
+								string s = (len==-1)?msg[i..]:msg.Substring(i, len);
+								if (!SChars.TryGetValue(s, out Chr)) { // if specil char not found, uses unknown w/ red-ish color.
+									PerCharColor = (uint)Random.Shared.Next()<<1^(uint)Random.Shared.Next();
+									Chr = SChars["unknown"];} i = j - IsStacking; // jmps 2 da next real char's index
+								break;
+							default: if (!Chars.TryGetValue(c, out Chr)) Chr = Chars['?']; break;}
+						dataBuffer[vI].a=dataBuffer[vI+1].a=bpX+Chr.bearingX*WSIxTSX;
+						float endX = dataBuffer[vI+2].a=dataBuffer[vI+3].a=bpX+Chr.spbX*WSIxTSX;
+						float startY = dataBuffer[vI].b=dataBuffer[vI+3].b=bpY+Chr.bearingY*WSIxTSY;
+						dataBuffer[vI+1].b=dataBuffer[vI+2].b=bpY+Chr.spbY*WSIxTSY;
+						dataBuffer[vI].c=dataBuffer[vI+1].c=Chr.tStartX;dataBuffer[vI].d=dataBuffer[vI+3].d=Chr.tStartY;
+						dataBuffer[vI+2].c=dataBuffer[vI+3].c=Chr.tEndX;dataBuffer[vI+1].d=dataBuffer[vI+2].d=Chr.tEndY;
+						dataBuffer[vI].color=dataBuffer[vI+1].color=dataBuffer[vI+2].color=dataBuffer[vI+3].color=PerCharColor;
+						if (endX > maxX) maxX = endX; if (startY < minY) minY = startY;
+						vI += 4; bpX += Chr.advanceX*WSIxTSX; bpY += Chr.advanceY*WSIxTSY;}
+				} else {
+					for (int i = 0; i < msgLen; i++) {
+						const uint PerCharColor = 0xFFFFFFFF;
+						char c = msg[i];
+						GlyphData Chr;
+						switch (c) {
+							case ' ': bpX += spaceSize; continue;
+							case '	': bpX += tabSize; continue;
+							case '\n': bpX = startaX; bpY -= lineHeight; continue;
+							default: if (!Chars.TryGetValue(c, out Chr)) Chr = Chars['?']; break;}
+						dataBuffer[vI].a=dataBuffer[vI+1].a=bpX+Chr.bearingX*WSIxTSX;
+						float endX = dataBuffer[vI+2].a=dataBuffer[vI+3].a=bpX+Chr.spbX*WSIxTSX;
+						float startY = dataBuffer[vI].b=dataBuffer[vI+3].b=bpY+Chr.bearingY*WSIxTSY;
+						dataBuffer[vI+1].b=dataBuffer[vI+2].b=bpY+Chr.spbY*WSIxTSY;
+						dataBuffer[vI].c=dataBuffer[vI+1].c=Chr.tStartX;dataBuffer[vI].d=dataBuffer[vI+3].d=Chr.tStartY;
+						dataBuffer[vI+2].c=dataBuffer[vI+3].c=Chr.tEndX;dataBuffer[vI+1].d=dataBuffer[vI+2].d=Chr.tEndY;
+						dataBuffer[vI].color=dataBuffer[vI+1].color=dataBuffer[vI+2].color=dataBuffer[vI+3].color=PerCharColor;
+						if (endX > maxX) maxX = endX; if (startY < minY) minY = startY;
+						vI += 4; bpX += Chr.advanceX*WSIxTSX; bpY += Chr.advanceY*WSIxTSY;}}
+				// AnnShader.SetVector4("tc", tA.BGColor);
+				dataBuffer[0].a=dataBuffer[1].a=startaX-spaceSize;
+				dataBuffer[2].a=dataBuffer[3].a=maxX+spaceSize;
+				dataBuffer[0].b=dataBuffer[3].b=startHeight+spaceSize;
+				dataBuffer[1].b=dataBuffer[2].b=minY-spaceSize;
+				dataBuffer[0].c=dataBuffer[1].c=dataBuffer[2].c=dataBuffer[3].c=thingyWithDataUsefulForTheBG.tStartX;
+				dataBuffer[0].d=dataBuffer[3].d=dataBuffer[1].d=dataBuffer[2].d=-thingyWithDataUsefulForTheBG.tStartY;
+				switch (tA.BGColor) {
+					case 1:
+						uint _Transparency = (uint)(255*TransMulti)<<24;
+						float timeCycle = (float)((double)(ts%Stopwatch.Frequency)*6/Stopwatch.Frequency);
+						dataBuffer[0].color=_Transparency|DataStuff.HueTo0ABGR_uint(timeCycle);
+						dataBuffer[1].color=_Transparency|DataStuff.HueTo0ABGR_uint((timeCycle+.25f)%6);
+						dataBuffer[2].color=_Transparency|DataStuff.HueTo0ABGR_uint((timeCycle+1f)%6);
+						dataBuffer[3].color=_Transparency|DataStuff.HueTo0ABGR_uint((timeCycle+.75f)%6);
+						GL.Uniform4(tcUniformLocation, tA.TextColor.X/255f,tA.TextColor.Y/255f,tA.TextColor.Z/255f,tA.TextColor.W*TransMulti/255f);
+					break;
+					default:
+						uint Transparency = (uint)((tA.BGColor>>24&255)*TransMulti)<<24;
+						dataBuffer[1].color=tA.BGColor&0xffffff|Transparency;
+						dataBuffer[2].color=(((tA.BGColor&255)*3)>>2)| // 75% desat and 25% 0x000000
+						((((tA.BGColor>>2)&(255u<<6))*3)&(255u<<8))|
+						((((tA.BGColor>>2)&(255u<<14))*3)&(255u<<16))|Transparency;
+						uint DesatColor = dataBuffer[0].color=((255+(tA.BGColor&255)*3)>>2)| // mix with 75% color 25% 0xFFFFFFFF
+						(((255u<<6)+((tA.BGColor>>2)&(255u<<6))*3)&(255u<<8))|
+						(((255<<14)+((tA.BGColor>>2)&(255u<<14))*3)&(255u<<16))|Transparency;
+						dataBuffer[3].color=(((DesatColor&255)*3)>>2)| // 75% desat and 25% 0x000000
+						((((DesatColor>>2)&(255u<<6))*3)&(255u<<8))|
+						((((DesatColor>>2)&(255u<<14))*3)&(255u<<16))|Transparency;
+						GL.Uniform4(tcUniformLocation, tA.TextColor.X/255f,tA.TextColor.Y/255f,tA.TextColor.Z/255f,tA.TextColor.W*TransMulti/255f);
+						break;
+				}
+				GL.BufferSubData(BufferTarget.ArrayBuffer, 0, (sizeof(float)*4+sizeof(uint))*4*vI, dataBuffer);
+				GL.DrawElements(PrimitiveType.Triangles, (vI>>1)*3, DrawElementsType.UnsignedInt, 0); vI = 4;
+			}
+		}
 	}
 }
